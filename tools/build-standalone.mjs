@@ -34,7 +34,7 @@ function escapeInlineScript(source) {
 let html = await readFile(resolve(root, 'index.html'), 'utf8');
 const css = await readFile(resolve(root, 'styles.css'), 'utf8');
 const i18n = escapeInlineScript(await readFile(resolve(root, 'i18n.js'), 'utf8'));
-const icon = Buffer.from(await readFile(resolve(root, 'icon.svg'), 'utf8')).toString('base64');
+const icon = (await readFile(resolve(root, 'icon-192.png'))).toString('base64');
 const gameSource = await readFile(resolve(root, 'game.js'), 'utf8');
 const standaloneGame = replaceExactlyOnce(
   gameSource,
@@ -52,7 +52,7 @@ html = removeExactlyOnce(
 html = replaceExactlyOnce(
   html,
   /^[ \t]*<link\b(?=[^>]*\brel=["']icon["'])[^>]*>[ \t]*\r?\n?/gim,
-  `  <link rel="icon" href="data:image/svg+xml;base64,${icon}">\n`,
+  `  <link rel="icon" href="data:image/png;base64,${icon}">\n`,
   'icon link',
 );
 html = removeExactlyOnce(

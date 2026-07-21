@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 100" role="img" aria-labelledby="title">
+  <title id="title">Crown Breaker</title>
+  <path fill="var(--asset-accent)" stroke="var(--asset-accent)" stroke-width="2" stroke-linejoin="round" d="m12 30 12 10 12-24 12 24 12-10-5 37H17l-5-37Zm6 42h37l7 10H11l7-10Zm18-48 6 10-6 10-6-10 6-10Z"/>
+  <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M101 28H84L76 36v28l8 8h17"/>
+    <path d="M114 72V28h21l7 7v12l-7 7h-21m18 0 12 18"/>
+    <path d="m163 28-8 8v28l8 8h14l8-8V36l-8-8h-14Z"/>
+    <path d="m197 28 8 44 12-30 12 30 8-44"/>
+    <path d="M250 72V28l28 44V28"/>
+    <path d="M305 72V28h22l7 7v10l-7 7h-22m22 0 9 7v6l-7 7h-24"/>
+    <path d="M350 72V28h21l7 7v12l-7 7h-21m18 0 12 18"/>
+    <path d="M415 28h-25v44h25m-25-22h20"/>
+    <path d="m428 72 14-44 14 44m-23-15h18"/>
+    <path d="M469 28v44m0-20 25-24m-25 24 27 20"/>
+    <path d="M534 28h-25v44h25m-25-22h20"/>
+    <path d="M548 72V28h21l7 7v12l-7 7h-21m18 0 12 18"/>
+  </g>
+</svg>

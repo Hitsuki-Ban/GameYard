@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>CROWN//BREAKER — Art Asset Contact Sheet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="assets.css">
+</head>
+<body>
+  <main class="sheet">
+    <header class="hero">
+      <p class="eyebrow">ISSUE #5 · RELEASE ASSET PACKAGE</p>
+      <h1>CROWN<span>//</span>BREAKER</h1>
+      <p class="lede">Deco Court · 50 original SVG assets · monochrome-first · 16 px ready</p>
+      <dl class="summary" aria-label="Asset totals">
+        <div><dt>50</dt><dd>SVG total</dd></div>
+        <div><dt>12</dt><dd>pieces</dd></div>
+        <div><dt>3</dt><dd>boss crowns</dd></div>
+        <div><dt>15</dt><dd>traits</dd></div>
+        <div><dt>6</dt><dd>formations</dd></div>
+        <div><dt>6</dt><dd>act plates</dd></div>
+        <div><dt>6</dt><dd>HUD icons</dd></div>
+        <div><dt>2</dt><dd>brand marks</dd></div>
+      </dl>
+    </header>
+
+    <section class="section" id="pieces">
+      <div class="section-heading"><div><p>01 / PLAYABLE SILHOUETTES</p><h2>Player / enemy pieces</h2></div><span>100 · 48 · 24 · 16 px</span></div>
+      <div class="piece-grid" id="piece-grid"></div>
+      <div class="mono-test">
+        <div><strong>Monochrome side test</strong><span>Identical ink; continuous player bases vs fractured enemy cuts.</span></div>
+        <div class="mono-pairs" id="mono-pairs"></div>
+      </div>
+    </section>
+
+    <section class="section" id="bosses">
+      <div class="section-heading"><div><p>02 / CROWN TARGETS</p><h2>Boss variants</h2></div><span>120 viewBox</span></div>
+      <div class="boss-grid" id="boss-grid"></div>
+    </section>
+
+    <section class="section two-column">
+      <div>
+        <div class="section-heading compact"><div><p>03 / RULE SIGILS</p><h2>15 crown traits</h2></div><span>24 · 16 px</span></div>
+        <div class="glyph-grid traits" id="trait-grid"></div>
+      </div>
+      <div>
+        <div class="section-heading compact"><div><p>04 / DEPLOYMENT</p><h2>6 formations</h2></div><span>6 × 4 grid</span></div>
+        <div class="glyph-grid formations" id="formation-grid"></div>
+      </div>
+    </section>
+
+    <section class="section" id="acts">
+      <div class="section-heading"><div><p>05 / THREE-ACT STAGE KIT</p><h2>Background plates + particles</h2></div><span>1920 × 1080 · 3 fragments each</span></div>
+      <div class="act-grid" id="act-grid"></div>
+    </section>
+
+    <section class="section two-column brand-row">
+      <div>
+        <div class="section-heading compact"><div><p>06 / COMBAT READOUT</p><h2>HUD icons</h2></div><span>16 px</span></div>
+        <div class="hud-grid" id="ui-grid"></div>
+      </div>
+      <div>
+        <div class="section-heading compact"><div><p>07 / IDENTITY</p><h2>Brand system</h2></div><span>maskable 80% zone</span></div>
+        <div class="brand-grid">
+          <div class="logo-card asset-target" data-path="assets/brand/logo.svg" aria-label="Horizontal logo"></div>
+          <div class="maskable-card">
+            <div class="maskable-views">
+              <div class="maskable-safe"><div class="asset-target" data-path="assets/brand/app-icon.svg" aria-label="Maskable app icon with 80% safe-circle overlay"></div></div>
+              <div class="maskable-crop"><div class="asset-target" data-path="assets/brand/app-icon.svg" aria-label="Circular app icon mask preview"></div></div>
+            </div>
+            <span>80% safe circle + circular mask</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Source SVGs use <code>currentColor</code> and <code>--asset-*</code> tokens.</span>
+      <span>Game runtime integration is intentionally tracked separately.</span>
+    </footer>
+  </main>
+
+  <aside id="preview-error" role="alert" hidden></aside>
+
+  <script src="assets.js" defer></script>
+</body>
+</html>

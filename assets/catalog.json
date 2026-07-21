@@ -1,0 +1,379 @@
+{
+  "schemaVersion": 1,
+  "artDirection": "deco-court",
+  "sourceCount": 50,
+  "sources": [
+    {
+      "id": "act.gallery.particles",
+      "category": "acts",
+      "path": "assets/acts/gallery-particles.svg",
+      "viewBox": "0 0 96 32",
+      "sha256": "6d3d91ae358c4e46720016a4bc97ce79f5e3dc903212b2b9b83cca6a53c97039"
+    },
+    {
+      "id": "act.gallery.background",
+      "category": "acts",
+      "path": "assets/acts/gallery.svg",
+      "viewBox": "0 0 1920 1080",
+      "sha256": "1ae37cfe69f921855059261f24644ed3b1645a82d77c63c494e38e21a647e340"
+    },
+    {
+      "id": "act.outer.particles",
+      "category": "acts",
+      "path": "assets/acts/outer-particles.svg",
+      "viewBox": "0 0 96 32",
+      "sha256": "1f9e107b39c471461d59699d05b703af844c350edcd787b474dc768e74ad3156"
+    },
+    {
+      "id": "act.outer.background",
+      "category": "acts",
+      "path": "assets/acts/outer.svg",
+      "viewBox": "0 0 1920 1080",
+      "sha256": "90fa4f2b2bc3278a5414f257c042414ee311d035cc39d9f355de4c5c14d1fddb"
+    },
+    {
+      "id": "act.throne.particles",
+      "category": "acts",
+      "path": "assets/acts/throne-particles.svg",
+      "viewBox": "0 0 96 32",
+      "sha256": "d06016a953220639ae609a66f50f14aefd2f86e7281e3c8e9957ae554ff63d9f"
+    },
+    {
+      "id": "act.throne.background",
+      "category": "acts",
+      "path": "assets/acts/throne.svg",
+      "viewBox": "0 0 1920 1080",
+      "sha256": "f99c446bce710bc86b4af517b9cb6adb02dd2d431d01e12629b702fb23ed4859"
+    },
+    {
+      "id": "boss.ironBastion",
+      "category": "bosses",
+      "path": "assets/bosses/iron-bastion.svg",
+      "viewBox": "0 0 120 120",
+      "sha256": "bbf679b90297c95ae3efaef7fbf6e45165bed302b702c4efc3055080ca4fa81a"
+    },
+    {
+      "id": "boss.pawnstorm",
+      "category": "bosses",
+      "path": "assets/bosses/pawnstorm.svg",
+      "viewBox": "0 0 120 120",
+      "sha256": "8c098f78e3dac8f57373f297e8cea7d4859aa5fd7e6ae95f1d015d45b28d6299"
+    },
+    {
+      "id": "boss.twinQueens",
+      "category": "bosses",
+      "path": "assets/bosses/twin-queens.svg",
+      "viewBox": "0 0 120 120",
+      "sha256": "ca9df4a7134de02c3766c78aa2a6897bdff53473746b7ad72c39a6bf324f6cc4"
+    },
+    {
+      "id": "brand.appIcon",
+      "category": "brand",
+      "path": "assets/brand/app-icon.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "6dd159f8992515c6569592bfe31bbfdd75cf2175da3b52af63b729e57a573842"
+    },
+    {
+      "id": "brand.logo",
+      "category": "brand",
+      "path": "assets/brand/logo.svg",
+      "viewBox": "0 0 600 100",
+      "sha256": "ebc2d89b6dc6c09b8a769850d619006252149faa7387e2086886aed772fb1ab8"
+    },
+    {
+      "id": "formation.fortress",
+      "category": "formations",
+      "path": "assets/formations/fortress.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "cd56e0eb5a4f16596525f7efcb58a8681ae4275767f0787bf0f756f1e0a570f6"
+    },
+    {
+      "id": "formation.lance",
+      "category": "formations",
+      "path": "assets/formations/lance.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "20bd3ca1c24e89b5d06eeb24ecb8a51b6b306b2e37b8712e67aa39f3cc0c4f9e"
+    },
+    {
+      "id": "formation.phalanx",
+      "category": "formations",
+      "path": "assets/formations/phalanx.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "e1a828dd744b963c69c9481253f9c06cb90ee40359dcb0f0fcdcf913b820ca90"
+    },
+    {
+      "id": "formation.pincer",
+      "category": "formations",
+      "path": "assets/formations/pincer.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "a09d2dbe31a5be74059796bab5c67733f35bffdac4ffac59ec40a560dfbe20e7"
+    },
+    {
+      "id": "formation.scatter",
+      "category": "formations",
+      "path": "assets/formations/scatter.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "e425a01a7a1c9e12d35335b396d76a51cbf8cddd41229b64003b1e69f797ee5e"
+    },
+    {
+      "id": "formation.vanguard",
+      "category": "formations",
+      "path": "assets/formations/vanguard.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "bab7d7154fb53fda3e6aca8fc57fe7289b374edf56b76cc7df851a148fed5d79"
+    },
+    {
+      "id": "piece.black.bishop",
+      "category": "pieces",
+      "path": "assets/pieces/black-bishop.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "7838ff0dff026db579d9e3664e8ee092965b5c65a84e9d7cf243217a96149b3f"
+    },
+    {
+      "id": "piece.black.king",
+      "category": "pieces",
+      "path": "assets/pieces/black-king.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "be2f56c344e43129f475f4c228234cf94a8d8c8059d8f4d6ad586348e640bf81"
+    },
+    {
+      "id": "piece.black.knight",
+      "category": "pieces",
+      "path": "assets/pieces/black-knight.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "ce9315841328b6b50bddde606c2133012fb8ee37198d08c9a7a8fa34aac0155c"
+    },
+    {
+      "id": "piece.black.pawn",
+      "category": "pieces",
+      "path": "assets/pieces/black-pawn.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "07e70bb586b4a04bf1da69f4121d85ccb80e7ba3219df4befc189b3a07d1a883"
+    },
+    {
+      "id": "piece.black.queen",
+      "category": "pieces",
+      "path": "assets/pieces/black-queen.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "0f5bbd512d34062664358073acc50b9bf2f4b040459d5b54d0e7d941eac9c5f6"
+    },
+    {
+      "id": "piece.black.rook",
+      "category": "pieces",
+      "path": "assets/pieces/black-rook.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "90abb32bcf5cd21f8957ed898a190ff0914e4ef330d13343031ba08dd6812ecd"
+    },
+    {
+      "id": "piece.white.bishop",
+      "category": "pieces",
+      "path": "assets/pieces/white-bishop.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "749f098087ebd8ce94d3b5c38c5b5e2e8b13fcc9364455fa1722036edd3b8ed4"
+    },
+    {
+      "id": "piece.white.king",
+      "category": "pieces",
+      "path": "assets/pieces/white-king.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "348d11808f1097f5e098dca86203b411c52ae06b89fe72b6be6259dff6eaba14"
+    },
+    {
+      "id": "piece.white.knight",
+      "category": "pieces",
+      "path": "assets/pieces/white-knight.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "21c61c3c3b6affd02f0656fa02408b2be1e95f95ea7a1e5a56123f584af0ab11"
+    },
+    {
+      "id": "piece.white.pawn",
+      "category": "pieces",
+      "path": "assets/pieces/white-pawn.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "863ba5dfb69ef3f7238b63dd8a20627a2bace67ee49543ff995ef913508e3b7e"
+    },
+    {
+      "id": "piece.white.queen",
+      "category": "pieces",
+      "path": "assets/pieces/white-queen.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "7c79c6f37ec3f368845f3218d26a10f126ce30364026f19403986f3411d80476"
+    },
+    {
+      "id": "piece.white.rook",
+      "category": "pieces",
+      "path": "assets/pieces/white-rook.svg",
+      "viewBox": "0 0 100 100",
+      "sha256": "84fb713919bbbf82872a196882bef6e9104dafc8db1c869b551ae579fd022c55"
+    },
+    {
+      "id": "trait.berserk",
+      "category": "traits",
+      "path": "assets/traits/berserk.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "fe9b5ef1161f89c7598a0f151a36533563ee4f3e522f220813aa29c4c6cbca08"
+    },
+    {
+      "id": "trait.chains",
+      "category": "traits",
+      "path": "assets/traits/chains.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "7848dbd672c88cf1af11ae2843e0fea660bfb94b8aad801f1c11f5a908a7631f"
+    },
+    {
+      "id": "trait.echo",
+      "category": "traits",
+      "path": "assets/traits/echo.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "ac064cbea5a7d5501123d3e22121d3003356e093e878bff1f1e971913d173cf4"
+    },
+    {
+      "id": "trait.gravity",
+      "category": "traits",
+      "path": "assets/traits/gravity.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "f894cdbbf528ab2558620753d43cf0a5bf0d35d9e698a21ef929176b65364bd9"
+    },
+    {
+      "id": "trait.guarded",
+      "category": "traits",
+      "path": "assets/traits/guarded.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "5113991558bd72e05c4e8618b6904d832dff21c5d05f86773db04abf351af8ae"
+    },
+    {
+      "id": "trait.hex",
+      "category": "traits",
+      "path": "assets/traits/hex.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "6fad16ad05e830f6b1efe9382e9b5244f8114f1834ab15f7a1975126f941f8c4"
+    },
+    {
+      "id": "trait.lockstep",
+      "category": "traits",
+      "path": "assets/traits/lockstep.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "ca368e31e446f66a0efa6d499b6f97d42fd78f2ccbcb1de545724be767fd5507"
+    },
+    {
+      "id": "trait.mist",
+      "category": "traits",
+      "path": "assets/traits/mist.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "f4882de70f57531bf6c555e3b790defba05b52d991f3dfe9f674bbc4f0f4221b"
+    },
+    {
+      "id": "trait.phantom",
+      "category": "traits",
+      "path": "assets/traits/phantom.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "a7406f893fb529d934a3e68f7a6683bb0ca8ee0a23e3b02b76e451c0a131d409"
+    },
+    {
+      "id": "trait.possession",
+      "category": "traits",
+      "path": "assets/traits/possession.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "a070b26c7817dfa4b42a90b277a32a22aeda75a704bdf7eff343793e91fdaea2"
+    },
+    {
+      "id": "trait.rampart",
+      "category": "traits",
+      "path": "assets/traits/rampart.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "f20694bd625b658276b8825ac087f3d3cbc61f5aac9dd99ee2d1d13044b893ce"
+    },
+    {
+      "id": "trait.summoner",
+      "category": "traits",
+      "path": "assets/traits/summoner.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "befe4f1df0b79cdd6302a9d410c1aa8b56a91327a171e5fddc603c9facb335f9"
+    },
+    {
+      "id": "trait.swift",
+      "category": "traits",
+      "path": "assets/traits/swift.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "ce780231ddd97fe991a1c268e8bbda49e51982fcf7a0bf9e5b45c5a54baa96e8"
+    },
+    {
+      "id": "trait.thorns",
+      "category": "traits",
+      "path": "assets/traits/thorns.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "d7c20f1976b6623174f69e118c60d06dbfe574e7f0cf5a3efab2095ae40f208f"
+    },
+    {
+      "id": "trait.tithe",
+      "category": "traits",
+      "path": "assets/traits/tithe.svg",
+      "viewBox": "0 0 24 24",
+      "sha256": "debfd0ccdbd3035df9ed045cc1fb30f860471aae09b5e73b6ea3386e8ff7ed70"
+    },
+    {
+      "id": "ui.combo",
+      "category": "ui",
+      "path": "assets/ui/combo.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "d3682948262495eecdcc2b715643b8fd26630076a50eaedae64374e7e41797b2"
+    },
+    {
+      "id": "ui.crown",
+      "category": "ui",
+      "path": "assets/ui/crown.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "093357b5f5d0db731d435418ed4c5a806355ec0aa712299d301ac0ba2e5fb9de"
+    },
+    {
+      "id": "ui.energy",
+      "category": "ui",
+      "path": "assets/ui/energy.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "cf83eac16736180c174717c124fd2811f8d2fb9c2ab20fbd75304d3ea9915820"
+    },
+    {
+      "id": "ui.relic",
+      "category": "ui",
+      "path": "assets/ui/relic.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "ba367b3560fb90f2d693f97f4852444b48c56a90f1c7e7e09753ea7bbf79dcf5"
+    },
+    {
+      "id": "ui.shield",
+      "category": "ui",
+      "path": "assets/ui/shield.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "5ef5f84c25ddcdbc7dfd81d2f73cf283048e5ecb383438c0b371f050406fa4cd"
+    },
+    {
+      "id": "ui.turns",
+      "category": "ui",
+      "path": "assets/ui/turns.svg",
+      "viewBox": "0 0 16 16",
+      "sha256": "cb3ff0350afe2877039fba929f184e0630b5f94c13475126de6ad4fe862d8886"
+    }
+  ],
+  "pwaOutputs": [
+    {
+      "path": "icon.svg",
+      "viewBox": "0 0 100 100",
+      "bytes": 642,
+      "sha256": "0be33b766a57af77fb8b31f64daccc57e6949c4951eab38dce6aa8c417f5c480"
+    },
+    {
+      "path": "icon-192.png",
+      "width": 192,
+      "height": 192,
+      "bytes": 12546,
+      "sha256": "563ba2f81d90c169492a42693c03ebe63c431c6e9b55326729de483e3f682a7e"
+    },
+    {
+      "path": "icon-512.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 52364,
+      "sha256": "9087eace49076abca8a578ec9212752386c20ce2a7a199d84ff732f19db88316"
+    }
+  ]
+}

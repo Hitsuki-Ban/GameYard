@@ -1,5 +1,21 @@
 # QA 报告
 
+## v3.6.0
+
+构建：CROWN//BREAKER v3.6.0 Deco Court 美术素材包
+日期：2026-07-21
+
+### 本地结果
+
+- `pnpm check`：通过；50 / 50 个源 SVG 的精确清单、viewBox、颜色 token、安全属性与 SHA-256 目录一致，三语目录继续严格同构；静态发布检查覆盖 67 个必需文件、3 份 Manifest 与精确 66 个 Service Worker 预缓存项。
+- 确定性导出：连续两次执行 `pnpm build:assets` 后，`assets/catalog.json`、`icon.svg`、`icon-192.png`、`icon-512.png` 的字节哈希逐项相同。SHA-256 分别为 `BC5BF3FCE80BC0414E7CDADB6D4871EE407321E49854FC315C4F1B24B5F1BFA5`、`0BE33B766A57AF77FB8B31F64DACCC57E6949C4951EAB38DCE6AA8C417F5C480`、`563BA2F81D90C169492A42693C03EBE63C431C6E9B55326729DE483E3F682A7E`、`9087EACE49076ABCA8A578EC9212752386C20CE2A7A199D84FF732F19DB88316`。
+- Contact sheet：连续两次执行 `pnpm render:assets` 得到相同的 1440 × 2974 PNG，大小 741,582 字节，SHA-256 `DEC9526F0DE0081CB0BCBF316EB5F1D5E104452996A0475DBDB69B1E9BC5B188`；固定白名单完整加载 50 个 SVG，无外部请求、控制台错误、裁切或缺项，390 / 320 px 视口无水平溢出或标题裁切。
+- 视觉验收：棋子 100 / 48 / 24 / 16 px 阶梯、特性与 HUD 的 16 px 阶梯均可辨；同一墨色下玩家的连续双基座与敌方裂口单基座保持区分；三种 Boss 轮廓互异；外苑、回廊、王座厅分别呈现青雾、紫廊与金赤火光。maskable 透明核心以 400 × 400 实际栅格逐像素验证（任何 alpha > 0 均计入），最远可见像素半径为 38.95%，小于 40% 安全圆；页面同时展示安全圆覆盖与圆形裁切结果。
+- 安全边界：Node 构建与浏览器注入都拒绝命名空间前缀、动画、外链、活动内容、未知元素/属性和超限复杂度；预览逻辑移至同源外部脚本并由 `script-src 'self'` CSP 约束；ImageMagick 在读取已验证输入后受内存、磁盘、尺寸、时间与输出缓冲上限保护。
+- 回归：`pnpm check:enemies -- --targeted` 与 `pnpm check:traits -- --targeted` 均通过，敌阵 canonical layout、AI、当前 15 个特性、严格 QA 配置与三语卡片未受素材包影响。
+- 单文件版：`crown-breaker-v3.6.0.html` 构建通过，大小 304,571 字节；使用彩色 PNG favicon，仍只内联现有游戏运行时，不加载本工单的展示资源。SHA-256：`67064C43F6F535475A6120DB09A379A7E1280C704947942B69A101D3581470BB`。
+- 范围边界：本版本按 Issue #5 交付源素材、公开预览、确定性工具与 PWA 图标；当前 Canvas / Unicode 游戏绘制未被替换，素材的正式运行时消费由后续工单单路径完成。
+
 ## v3.5.0
 
 构建：CROWN//BREAKER v3.5.0 敌阵合约版

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">White bishop</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M50 8 65 28 55 43h10l8 31H27l8-31h10L35 28 50 8Zm-3 15-5 7 8 12 8-12-5-7-3 8-3-8ZM27 74h46l5 8H22l5-8Zm-5 8h56l6 9H16l6-9Z" fill-rule="evenodd"/>
+</svg>

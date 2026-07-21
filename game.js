@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.5.0';
+  const VERSION = '3.6.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';

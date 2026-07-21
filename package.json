@@ -1,6 +1,6 @@
 {
   "name": "crown-breaker",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "A compact chess-movement board roguelite for the browser.",
   "private": true,
   "license": "MIT",
@@ -12,10 +12,13 @@
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
-    "check": "node --check i18n.js && node --check game.js && node --check sw.js && node --check tools/build-standalone.mjs && node --check tools/check-i18n.mjs && node --check tools/check-static.mjs && node --check tools/check-traits.mjs && node --check tools/check-enemies.mjs && node --check tools/sim-run.mjs && node tools/check-i18n.mjs && node tools/check-static.mjs",
+    "check": "node --check i18n.js && node --check game.js && node --check sw.js && node --check previews/assets.js && node --check tools/svg-contract.mjs && node --check tools/build-art-assets.mjs && node --check tools/build-standalone.mjs && node --check tools/check-assets.mjs && node --check tools/check-i18n.mjs && node --check tools/check-static.mjs && node --check tools/check-traits.mjs && node --check tools/check-enemies.mjs && node --check tools/render-asset-sheet.mjs && node --check tools/sim-run.mjs && node tools/check-assets.mjs && node tools/check-i18n.mjs && node tools/check-static.mjs",
+    "build:assets": "node tools/build-art-assets.mjs",
     "check:enemies": "node tools/check-enemies.mjs",
+    "check:assets": "node tools/check-assets.mjs",
     "check:traits": "node tools/check-traits.mjs",
     "build:standalone": "node tools/build-standalone.mjs",
+    "render:assets": "node tools/render-asset-sheet.mjs",
     "sim": "node tools/sim-run.mjs"
   },
   "devDependencies": {

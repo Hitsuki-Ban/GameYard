@@ -4,6 +4,12 @@
 
 ![CROWN//BREAKER title screen](previews/title.png)
 
+## Art asset contact sheet
+
+[Open the hosted, responsive 50-SVG contact sheet](https://hitsuki-ban.github.io/CrownBreaker/previews/assets.html).
+
+![CROWN//BREAKER art asset contact sheet](previews/assets-sheet.png)
+
 <a id="english"></a>
 ## English
 
@@ -67,6 +73,22 @@ pnpm build:standalone dist/crown-breaker.html
 
 The standalone build requires exactly one output path, creates its parent directory, and embeds the HTML, CSS, localization data, and game code into one file.
 
+### Art asset package
+
+Issue #5 delivers 50 original SVG sources: 12 player/enemy pieces, 3 boss crowns, all 15 current crown traits, 6 formations, 3 act backgrounds with 3 particle sheets, 6 HUD icons, and 2 brand marks. Review them in the [hosted contact sheet](https://hitsuki-ban.github.io/CrownBreaker/previews/assets.html) or rebuild the checked-in preview locally:
+
+```bash
+pnpm build:assets
+pnpm check:assets
+pnpm render:assets
+```
+
+`pnpm build:assets` and the maskable geometry gate in `pnpm check` require ImageMagick's `magick` command and fail explicitly when it is unavailable.
+
+On 2026-07-21, `imagegen` produced three independent direction sheets — A Razor Heraldry, B Deco Court, and C Spectral Usurpation — and B Deco Court was selected. The concept sheets are comparison references and are not included in the release package. The final SVGs were drawn originally for this project from that direction and contain no external source artwork. Detailed generation hashes, geometry, color tokens, naming, and licensing boundaries are recorded in [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md).
+
+The package does **not** claim that the current Canvas / Unicode renderer has been replaced. Runtime game integration is intentionally a separate task, matching the scope of Issue #5.
+
 ### PWA and offline use
 
 The hosted version includes localized web app manifests and a service worker. After one successful online load, the core game files are cached for offline use. Installation support varies by browser and platform. Progress and the selected language are stored in browser local storage; clearing site data removes them.
@@ -76,8 +98,9 @@ The hosted version includes localized web app manifests and a service worker. Af
 - `index.html`, `styles.css` — page structure and responsive presentation
 - `i18n.js`, `game.js` — localization catalog, game rules, state, audio, and rendering
 - `manifest*.webmanifest`, `sw.js`, `icon*` — installable/offline web app assets
-- `previews/` — title, gameplay, promotion, route, and mobile screenshots
-- `tools/` — static release checks and standalone builder
+- `assets/` — 50 original SVG sources, deterministic catalog, and art direction guide
+- `previews/` — game screenshots plus the hosted art contact sheet
+- `tools/` — static/asset checks, deterministic asset export, contact-sheet renderer, simulator, and standalone builder
 - `DESIGN_NOTES.md`, `COPY_GUIDE.md`, `QA_REPORT.md`, `CHANGELOG.md` — design and release documentation
 
 ### License
@@ -140,6 +163,22 @@ pnpm build:standalone dist/crown-breaker.html
 
 单文件构建命令必须明确提供唯一输出路径；工具会创建父目录，并把页面、样式、本地化数据和游戏代码内联到一个 HTML 文件中。
 
+### 美术素材包
+
+Issue #5 交付 50 项原创 SVG 源素材：12 枚玩家/敌方棋子、3 枚 Boss 王冠、当前完整的 15 个王冠特性、6 种阵形、3 幕背景与对应 3 张粒子表、6 枚 HUD 图标，以及 2 项品牌标记。可在[线上素材陈列页](https://hitsuki-ban.github.io/CrownBreaker/previews/assets.html)查看，或在本地重新构建已检入的预览图：
+
+```bash
+pnpm build:assets
+pnpm check:assets
+pnpm render:assets
+```
+
+`pnpm build:assets` 与 `pnpm check` 中的 maskable 像素几何门禁需要系统提供 ImageMagick 的 `magick` 命令；工具缺失时会明确失败。
+
+2026-07-21 使用 `imagegen` 分别生成了 A Razor Heraldry、B Deco Court、C Spectral Usurpation 三套独立方向稿，经比较后选定 B Deco Court。方向稿只作比较参考，未纳入发布包；最终 SVG 由本项目基于所选方向原创绘制，不含外部来源素材。生成稿哈希、几何规格、颜色 token、命名与许可边界详见 [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md)。
+
+本素材包**不代表**当前 Canvas / Unicode 游戏渲染已经替换。按照 Issue #5 的范围，运行时集成将由后续独立任务处理。
+
 ### PWA 与离线
 
 托管版包含三语 Web App Manifest 与 Service Worker。首次联网成功加载后，核心游戏文件会进入离线缓存。是否支持安装取决于浏览器与平台。进度和语言选择保存在浏览器本地存储中；清除站点数据会同时移除它们。
@@ -149,8 +188,9 @@ pnpm build:standalone dist/crown-breaker.html
 - `index.html`、`styles.css`：页面结构与响应式样式
 - `i18n.js`、`game.js`：三语文案、游戏规则、状态、音频与渲染
 - `manifest*.webmanifest`、`sw.js`、`icon*`：PWA 安装与离线资源
-- `previews/`：标题、对局、升变、路线与手机截图
-- `tools/`：静态发布检查与单文件构建工具
+- `assets/`：50 项原创 SVG 源素材、确定性目录清单与艺术方向说明
+- `previews/`：游戏截图与可托管的素材陈列页
+- `tools/`：静态/素材检查、确定性素材导出、陈列页渲染、模拟器与单文件构建工具
 - `DESIGN_NOTES.md`、`COPY_GUIDE.md`、`QA_REPORT.md`、`CHANGELOG.md`：设计与发布文档
 
 ### 许可
@@ -213,6 +253,22 @@ pnpm build:standalone dist/crown-breaker.html
 
 単一 HTML ビルドには出力先を 1 つだけ明示する必要があります。親ディレクトリを作成し、HTML、CSS、翻訳データ、ゲームコードを 1 ファイルに埋め込みます。
 
+### アート素材パッケージ
+
+Issue #5 では、プレイヤー/敵側の駒 12 点、ボスクラウン 3 点、現行のクラウン特性全 15 点、陣形 6 点、3 幕の背景と粒子シート 3 点、HUD アイコン 6 点、ブランドマーク 2 点からなる、合計 50 点のオリジナル SVG ソースを提供します。[ホスト版コンタクトシート](https://hitsuki-ban.github.io/CrownBreaker/previews/assets.html)で確認するか、チェックイン済みプレビューをローカルで再生成できます。
+
+```bash
+pnpm build:assets
+pnpm check:assets
+pnpm render:assets
+```
+
+`pnpm build:assets` と `pnpm check` の maskable ピクセル形状検査には、ImageMagick の `magick` コマンドが必要です。利用できない場合は明示的に失敗します。
+
+2026-07-21 に `imagegen` で A Razor Heraldry、B Deco Court、C Spectral Usurpation の独立した 3 方向案を生成し、比較後に B Deco Court を採用しました。方向案は比較用の参照で、公開パッケージには含まれません。最終 SVG は選定方向を基に本プロジェクト向けに独自制作し、外部由来の素材を含みません。生成案のハッシュ、ジオメトリ、カラートークン、命名、ライセンス境界は [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md) に記録しています。
+
+この素材パッケージは、現在の Canvas / Unicode 描画を置き換えたという意味では**ありません**。Issue #5 の範囲どおり、ゲーム実行時への統合は別タスクとして扱います。
+
 ### PWA とオフライン
 
 ホスト版には各言語の Web App Manifest と Service Worker が含まれます。オンラインで一度正常に読み込むと、ゲームの主要ファイルがオフライン用にキャッシュされます。インストール対応はブラウザと OS によって異なります。進行状況と言語設定はブラウザのローカルストレージに保存され、サイトデータを消去すると削除されます。
@@ -222,8 +278,9 @@ pnpm build:standalone dist/crown-breaker.html
 - `index.html`、`styles.css` — ページ構造とレスポンシブ表示
 - `i18n.js`、`game.js` — 翻訳カタログ、ゲームルール、状態、音声、描画
 - `manifest*.webmanifest`、`sw.js`、`icon*` — インストールとオフライン対応
-- `previews/` — タイトル、ゲーム、昇格、ルート、モバイルのスクリーンショット
-- `tools/` — 静的リリース検査と単一 HTML ビルダー
+- `assets/` — オリジナル SVG 50 点、決定的カタログ、アート方針ガイド
+- `previews/` — ゲーム画像とホスト可能なアート・コンタクトシート
+- `tools/` — 静的/素材検査、決定的素材出力、コンタクトシート描画、シミュレーター、単一 HTML ビルダー
 - `DESIGN_NOTES.md`、`COPY_GUIDE.md`、`QA_REPORT.md`、`CHANGELOG.md` — 設計・リリース文書
 
 ### ライセンス

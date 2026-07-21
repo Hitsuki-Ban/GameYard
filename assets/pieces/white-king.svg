@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">White king</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M46 7h8v10h10v8H54v8h12l-5 10 7 31H32l7-31-5-10h12v-8H36v-8h10V7ZM29 74h42l5 8H24l5-8Zm-5 8h52l6 9H18l6-9Z"/>
+</svg>
