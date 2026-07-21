@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '2.1.0';
+  const VERSION = '3.0.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -106,18 +106,24 @@
   const FAILURE_CODES = Object.freeze(['crown_broken', 'turns_exhausted', 'no_legal_moves', 'qa']);
 
   const RELICS = [
-    { id: 'doubleStep', nameKey: 'relic.doubleStep.name', lineKey: 'relic.doubleStep.line', max: 2, glyph: '♙', kind: 'pawn' },
-    { id: 'earlyPromote', nameKey: 'relic.earlyPromote.name', lineKey: 'relic.earlyPromote.line', max: 2, glyph: '♙', kind: 'pawn' },
-    { id: 'promoteTempo', nameKey: 'relic.promoteTempo.name', lineKey: 'relic.promoteTempo.line', max: 2, glyph: '♕', kind: 'tempo' },
-    { id: 'captureTempo', nameKey: 'relic.captureTempo.name', lineKey: 'relic.captureTempo.line', max: 2, glyph: '◆', kind: 'tempo' },
-    { id: 'knightSpur', nameKey: 'relic.knightSpur.name', lineKey: 'relic.knightSpur.line', max: 2, glyph: '♘', kind: 'class' },
-    { id: 'bishopPrism', nameKey: 'relic.bishopPrism.name', lineKey: 'relic.bishopPrism.line', max: 2, glyph: '♗', kind: 'class' },
-    { id: 'rookRam', nameKey: 'relic.rookRam.name', lineKey: 'relic.rookRam.line', max: 2, glyph: '♖', kind: 'class' },
-    { id: 'queenBattery', nameKey: 'relic.queenBattery.name', lineKey: 'relic.queenBattery.line', max: 2, glyph: '♕', kind: 'class' },
-    { id: 'pawnRelay', nameKey: 'relic.pawnRelay.name', lineKey: 'relic.pawnRelay.line', max: 2, glyph: '♙', kind: 'pawn' },
-    { id: 'shield', nameKey: 'relic.shield.name', lineKey: 'relic.shield.line', max: 2, glyph: '♔', kind: 'guard' },
-    { id: 'turns', nameKey: 'relic.turns.name', lineKey: 'relic.turns.line', max: 2, glyph: '⌛', kind: 'guard' },
-    { id: 'dangerReward', nameKey: 'relic.dangerReward.name', lineKey: 'relic.dangerReward.line', max: 2, glyph: '▲', kind: 'score' }
+    { id: 'doubleStep', nameKey: 'relic.doubleStep.name', lineKey: 'relic.doubleStep.line', max: 2, glyph: '♙', kind: 'pawn', rarity: 'common' },
+    { id: 'earlyPromote', nameKey: 'relic.earlyPromote.name', lineKey: 'relic.earlyPromote.line', max: 2, glyph: '♙', kind: 'pawn', rarity: 'common' },
+    { id: 'promoteTempo', nameKey: 'relic.promoteTempo.name', lineKey: 'relic.promoteTempo.line', max: 2, glyph: '♕', kind: 'tempo', rarity: 'rare' },
+    { id: 'captureTempo', nameKey: 'relic.captureTempo.name', lineKey: 'relic.captureTempo.line', max: 2, glyph: '◆', kind: 'tempo', rarity: 'common' },
+    { id: 'knightSpur', nameKey: 'relic.knightSpur.name', lineKey: 'relic.knightSpur.line', max: 2, glyph: '♘', kind: 'class', rarity: 'rare' },
+    { id: 'bishopPrism', nameKey: 'relic.bishopPrism.name', lineKey: 'relic.bishopPrism.line', max: 2, glyph: '♗', kind: 'class', rarity: 'rare' },
+    { id: 'rookRam', nameKey: 'relic.rookRam.name', lineKey: 'relic.rookRam.line', max: 2, glyph: '♖', kind: 'class', rarity: 'rare' },
+    { id: 'queenBattery', nameKey: 'relic.queenBattery.name', lineKey: 'relic.queenBattery.line', max: 2, glyph: '♕', kind: 'class', rarity: 'rare' },
+    { id: 'pawnRelay', nameKey: 'relic.pawnRelay.name', lineKey: 'relic.pawnRelay.line', max: 2, glyph: '♙', kind: 'pawn', rarity: 'common' },
+    { id: 'shield', nameKey: 'relic.shield.name', lineKey: 'relic.shield.line', max: 2, glyph: '♔', kind: 'guard', rarity: 'common' },
+    { id: 'turns', nameKey: 'relic.turns.name', lineKey: 'relic.turns.line', max: 2, glyph: '⌛', kind: 'guard', rarity: 'common' },
+    { id: 'dangerReward', nameKey: 'relic.dangerReward.name', lineKey: 'relic.dangerReward.line', max: 2, glyph: '▲', kind: 'score', rarity: 'common' },
+    { id: 'bounty', nameKey: 'relic.bounty.name', lineKey: 'relic.bounty.line', max: 2, glyph: '◆', kind: 'score', rarity: 'rare' },
+    { id: 'momentum', nameKey: 'relic.momentum.name', lineKey: 'relic.momentum.line', max: 2, glyph: '✦', kind: 'tempo', rarity: 'rare' },
+    { id: 'interceptor', nameKey: 'relic.interceptor.name', lineKey: 'relic.interceptor.line', max: 2, glyph: '♟', kind: 'tempo', rarity: 'rare' },
+    { id: 'overcharge', nameKey: 'relic.overcharge.name', lineKey: 'relic.overcharge.line', max: 2, glyph: '⚡', kind: 'burst', rarity: 'rare' },
+    { id: 'kingsWrath', nameKey: 'relic.kingsWrath.name', lineKey: 'relic.kingsWrath.line', max: 2, glyph: '♔', kind: 'class', rarity: 'rare' },
+    { id: 'crownSurge', nameKey: 'relic.crownSurge.name', lineKey: 'relic.crownSurge.line', max: 2, glyph: '♚', kind: 'tempo', rarity: 'rare' }
   ];
   const RELIC_BY_ID = Object.fromEntries(RELICS.map(item => [item.id, item]));
 
@@ -136,9 +142,21 @@
       case 'shield': return t('relic.effect.shield', { count: 3 + value });
       case 'turns': return t('relic.effect.turns', { count: value * 2 });
       case 'dangerReward': return t('relic.effect.dangerReward', { multiplier: value + 1 });
+      case 'bounty': return t('relic.effect.bounty', { multiplier: value + 1 });
+      case 'momentum': return t(`relic.effect.momentum.${value === 1 ? 'one' : 'many'}`, { count: value });
+      case 'interceptor': return t(`relic.effect.interceptor.${value === 1 ? 'one' : 'many'}`, { count: value });
+      case 'overcharge': return t('relic.effect.overcharge', { count: 3 + value });
+      case 'kingsWrath': return t('relic.effect.kingsWrath', { multiplier: value + 1, energy: 10 + value * 15 });
+      case 'crownSurge': return t(`relic.effect.crownSurge.${value === 1 ? 'one' : 'many'}`, { count: value });
       default: throw new RangeError(`Unknown relic id: ${String(id)}`);
     }
   }
+
+  const BOSS_DEFS = {
+    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'] },
+    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'] },
+    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'] }
+  };
 
   const CONTRACT_MODS = {
     swarm: { id: 'swarm', nameKey: 'contract.swarm.name', glyph: '♟', lineKey: 'contract.swarm.line' },
@@ -323,10 +341,11 @@
       if (step % 32 === 31) this.tone(660, t, 0.04, 0.016, 'square', this.musicGain, 1180);
     }
 
-    sfx(name) {
+    sfx(name, opts = {}) {
       this.ensure();
       if (!this.ctx || !settings.sfx) return;
       const t = this.ctx.currentTime + 0.005;
+      const pitch = Math.max(0.5, Number(opts.pitch) || 1);
       switch (name) {
         case 'ui':
           this.tone(420, t, 0.045, 0.055, 'square');
@@ -341,8 +360,13 @@
           break;
         case 'capture':
           this.noise(t, 0.22, 0.22, 4800);
-          this.tone(120, t, 0.28, 0.18, 'sawtooth', this.sfxGain, 42);
-          this.tone(610, t + 0.03, 0.13, 0.07, 'square', this.sfxGain, 180);
+          this.tone(120 * pitch, t, 0.28, 0.18, 'sawtooth', this.sfxGain, 42 * pitch);
+          this.tone(610 * pitch, t + 0.03, 0.13, 0.07, 'square', this.sfxGain, 180 * pitch);
+          break;
+        case 'jackpot':
+          this.noise(t, 0.3, 0.2, 7000);
+          [392, 523.2, 659.2, 784, 1046.4].forEach((f, i) => this.tone(f, t + i * 0.055, 0.28, 0.085, i % 2 ? 'square' : 'sawtooth'));
+          this.tone(196, t, 0.5, 0.12, 'sawtooth', this.sfxGain, 392);
           break;
         case 'crown':
           this.noise(t, 0.46, 0.28, 6000);
@@ -475,6 +499,7 @@
       promotions: 0,
       maxCombo: 0,
       crownBreaks: 0,
+      energyCarry: 0,
       relics: {},
       roster: makeInitialRoster(),
       shield: 3,
@@ -495,12 +520,14 @@
 
   function makeContract(depth, elite = false, final = false) {
     if (final) {
+      const bossId = choose(Object.keys(BOSS_DEFS));
       return {
-        id: `boss-${depth}-${run.rngState}`,
+        id: `boss-${bossId}-${run.rngState}`,
         depth,
         elite: true,
         final: true,
-        mods: ['armor', 'queen', 'walls', 'cavalry', 'race'],
+        boss: bossId,
+        mods: [...BOSS_DEFS[bossId].mods],
         reward: 0,
         previewSeed: run.rngState
       };
@@ -582,6 +609,8 @@
       moveCount: game.moveCount,
       aiSkill: game.aiSkill,
       battleCharges: deepClone(game.battleCharges),
+      battleShieldLost: Boolean(game.battleShieldLost),
+      battleMaxCombo: Number(game.battleMaxCombo || 0),
       enemyIntent: game.enemyIntent ? deepClone(game.enemyIntent) : null,
       shield: run.shield,
       contract: deepClone(run.currentContract)
@@ -846,7 +875,8 @@
     pieces.push(makePiece('b', 'k', crownX, 0));
 
     const depth = run.battle;
-    const baseCount = 4 + depth + (contract.elite ? 2 : 0);
+    const eliteExtra = contract.elite ? (depth <= 3 ? 1 : 2) : 0;
+    const baseCount = contract.final ? 7 : 3 + Math.min(5, depth) + eliteExtra;
     const pool = depth <= 2
       ? ['p', 'p', 'p', 'n', 'b', 'r']
       : depth <= 4
@@ -854,7 +884,7 @@
         : ['p', 'n', 'b', 'r', 'q'];
 
     for (let i = 0; i < baseCount; i++) addEnemyPiece(pieces, occupied, choose(pool));
-    if (hasMod(contract, 'swarm')) for (let i = 0; i < 4; i++) addEnemyPiece(pieces, occupied, 'p', [2, 3, 4]);
+    if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) addEnemyPiece(pieces, occupied, 'p', [2, 3, 4]);
     if (hasMod(contract, 'cavalry')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'n', [1, 2, 3]);
     if (hasMod(contract, 'walls')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'r', [1, 2]);
     if (hasMod(contract, 'diagonals')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'b', [1, 2, 3]);
@@ -862,24 +892,28 @@
     if (hasMod(contract, 'race')) {
       for (let i = 0; i < 3; i++) addEnemyPiece(pieces, occupied, 'p', [4, 3]);
     }
+    if (contract.boss === 'twinQueens') addEnemyPiece(pieces, occupied, 'q', [1, 2]);
+    if (contract.boss === 'ironBastion') for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'p', [2]);
+    if (contract.boss === 'pawnstorm') for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'p', [3, 4]);
     return pieces;
   }
 
   function buildBattleFromContract(contract) {
     run.currentContract = contract;
     const pieces = generateEnemyFormation(contract);
-    const hp = contract.final ? 3 : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
+    const bossDef = contract.boss ? BOSS_DEFS[contract.boss] : null;
+    const hp = bossDef ? bossDef.hp : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
     const turns = clamp(
-      12 + activeRelicLevel('turns') * 2 - (hasMod(contract, 'shortClock') ? 2 : 0) - Math.floor((run.battle - 1) / 3),
+      13 + activeRelicLevel('turns') * 2 - (hasMod(contract, 'shortClock') ? 2 : 0) + (bossDef ? bossDef.extraTurns : 0),
       8,
-      18
+      20
     );
     return {
       pieces,
       enemyHP: hp,
       enemyHPMax: hp,
       turns,
-      aiSkill: clamp(0.22 + run.battle * 0.075 + (contract.elite ? 0.09 : 0), 0.22, 0.83)
+      aiSkill: clamp(0.18 + run.battle * 0.07 + (contract.elite ? 0.08 : 0), 0.18, 0.8)
     };
   }
 
@@ -915,7 +949,9 @@
     game.idleHintShown = false;
     game.promotionPending = null;
     game.pendingAfterMove = null;
-    game.battleCharges = { captureTempo: 0, knightSpur: 0 };
+    game.battleCharges = {};
+    game.battleShieldLost = false;
+    game.battleMaxCombo = 0;
     particles.length = 0;
     floatingTexts.length = 0;
   }
@@ -974,12 +1010,16 @@
       game.overdriveMoves = state.overdriveMoves;
       game.bonusActions = state.bonusActions;
       game.moveCount = state.moveCount;
-      game.battleCharges = state.battleCharges || { captureTempo: 0, knightSpur: 0 };
+      game.battleCharges = state.battleCharges || {};
+      game.battleShieldLost = Boolean(state.battleShieldLost);
+      game.battleMaxCombo = Number(state.battleMaxCombo || 0);
       run.shield = state.shield;
       run.currentContract = state.contract || run.currentContract;
     } else {
       data = buildBattleFromContract(run.currentContract);
       resetRuntimeForBattle(data);
+      game.hype = clamp(Number(run.energyCarry || 0), 0, 50);
+      run.energyCarry = 0;
     }
     enterBattleScreen();
     if (restoredIntent) {
@@ -1390,7 +1430,7 @@
   }
 
   function grantBonusAction(count = 1) {
-    game.bonusActions = clamp(game.bonusActions + count, 0, 4);
+    game.bonusActions = clamp(game.bonusActions + count, 0, 6);
   }
 
   function performPlayerMove(piece, move) {
@@ -1403,7 +1443,16 @@
     const captured = move.captureId ? game.pieces.find(target => target.id === move.captureId) : null;
     const credit = consumeActionCredit();
     if (!credit) game.turnsLeft -= 1;
-    if (!captured) game.combo = 0;
+    if (!captured) {
+      const momentumLevel = activeRelicLevel('momentum');
+      const momentumUsed = Number(game.battleCharges.momentum || 0);
+      if (game.combo > 0 && momentumLevel > momentumUsed) {
+        game.battleCharges.momentum = momentumUsed + 1;
+        showBanner('banner.comboSaved');
+      } else {
+        game.combo = 0;
+      }
+    }
     if (!save.tutorial.move) {
       save.tutorial.move = true;
       persistSave();
@@ -1431,7 +1480,8 @@
       if (!game.active) return;
       const point = tileCenter(move.x, move.y);
       if (captured) {
-        audio.sfx(captured.type === 'k' ? 'crown' : 'capture');
+        if (captured.type === 'k') audio.sfx('crown');
+        else audio.sfx('capture', { pitch: 1 + Math.min(6, game.combo) * 0.07 });
         addImpact(point.x, point.y, captured.type === 'k' ? 'crown' : actor === 'player' ? 'player' : 'enemy', captured.type === 'k' ? 44 : 23);
         triggerHit(captured.type === 'k' ? 18 : 8, captured.type === 'k' ? 115 : 55);
       }
@@ -1459,7 +1509,21 @@
   }
 
   function comboMultiplier() {
-    return clamp(1 + Math.floor(game.combo / 2) * 0.5, 1, 5);
+    return clamp(1 + game.combo * 0.25, 1, 3);
+  }
+
+  function registerComboStep() {
+    game.combo += 1;
+    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    game.battleMaxCombo = Math.max(game.battleMaxCombo || 0, game.combo);
+    const tierKey = game.combo === 3 ? 'combo.great' : game.combo === 5 ? 'combo.wild' : game.combo === 8 ? 'combo.frenzy' : null;
+    return tierKey;
+  }
+
+  function announceComboTier(tierKey, x, y) {
+    if (!tierKey) return;
+    addFloatingText(x, y - view.board.tile * 0.55, t(tierKey), 'gold');
+    triggerHit(6, 40);
   }
 
   function addHype(amount) {
@@ -1478,14 +1542,14 @@
     game.captures += 1;
     game.battleCaptures += 1;
     save.totalCaptures += 1;
-    game.combo += 1;
-    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    const tierKey = registerComboStep();
     const point = tileCenter(target.x, target.y);
     const value = Math.round(PIECE_VALUES[target.type] * comboMultiplier() * factor);
     addScore(value, point.x, point.y, `+${value}`);
+    announceComboTier(tierKey, point.x, point.y);
     addHype(10 + PIECE_VALUES[target.type] / 30);
     addImpact(point.x, point.y, 'player', 18);
-    audio.sfx('capture');
+    audio.sfx('capture', { pitch: 1 + Math.min(6, game.combo) * 0.07 });
     return true;
   }
 
@@ -1548,23 +1612,44 @@
     game.captures += 1;
     game.battleCaptures += 1;
     save.totalCaptures += 1;
-    game.combo += 1;
-    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    const tierKey = registerComboStep();
     const dangerLevel = activeRelicLevel('dangerReward');
     const dangerBoost = context.move.danger && dangerLevel ? 1 + dangerLevel : 1;
-    const value = Math.round(PIECE_VALUES[captured.type] * comboMultiplier() * dangerBoost);
+    const bountyLevel = activeRelicLevel('bounty');
+    const jackpotMult = bountyLevel && game.battleCaptures % 3 === 0 ? bountyLevel + 1 : 1;
+    const wrathLevel = piece.type === 'k' ? activeRelicLevel('kingsWrath') : 0;
+    const wrathMult = wrathLevel ? wrathLevel + 1 : 1;
+    const value = Math.round(PIECE_VALUES[captured.type] * comboMultiplier() * dangerBoost * jackpotMult * wrathMult);
     const point = tileCenter(piece.x, piece.y);
-    addScore(value, point.x, point.y, `+${value}`, dangerBoost > 1 ? 'gold' : 'cyan');
+    addScore(value, point.x, point.y, `+${value}`, dangerBoost > 1 || jackpotMult > 1 ? 'gold' : 'cyan');
+    announceComboTier(tierKey, point.x, point.y);
     addHype(18 + PIECE_VALUES[captured.type] / 19 + (dangerBoost > 1 ? 20 + dangerLevel * 10 : 0));
+    if (jackpotMult > 1) {
+      showBanner('banner.jackpot', { multiplier: jackpotMult });
+      addImpact(point.x, point.y, 'crown', 30);
+      triggerFlash('crown');
+      audio.sfx('jackpot');
+    }
+    if (wrathLevel) addHype(10 + wrathLevel * 15);
+
+    const interceptLevel = activeRelicLevel('interceptor');
+    if (interceptLevel && game.enemyIntent?.pieceId === captured.id
+      && Number(game.battleCharges.interceptor || 0) < interceptLevel) {
+      game.battleCharges.interceptor = Number(game.battleCharges.interceptor || 0) + 1;
+      if (context.credit) grantBonusAction(1);
+      else game.turnsLeft += 1;
+      showBanner('banner.intercept');
+      addHype(10);
+    }
 
     const tempoLevel = activeRelicLevel('captureTempo');
-    if (tempoLevel && game.battleCharges.captureTempo < tempoLevel) {
-      game.battleCharges.captureTempo += 1;
+    if (tempoLevel && Number(game.battleCharges.captureTempo || 0) < tempoLevel) {
+      game.battleCharges.captureTempo = Number(game.battleCharges.captureTempo || 0) + 1;
       grantBonusAction(1);
     }
     const spurLevel = activeRelicLevel('knightSpur');
-    if (piece.type === 'n' && spurLevel && game.battleCharges.knightSpur < spurLevel) {
-      game.battleCharges.knightSpur += 1;
+    if (piece.type === 'n' && spurLevel && Number(game.battleCharges.knightSpur || 0) < spurLevel) {
+      game.battleCharges.knightSpur = Number(game.battleCharges.knightSpur || 0) + 1;
       grantBonusAction(1);
     }
     if (piece.type === 'q') addHype(activeRelicLevel('queenBattery') * 28);
@@ -1614,7 +1699,7 @@
 
   function completePlayerMove() {
     if (!game.active) return;
-    if (game.turnsLeft <= 0) {
+    if (game.turnsLeft <= 0 && game.bonusActions <= 0 && game.overdriveMoves <= 0) {
       failBattle('turns_exhausted');
       return;
     }
@@ -1676,7 +1761,7 @@
   function activateOverdrive() {
     if (!game.active || game.paused || game.phase !== 'player' || game.hype < 100 || game.overdriveMoves > 0) return;
     game.hype = 0;
-    game.overdriveMoves = 3;
+    game.overdriveMoves = 3 + activeRelicLevel('overcharge');
     clearSelection();
     audio.sfx('burst');
     triggerFlash('burst');
@@ -1792,8 +1877,7 @@
     game.captures += 1;
     game.battleCaptures += 1;
     save.totalCaptures += 1;
-    game.combo += 1;
-    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    registerComboStep();
     game.enemyHP -= 1;
     if (run) run.crownBreaks += 1;
     const point = tileCenter(attacker.x, attacker.y);
@@ -1812,7 +1896,7 @@
   }
 
   function continueEnemyCrownHit(attacker, crown) {
-    showBanner(game.enemyHP > 0 ? 'banner.crownCracked' : 'banner.cleared');
+    showBanner(game.enemyHP <= 0 ? 'banner.cleared' : game.enemyHP === 1 ? 'banner.lastCrown' : 'banner.crownCracked');
     if (game.enemyHP <= 0) {
       game.phase = 'transition';
       game.transitionTimer = window.setTimeout(() => {
@@ -1825,7 +1909,7 @@
     game.transitionTimer = window.setTimeout(() => {
       respawnEnemyCrown(crown);
       spawnPhaseReinforcements();
-      grantBonusAction(1);
+      grantBonusAction(1 + activeRelicLevel('crownSurge'));
       beginPlayerTurn(true);
     }, settings.reducedMotion ? 180 : 720);
   }
@@ -1870,6 +1954,7 @@
 
   function handlePlayerCrownHit(attacker, crown) {
     setShield(getShield() - 1);
+    game.battleShieldLost = true;
     attacker.alive = false;
     crown.alive = true;
     crown.anim = null;
@@ -1920,7 +2005,7 @@
     openModal(trainingResultModal);
   }
 
-  function rewardWeight(item) {
+  function rewardWeight(item, elite = false) {
     let weight = 1;
     const types = new Set(run.roster.map(member => member.type));
     if (item.id === 'knightSpur' && types.has('n')) weight += 1.5;
@@ -1929,17 +2014,71 @@
     if (item.id === 'queenBattery' && types.has('q')) weight += 1.5;
     if (item.kind === 'pawn' && types.has('p')) weight += 1.2;
     if (run.battle >= 4 && item.kind === 'guard') weight += 0.8;
+    if (item.rarity === 'rare') weight *= elite ? 1.4 : 0.7;
     return weight;
   }
 
   function generateRewardDraft() {
+    const elite = Boolean(run.currentContract?.elite);
     const eligible = RELICS.filter(item => activeRelicLevel(item.id) < item.max);
     const scored = eligible.map(item => ({
       item,
-      score: runRandom() * rewardWeight(item),
-      rare: false
+      score: runRandom() * rewardWeight(item, elite),
+      rare: item.rarity === 'rare'
     })).sort((a, b) => b.score - a.score);
     return scored.slice(0, Math.min(3, scored.length)).map(entry => ({ id: entry.item.id, rare: entry.rare }));
+  }
+
+  function computeBattleBonuses() {
+    const bonuses = [];
+    const turnsLeft = Math.max(0, game.turnsLeft);
+    if (turnsLeft > 2) {
+      const score = turnsLeft * 120;
+      bonuses.push({ key: 'tally.turns', params: { score }, score });
+    }
+    if (!game.battleShieldLost) bonuses.push({ key: 'tally.perfect', params: { score: 700 }, score: 700 });
+    if (turnsLeft <= 2) bonuses.push({ key: 'tally.clutch', params: { score: 500 }, score: 500 });
+    const bestCombo = Number(game.battleMaxCombo || 0);
+    if (bestCombo >= 3) {
+      const score = bestCombo * 80;
+      bonuses.push({ key: 'tally.combo', params: { count: bestCombo, score }, score });
+    }
+    return bonuses;
+  }
+
+  function runTallySequence(bonuses, done) {
+    const overlay = $('#tally');
+    const lines = $('#tally-lines');
+    if (!overlay || !lines) {
+      done();
+      return;
+    }
+    $('#tally-head').textContent = t('tally.title');
+    lines.innerHTML = '';
+    overlay.classList.add('show');
+    const stepDelay = settings.reducedMotion ? 110 : 420;
+    let index = 0;
+    const pushLine = () => {
+      if (index < bonuses.length) {
+        const bonus = bonuses[index++];
+        const li = document.createElement('li');
+        li.textContent = t(bonus.key, bonus.params);
+        lines.appendChild(li);
+        audio.sfx('ui');
+        window.setTimeout(pushLine, stepDelay);
+        return;
+      }
+      const total = document.createElement('li');
+      total.className = 'tally-total';
+      total.textContent = t('tally.total', { score: formatScore(game.score) });
+      lines.appendChild(total);
+      audio.sfx('ready');
+      window.setTimeout(() => {
+        overlay.classList.remove('show');
+        done();
+      }, settings.reducedMotion ? 240 : 950);
+    };
+    window.setTimeout(pushLine, settings.reducedMotion ? 60 : 300);
   }
 
   function completeBattle() {
@@ -1948,13 +2087,17 @@
     game.phase = 'transition';
     game.enemyIntent = null;
     run.promotionState = null;
+    const bonuses = computeBattleBonuses();
+    game.score += bonuses.reduce((sum, bonus) => sum + bonus.score, 0);
     run.score = game.score;
     run.captures = game.captures;
     run.maxCombo = Math.max(run.maxCombo, game.maxCombo);
-    run.shield = Math.min(maxShieldForRun(), getShield() + 1);
+    run.energyCarry = clamp(Math.max(0, game.turnsLeft) * 4, 0, 50);
+    const elite = Boolean(run.currentContract?.elite);
+    run.shield = Math.min(maxShieldForRun(), getShield() + (elite ? 0 : 1));
     run.battleState = snapshotBattle();
     if (run.battle >= run.totalBattles) {
-      window.setTimeout(finishRun, settings.reducedMotion ? 180 : 650);
+      window.setTimeout(() => runTallySequence(bonuses, finishRun), settings.reducedMotion ? 120 : 450);
       return;
     }
     run.rewardPicksRemaining = Math.max(1, Number(run.currentContract?.reward || 1));
@@ -1962,13 +2105,15 @@
     run.stage = 'reward';
     persistRun('reward');
     window.setTimeout(() => {
-      renderRewardDraft(run.pendingRewards);
-      openModal(rewardModal);
-      if (!save.tutorial.reward) {
-        save.tutorial.reward = true;
-        persistSave();
-      }
-    }, settings.reducedMotion ? 160 : 620);
+      runTallySequence(bonuses, () => {
+        renderRewardDraft(run.pendingRewards);
+        openModal(rewardModal);
+        if (!save.tutorial.reward) {
+          save.tutorial.reward = true;
+          persistSave();
+        }
+      });
+    }, settings.reducedMotion ? 120 : 450);
   }
 
   function relicFigure(id) {
@@ -1988,6 +2133,12 @@
       case 'shield': return `<svg viewBox="0 0 150 150">${base}<path class="line" d="M75 18 L124 35 V77 C124 108 103 126 75 137 C47 126 26 108 26 77 V35 Z"/></svg>`;
       case 'turns': return `<svg viewBox="0 0 150 150">${base}<path class="line" d="M46 26 H104 M46 124 H104 M51 28 C51 59 66 61 75 75 C84 89 99 91 99 122 M99 28 C99 59 84 61 75 75 C66 89 51 91 51 122"/></svg>`;
       case 'dangerReward': return `<svg viewBox="0 0 150 150">${base}<path class="danger" d="M75 18 L136 128 H14 Z" opacity=".55"/><rect class="hit" x="106" y="26" width="19" height="19" transform="rotate(45 115 35)"/></svg>`;
+      case 'bounty': return `<svg viewBox="0 0 150 150">${base}<rect class="hit" x="45" y="25" width="16" height="16" transform="rotate(45 53 33)"/><rect class="hit" x="80" y="25" width="16" height="16" transform="rotate(45 88 33)"/><rect class="hit" x="62" y="52" width="22" height="22" transform="rotate(45 73 63)"/><path class="line" d="M73 40 L73 22 M55 63 L37 63 M91 63 L109 63"/></svg>`;
+      case 'momentum': return `<svg viewBox="0 0 150 150">${base}<circle class="hit" cx="34" cy="98" r="7"/><circle class="hit" cx="60" cy="72" r="8"/><circle class="hit" cx="88" cy="46" r="9"/><path class="line" d="M34 98 C48 88 48 82 60 72 C74 60 74 56 88 46"/></svg>`;
+      case 'interceptor': return `<svg viewBox="0 0 150 150">${base}<path class="danger" d="M25 35 L95 90" stroke-dasharray="10 7" style="fill:none;stroke-width:4"/><rect class="hit" x="88" y="82" width="18" height="18" transform="rotate(45 97 91)"/><path class="line" d="M40 110 L92 88"/></svg>`;
+      case 'overcharge': return `<svg viewBox="0 0 150 150">${base}<path class="line" d="M62 18 L40 62 H62 L40 108"/><path class="line" d="M96 30 L82 60 H96 L82 90" opacity=".55"/></svg>`;
+      case 'kingsWrath': return `<svg viewBox="0 0 150 150">${base}<path class="line" d="M42 44 L30 24 M75 38 L75 15 M108 44 L120 24"/><rect class="hit" x="99" y="60" width="18" height="18" transform="rotate(45 108 69)"/></svg>`;
+      case 'crownSurge': return `<svg viewBox="0 0 150 150">${base}<path class="line" d="M40 96 L40 58 M30 68 L40 56 L50 68 M75 88 L75 44 M64 56 L75 42 L86 56 M110 96 L110 58 M100 68 L110 56 L120 68"/></svg>`;
       default: return `<svg viewBox="0 0 150 150">${base}</svg>`;
     }
   }
@@ -2003,6 +2154,7 @@
       const effectLine = relicEffectLine(item.id, nextLevel);
       const name = t(item.nameKey);
       return `<button class="reward-card ${entry.rare ? 'rare' : ''}" type="button" data-id="${item.id}" aria-label="${t('aria.reward', { name, effect: effectLine })}">
+        ${entry.rare ? `<span class="rare-badge">${t('reward.rare')}</span>` : ''}
         <span class="relic-level">${pips}</span>
         <span class="relic-figure">${relicFigure(item.id)}</span>
         <h3>${name}</h3>
@@ -2064,7 +2216,8 @@
       cells[index] = glyph;
     };
     place('♚', 3);
-    const base = 4 + Math.min(4, contract.depth || 1) + (contract.elite ? 2 : 0);
+    const depth = contract.depth || 1;
+    const base = 3 + Math.min(5, depth) + (contract.elite ? (depth <= 3 ? 1 : 2) : 0);
     const pool = ['♟', '♟', '♞', '♝', '♜'];
     for (let i = 0; i < base; i++) place(pool[Math.floor(random() * pool.length)]);
     if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) place('♟');
@@ -2080,16 +2233,24 @@
     const grid = $('#contract-grid');
     $('#contract-title').textContent = t(choices.length === 1 ? 'contract.final' : 'contract.next');
     grid.innerHTML = choices.map((contract, index) => {
-      const hp = contract.final ? 3 : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
+      const bossDef = contract.boss ? BOSS_DEFS[contract.boss] : null;
+      const hp = bossDef ? bossDef.hp : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
       const crowns = Array.from({ length: hp }, () => '<span>♚</span>').join('');
-      const rewards = Array.from({ length: contract.reward || 0 }, () => '<i></i>').join('');
-      const mods = contract.mods.map(id => `<span title="${t(CONTRACT_MODS[id].lineKey)}">${t(CONTRACT_MODS[id].nameKey)}</span>`).join('');
+      const typeKey = contract.final ? 'contract.type.final' : contract.elite ? 'contract.type.elite' : 'contract.type.normal';
+      const mods = contract.mods.map(id => `<span class="mod"><b>${t(CONTRACT_MODS[id].nameKey)}</b><small>${t(CONTRACT_MODS[id].lineKey)}</small></span>`).join('');
+      const bossHead = bossDef ? `<strong class="contract-name">${t(bossDef.nameKey)}</strong><span class="contract-boss-line">${t(bossDef.lineKey)}</span>` : '';
+      const rewardLines = contract.final ? '' : `<span class="contract-rewards">
+        <span class="reward-line gold">◆ ${t('contract.reward.picks', { count: Math.max(1, Number(contract.reward || 1)) })}</span>
+        ${contract.elite ? '' : `<span class="reward-line cyan">♔ ${t('contract.reward.repair')}</span>`}
+      </span>`;
       const type = t(contract.final ? 'aria.contract.final' : contract.elite ? 'aria.contract.elite' : 'aria.contract.normal');
       const modLines = contract.mods.map(id => t(CONTRACT_MODS[id].lineKey)).join(locale === 'en' ? '; ' : '、');
       return `<button class="contract-card ${contract.elite ? 'elite' : ''} ${contract.final ? 'final' : ''}" type="button" data-index="${index}" aria-label="${t('aria.contract', { type, mods: modLines })}">
-        <span class="contract-top"><span class="contract-crowns">${crowns}</span><span class="contract-reward">${rewards}</span></span>
+        <span class="contract-top"><span class="contract-type ${contract.final ? 'final' : contract.elite ? 'elite' : ''}">${t(typeKey)}</span><span class="contract-crowns">${crowns}</span></span>
+        ${bossHead}
         <span class="board-preview">${contractPreviewCells(contract)}</span>
         <span class="contract-mods">${mods}</span>
+        ${rewardLines}
       </button>`;
     }).join('');
     $$('.contract-card', grid).forEach(button => button.addEventListener('click', () => chooseContract(Number(button.dataset.index))));
@@ -2113,9 +2274,9 @@
   }
 
   function calculateRunRank(score) {
-    if (score >= 48000) return 'S';
-    if (score >= 33000) return 'A';
-    if (score >= 21000) return 'B';
+    if (score >= 56000) return 'S';
+    if (score >= 40000) return 'A';
+    if (score >= 26000) return 'B';
     return 'C';
   }
 
