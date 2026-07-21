@@ -1,4 +1,4 @@
-const CACHE = 'crown-breaker-v3.7.0';
+const CACHE = 'crown-breaker-v3.7.1';
 const FILES = Object.freeze([
   './',
   './index.html',

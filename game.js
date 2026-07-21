@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.7.0';
+  const VERSION = '3.7.1';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v3';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -178,7 +178,7 @@
   const FORMATIONS = {
     scatter: { id: 'scatter', nameKey: 'formation.scatter.name', lineKey: 'formation.scatter.line', crownXs: [2, 3, 4, 5], randomSlots: true, types: ['p', 'n', 'p', 'b', 'r', 'p', 'n', 'q'] },
     phalanx: { id: 'phalanx', nameKey: 'formation.phalanx.name', lineKey: 'formation.phalanx.line', crownXs: [3], slots: orderedEnemySlots((a, b) => Math.abs(a.y - 2) - Math.abs(b.y - 2) || a.y - b.y || a.x - b.x), types: ['p', 'p', 'p', 'p', 'r', 'r', 'p', 'b', 'p', 'r'] },
-    pincer: { id: 'pincer', nameKey: 'formation.pincer.name', lineKey: 'formation.pincer.line', crownXs: [3], slots: orderedEnemySlots((a, b) => Math.min(a.x, 7 - a.x) - Math.min(b.x, 7 - b.x) || b.y - a.y || a.x - b.x), types: ['n', 'n', 'b', 'b', 'p', 'p', 'n', 'b', 'p', 'n'] },
+    pincer: { id: 'pincer', nameKey: 'formation.pincer.name', lineKey: 'formation.pincer.line', crownXs: [3], slots: orderedEnemySlots((a, b) => Math.min(a.x, 7 - a.x) - Math.min(b.x, 7 - b.x) || b.y - a.y || a.x - b.x), types: ['n', 'p', 'b', 'b', 'p', 'p', 'n', 'b', 'p', 'n'] },
     fortress: { id: 'fortress', nameKey: 'formation.fortress.name', lineKey: 'formation.fortress.line', crownXs: [4], slots: orderedEnemySlots((a, b) => (Math.abs(a.x - 4) + a.y) - (Math.abs(b.x - 4) + b.y) || a.y - b.y || a.x - b.x), types: ['p', 'p', 'n', 'b', 'r', 'p', 'r', 'b', 'p', 'q'] },
     vanguard: { id: 'vanguard', nameKey: 'formation.vanguard.name', lineKey: 'formation.vanguard.line', crownXs: [3], slots: orderedEnemySlots((a, b) => b.y - a.y || Math.abs(a.x - 3.5) - Math.abs(b.x - 3.5) || a.x - b.x), types: ['p', 'p', 'p', 'n', 'n', 'p', 'n', 'b', 'p', 'n'] },
     lance: { id: 'lance', nameKey: 'formation.lance.name', lineKey: 'formation.lance.line', crownXs: [4], slots: orderedEnemySlots((a, b) => Math.abs(Math.abs(a.x - 4) - a.y) - Math.abs(Math.abs(b.x - 4) - b.y) || b.y - a.y || a.x - b.x), types: ['b', 'b', 'q', 'p', 'p', 'b', 'p', 'r', 'b', 'p'] }
@@ -779,7 +779,7 @@
     const definition = FORMATIONS[formation];
     const crownX = definition.crownXs[Math.floor(random() * definition.crownXs.length)];
     const crown = { type: 'k', x: crownX, y: 0, veteran: false };
-    const baseCount = final ? 7 : 3 + Math.min(5, depth) + (elite ? (depth <= 3 ? 1 : 2) : 0);
+    const baseCount = final ? 7 : 3 + Math.min(5, depth) + (elite ? (depth <= 3 ? 1 : 2) : 0) + (formation === 'scatter' ? 1 : 0);
     const formationRole = type => formation === 'phalanx' ? (type === 'p' ? 'pawnWall' : 'rear') : 'formation';
     const planned = Array.from({ length: baseCount }, (_, index) => {
       const templateType = definition.types[index % definition.types.length];
@@ -788,10 +788,14 @@
         role: formationRole(templateType)
       };
     });
-    mods.forEach(id => MOD_LAYOUT_ADDITIONS[id].forEach(type => planned.push({
-      type,
-      role: id === 'race' ? 'forward' : formationRole(type)
-    })));
+    mods.forEach(id => {
+      let additions = MOD_LAYOUT_ADDITIONS[id];
+      if (id === 'cavalry' && depth <= 3) additions = additions.slice(0, 1);
+      additions.forEach(type => planned.push({
+        type,
+        role: id === 'race' ? 'forward' : formationRole(type)
+      }));
+    });
     if (boss !== null) {
       const bossDef = BOSS_DEFS[boss];
       if (!bossDef) throw new RangeError(`Unknown boss id: ${String(boss)}.`);
@@ -1496,7 +1500,7 @@
       enemyHP: hp,
       enemyHPMax: hp,
       turns,
-      aiSkill: clamp(0.18 + contract.depth * 0.07 + (contract.elite ? 0.08 : 0), 0.18, 0.8),
+      aiSkill: clamp(0.18 + contract.depth * 0.07 + (contract.elite ? 0.11 : 0), 0.18, 0.82),
       aiProfile: contract.aiProfile
     };
   }
@@ -3236,9 +3240,9 @@
   }
 
   function calculateRunRank(score) {
-    if (score >= 75000) return 'S';
-    if (score >= 54000) return 'A';
-    if (score >= 34000) return 'B';
+    if (score >= 115000) return 'S';
+    if (score >= 90000) return 'A';
+    if (score >= 65000) return 'B';
     return 'C';
   }
 
@@ -3482,7 +3486,7 @@
     const options = allMoves('w');
     if (!options.length) return null;
     const intentVisible = activeTraitId() !== 'mist';
-    const intentActor = intentVisible && game.enemyIntent ? game.pieces.find(piece => piece.id === game.enemyIntent.pieceId) : null;
+    const intentActor = game.enemyIntent ? game.pieces.find(piece => piece.id === game.enemyIntent.pieceId) : null;
     return options.map((option, index) => {
       const target = option.move.captureId ? game.pieces.find(piece => piece.id === option.move.captureId) : null;
       let score = randomizeTies ? Math.random() * 20 : 0;

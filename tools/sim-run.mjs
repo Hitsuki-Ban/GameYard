@@ -351,7 +351,7 @@ async function driveRun(page, index, seed, policy) {
   const seenDepths = new Set();
   const selectedRouteDepths = new Set();
   const route = { normal: 0, elite: 0 };
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 120000;
   let recommendationChecked = false;
   let state = await readState(page);
 
@@ -491,7 +491,7 @@ async function runSimulation(config) {
       throw new Error(`Chromium could not start. Install it with \"pnpm exec playwright install chromium\".\n${error.message}`);
     }
     const results = new Array(config.runs);
-    const workerCount = Math.min(config.runs, 6);
+    const workerCount = Math.min(config.runs, 3);
     const workers = Array.from({ length: workerCount }, async (_, workerIndex) => {
       const context = await browser.newContext({ serviceWorkers: 'block' });
       try {

@@ -165,8 +165,8 @@ let serviceWorker = '';
 try {
   serviceWorker = await readFile(resolve(root, 'sw.js'), 'utf8');
 } catch {}
-if (!/const CACHE = ['"]crown-breaker-v3\.7\.0['"]/.test(serviceWorker)) {
-  fail('sw.js: cache name must equal crown-breaker-v3.7.0');
+if (!/const CACHE = ['"]crown-breaker-v3\.7\.1['"]/.test(serviceWorker)) {
+  fail('sw.js: cache name must equal crown-breaker-v3.7.1');
 }
 if (!/key\.startsWith\(['"]crown-breaker-['"]\)/.test(serviceWorker)) {
   fail('sw.js: cache cleanup must remain limited to the crown-breaker- namespace');
