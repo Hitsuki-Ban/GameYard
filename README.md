@@ -25,6 +25,9 @@ The interface supports English, Simplified Chinese, and Japanese. On first launc
 ![Promotion choice](previews/promotion.png)
 ![Route choice](previews/route.png)
 ![Mobile layout](previews/mobile.png)
+![Outer Court stage](previews/stage-outer.png)
+![Gallery stage](previews/stage-gallery.png)
+![Throne Room stage](previews/stage-throne.png)
 
 ### How to play
 
@@ -40,6 +43,14 @@ The interface supports English, Simplified Chinese, and Japanese. On first launc
 Each contract combines one of six formation templates, up to four of twelve enemy modifiers, and one AI profile: Aggressive, Defensive, or Crown Guard. The four newest modifiers start a pawn as a queen (Promoted), give one gold-marked piece type move priority (Veteran), copy every non-king piece type in your roster (Mirror), or break your combo when Black captures (Executioner).
 
 The route card's 8×5 preview and the real battle consume the same canonical `enemyLayout`; the preview is the deployment, not an estimate.
+
+### Three-act run and story
+
+The eight battles now form three distinct acts: the misted `outer` court in battles 1–3, the violet `gallery` in battles 4–6, and the ember-lit `throne` in battles 7–8. Each act changes the page treatment and Canvas palette, and supplies localized one- or two-line story beats at act entry, victory, and its fixed setpiece.
+
+Battles 3, 5, and 7 are canonical, seed-independent setpieces rather than route rolls: The Mist Hunt, The Twin Gate, and The False Coronation. Battle 8 derives one of three bosses from the initial Run seed. Defeating Twin Queens, Iron Bastion, or Pawnstorm reaches that boss's own ending through the normal battle, tally, and final-result flow.
+
+English, Simplified Chinese, and Japanese cover the full system and narrative text. The first launch follows the device language; the title and settings controls provide an explicit `System / English / 简体中文 / 日本語` override that is saved locally.
 
 ### Run locally
 
@@ -59,11 +70,15 @@ The game has no third-party runtime dependencies. The balance simulator uses Pla
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:stages
 pnpm check:traits
 pnpm check:enemies
+pnpm render:stages
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:stages` verifies all three act themes, seed-independent setpiece contracts and coordinates, story-key coverage, and reduced-motion behavior. `pnpm render:stages` repeats that gate and writes the three 1440×900 reference screenshots in `previews/`.
 
 `pnpm check:traits` runs targeted checks for all 15 crown traits plus 100 seeds per trait through the first three player hands.
 
@@ -71,7 +86,7 @@ pnpm build:standalone dist/crown-breaker.html
 
 `--runs`, `--policy` (`greedy` or `random`), and `--seed-base` are required. The simulator drives the real browser game through its QA interface and writes deterministic JSON plus Markdown reports to `reports/`. Repeating the same command produces identical report contents; the current date appears only in the default filenames.
 
-The standalone build requires exactly one output path, creates its parent directory, and embeds the HTML, CSS, localization data, and game code into one file.
+The standalone build requires exactly one output path, creates its parent directory, and embeds the HTML, CSS, localization data, game code, and all six act background/particle SVGs into one file.
 
 ### Art asset package
 
@@ -87,7 +102,7 @@ pnpm render:assets
 
 On 2026-07-21, `imagegen` produced three independent direction sheets — A Razor Heraldry, B Deco Court, and C Spectral Usurpation — and B Deco Court was selected. The concept sheets are comparison references and are not included in the release package. The final SVGs were drawn originally for this project from that direction and contain no external source artwork. Detailed generation hashes, geometry, color tokens, naming, and licensing boundaries are recorded in [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md).
 
-The package does **not** claim that the current Canvas / Unicode renderer has been replaced. Runtime game integration is intentionally a separate task, matching the scope of Issue #5.
+Version 3.7 consumes the six act background and particle SVGs in the live stage presentation and standalone build, paired with act-specific Canvas palettes. Piece silhouettes and rules remain on the established Canvas / Unicode path; there is no parallel or fallback renderer.
 
 ### PWA and offline use
 
@@ -100,7 +115,7 @@ The hosted version includes localized web app manifests and a service worker. Af
 - `manifest*.webmanifest`, `sw.js`, `icon*` — installable/offline web app assets
 - `assets/` — 50 original SVG sources, deterministic catalog, and art direction guide
 - `previews/` — game screenshots plus the hosted art contact sheet
-- `tools/` — static/asset checks, deterministic asset export, contact-sheet renderer, simulator, and standalone builder
+- `tools/` — static/asset/stage checks, deterministic asset export, contact-sheet and stage renderers, simulator, and standalone builder
 - `DESIGN_NOTES.md`, `COPY_GUIDE.md`, `QA_REPORT.md`, `CHANGELOG.md` — design and release documentation
 
 ### License
@@ -131,6 +146,14 @@ CROWN//BREAKER 是一款基于国际象棋走法的浏览器短局棋盘肉鸽�
 
 路线卡的 8×5 预览与实盘读取同一份 canonical `enemyLayout`；预览就是实际布阵，不是估算图。
 
+### 三幕流程与剧情
+
+八场战斗现在组成三个视觉与叙事均独立的幕：第 1–3 战为青雾笼罩的 `outer` 外苑，第 4–6 战为紫色 `gallery` 回廊，第 7–8 战为金赤火光中的 `throne` 王座厅。每一幕都会切换页面装饰与 Canvas 调色，并在幕启、胜利和固定剧情战显示本地化的一至两行叙事。
+
+第 3、5、7 战分别是与 Run 种子无关、合同完全固定的“雾中围猎”“双生门”“伪加冕”，不参与路线抽取。第 8 战从 Run 初始种子派生双后、铁壁或兵暴三种 Boss；通过正常战斗、结算和最终结果流程击败它们时，会进入各自不同的结局。
+
+完整系统与剧情文案均提供 English、简体中文和日本語。首次启动跟随设备语言；标题页与设置页提供 `系统 / English / 简体中文 / 日本語` 的显式自定义选项，并把选择保存在本机。
+
 ### 本地运行
 
 在仓库根目录启动 HTTP 服务，再访问 `http://localhost:8080/`：
@@ -149,11 +172,15 @@ uv run python -m http.server 8080
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:stages
 pnpm check:traits
 pnpm check:enemies
+pnpm render:stages
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:stages` 会验证三幕主题、固定剧情战的合同与坐标不受种子影响、剧情键完整性和减少动态模式；`pnpm render:stages` 会重复这道门禁，并把三张 1440×900 参考截图写入 `previews/`。
 
 `pnpm check:traits` 会逐项检查全部 15 种王冠特性，并为每种特性运行 100 个种子的前三次玩家行动。
 
@@ -161,7 +188,7 @@ pnpm build:standalone dist/crown-breaker.html
 
 `--runs`、`--policy`（`greedy` 或 `random`）和 `--seed-base` 均为必填。模拟器通过 QA 接口驱动真实浏览器游戏，并在 `reports/` 输出确定性的 JSON 与 Markdown 报告；同一命令重复执行时报告内容完全一致，当前日期只会进入默认文件名。
 
-单文件构建命令必须明确提供唯一输出路径；工具会创建父目录，并把页面、样式、本地化数据和游戏代码内联到一个 HTML 文件中。
+单文件构建命令必须明确提供唯一输出路径；工具会创建父目录，并把页面、样式、本地化数据、游戏代码及六张幕背景/粒子 SVG 全部内联到一个 HTML 文件中。
 
 ### 美术素材包
 
@@ -177,7 +204,7 @@ pnpm render:assets
 
 2026-07-21 使用 `imagegen` 分别生成了 A Razor Heraldry、B Deco Court、C Spectral Usurpation 三套独立方向稿，经比较后选定 B Deco Court。方向稿只作比较参考，未纳入发布包；最终 SVG 由本项目基于所选方向原创绘制，不含外部来源素材。生成稿哈希、几何规格、颜色 token、命名与许可边界详见 [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md)。
 
-本素材包**不代表**当前 Canvas / Unicode 游戏渲染已经替换。按照 Issue #5 的范围，运行时集成将由后续独立任务处理。
+v3.7 已在实机舞台表现和单文件构建中消费六张幕背景/粒子 SVG，并与每幕独立的 Canvas 调色联动。棋子轮廓和规则仍沿用既有 Canvas / Unicode 路径，不存在并行或回退渲染器。
 
 ### PWA 与离线
 
@@ -190,7 +217,7 @@ pnpm render:assets
 - `manifest*.webmanifest`、`sw.js`、`icon*`：PWA 安装与离线资源
 - `assets/`：50 项原创 SVG 源素材、确定性目录清单与艺术方向说明
 - `previews/`：游戏截图与可托管的素材陈列页
-- `tools/`：静态/素材检查、确定性素材导出、陈列页渲染、模拟器与单文件构建工具
+- `tools/`：静态/素材/舞台检查、确定性素材导出、陈列页与舞台渲染、模拟器及单文件构建工具
 - `DESIGN_NOTES.md`、`COPY_GUIDE.md`、`QA_REPORT.md`、`CHANGELOG.md`：设计与发布文档
 
 ### 许可
@@ -221,6 +248,14 @@ CROWN//BREAKER は、チェスの駒の動きを土台にしたブラウザ向�
 
 ルートカードの 8×5 プレビューと実戦は、同一の canonical `enemyLayout` を使用します。プレビューは概算ではなく、実際の配置そのものです。
 
+### 3 幕構成と物語
+
+8 戦は、青い霧の `outer` 外苑（1–3 戦）、紫の `gallery` 回廊（4–6 戦）、金赤の火の粉が舞う `throne` 玉座の間（7–8 戦）という、視覚と物語の異なる 3 幕で構成されます。幕ごとにページ演出と Canvas パレットが切り替わり、幕の開始、勝利、固定イベント戦ではローカライズされた 1～2 行の物語が表示されます。
+
+3、5、7 戦は Run シードに左右されない固定コントラクト「霧中の狩り」「双生門」「偽りの戴冠」で、ルート抽選には入りません。8 戦目のボスは Run の初期シードから双クイーン、鉄壁、ポーンストームのいずれかに決まり、通常の戦闘、集計、最終リザルトを経て倒すと、それぞれ固有のエンディングへ到達します。
+
+システムと物語の全文は English、簡体中文、日本語に対応しています。初回は端末言語に従い、タイトルと設定では `システム / English / 简体中文 / 日本語` を明示的に選んで端末内に保存できます。
+
 ### ローカル実行
 
 リポジトリのルートで HTTP サーバーを起動し、`http://localhost:8080/` を開きます。
@@ -239,11 +274,15 @@ Service Worker には HTTP または HTTPS が必要なため、`index.html` の
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:stages
 pnpm check:traits
 pnpm check:enemies
+pnpm render:stages
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:stages` は 3 幕のテーマ、固定イベント戦のコントラクトと座標がシード非依存であること、物語キー、低モーション設定を検証します。`pnpm render:stages` は同じゲートを再実行し、1440×900 の参照画像 3 枚を `previews/` に書き出します。
 
 `pnpm check:traits` は全 15 種のクラウン特性を個別検証し、各特性 100 シードの最初のプレイヤー 3 手を実行します。
 
@@ -251,7 +290,7 @@ pnpm build:standalone dist/crown-breaker.html
 
 `--runs`、`--policy`（`greedy` または `random`）、`--seed-base` はすべて必須です。シミュレーターは QA インターフェースを通して実ブラウザー上のゲームを操作し、`reports/` に決定的な JSON と Markdown のレポートを出力します。同じコマンドのレポート内容は一致し、現在の日付は既定のファイル名だけに入ります。
 
-単一 HTML ビルドには出力先を 1 つだけ明示する必要があります。親ディレクトリを作成し、HTML、CSS、翻訳データ、ゲームコードを 1 ファイルに埋め込みます。
+単一 HTML ビルドには出力先を 1 つだけ明示する必要があります。親ディレクトリを作成し、HTML、CSS、翻訳データ、ゲームコード、6 枚の幕背景/パーティクル SVG を 1 ファイルに埋め込みます。
 
 ### アート素材パッケージ
 
@@ -267,7 +306,7 @@ pnpm render:assets
 
 2026-07-21 に `imagegen` で A Razor Heraldry、B Deco Court、C Spectral Usurpation の独立した 3 方向案を生成し、比較後に B Deco Court を採用しました。方向案は比較用の参照で、公開パッケージには含まれません。最終 SVG は選定方向を基に本プロジェクト向けに独自制作し、外部由来の素材を含みません。生成案のハッシュ、ジオメトリ、カラートークン、命名、ライセンス境界は [`assets/STYLE_GUIDE.md`](assets/STYLE_GUIDE.md) に記録しています。
 
-この素材パッケージは、現在の Canvas / Unicode 描画を置き換えたという意味では**ありません**。Issue #5 の範囲どおり、ゲーム実行時への統合は別タスクとして扱います。
+v3.7 では 6 枚の幕背景/パーティクル SVG を実際のステージ演出と単一 HTML に組み込み、幕別の Canvas パレットと連動させています。駒のシルエットとルールは既存の Canvas / Unicode 経路を維持し、並行レンダラーやフォールバックはありません。
 
 ### PWA とオフライン
 
@@ -280,7 +319,7 @@ pnpm render:assets
 - `manifest*.webmanifest`、`sw.js`、`icon*` — インストールとオフライン対応
 - `assets/` — オリジナル SVG 50 点、決定的カタログ、アート方針ガイド
 - `previews/` — ゲーム画像とホスト可能なアート・コンタクトシート
-- `tools/` — 静的/素材検査、決定的素材出力、コンタクトシート描画、シミュレーター、単一 HTML ビルダー
+- `tools/` — 静的/素材/ステージ検査、決定的素材出力、コンタクトシートとステージ描画、シミュレーター、単一 HTML ビルダー
 - `DESIGN_NOTES.md`、`COPY_GUIDE.md`、`QA_REPORT.md`、`CHANGELOG.md` — 設計・リリース文書
 
 ### ライセンス

@@ -4,7 +4,7 @@
 
 本作面向不知道国际象棋规则、但能理解“点棋子—点亮格—吃掉目标”的玩家。
 
-背景故事：你是被篡位者放逐的白王。从宫廷外苑一路打回王座厅，砸碎沿途每一顶伪王冠，并夺取它们的力量。三幕结构（外苑 → 回廊 → 王座厅）承载难度曲线；完整叙事扩展见仓库 Issue。
+背景故事：你是被篡位者放逐的白王。从宫廷外苑一路打回王座厅，砸碎沿途每一顶伪王冠，并夺取它们的力量。三幕结构（外苑 → 回廊 → 王座厅）同时承载难度、色彩、固定战场与短句叙事。
 
 设计约束：
 
@@ -25,7 +25,7 @@
 ## 3. 肉鸽循环
 
 ```text
-对局 → 棋印 → 路线 → 对局 × 6 → 终局
+第 1 战开场 → 第 2 战双路线 → 第 3 战固定剧情 → 第 4 战双路线 → 第 5 战固定剧情 → 第 6 战双路线 → 第 7 战固定剧情 → 第 8 战种子派生 BOSS → 终局
 ```
 
 ### 3.1 棋组
@@ -156,22 +156,54 @@ profile 只改变黑方合法着的排序，不改变棋子走法或 `enemyLayou
 
 ### 3.4 路线
 
-每场战斗后出现两份合约，构成续航与报酬的取舍：
+程序化路线只出现在第 2、4、6 战；每次提供两份合约，构成续航与报酬的取舍：
 
 - 常局：较少敌人，1 次棋印选择，胜利后护盾 +1。
 - 险局：更多词缀、更厚王冠，2 次棋印选择，胜利后不回复护盾。
 
 路线卡直接显示战斗类型徽章、缩略敌阵、王冠层数、词缀名称与完整说明、报酬明细。所有信息平铺在卡面上，不依赖悬停提示。
 
-词缀与 AI profile 采用上一节的 12 项与 3 项完整集合；每份合约最多显示 4 个词缀。路线预览严格呈现合约已生成的 canonical `enemyLayout`。
+词缀与 AI profile 采用上一节的 12 项与 3 项完整集合；每份合约最多显示 4 个词缀。路线预览严格呈现合约已生成的 canonical `enemyLayout`。第 3、5、7 战改为单一固定剧情合同，第 8 战改为单一最终 BOSS 合同；这些节点不伪装成双路线抽取。
 
-第 6 局为 BOSS 终局，由种子从三种变体中选取，路线卡显示名称：
+第 8 战为 BOSS 终局，由 Run 初始种子稳定派生三种变体之一，路线卡显示名称：
 
 | BOSS | 王冠 | 特征 |
 |---|---|---|
 | 双后 | 2 层 | 双黑后加斜阵 |
 | 铁壁 | 3 层 | 车墙硬冠，但手数 +2 |
 | 兵暴 | 2 层 | 兵潮骑群，手数 -1 |
+
+### 3.5 三幕舞台与叙事合同
+
+`ACTS` 是幕结构的唯一注册表。幕不从可变 UI 状态猜测，而是从当前 canonical `currentContract.depth` 推导：
+
+| 战斗范围 | `themeKey` | `setpieceDepth` | `nameKey` | `flavorKeys` |
+|---|---|---:|---|---|
+| 1–3 外苑 | `outer` | 3 | `act.outer.name` | `intro: act.outer.line`；`victory: story.outer.victory`；`setpieceName: story.outer.setpiece.name`；`setpieceLine: story.outer.setpiece.line` |
+| 4–6 回廊 | `gallery` | 5 | `act.gallery.name` | `intro: act.gallery.line`；`victory: story.gallery.victory`；`setpieceName: story.gallery.setpiece.name`；`setpieceLine: story.gallery.setpiece.line` |
+| 7–8 王座厅 | `throne` | 7 | `act.throne.name` | `intro: act.throne.line`；`victory: story.throne.victory`；`setpieceName: story.throne.setpiece.name`；`setpieceLine: story.throne.setpiece.line` |
+
+固定剧情合同必须与下表逐字段一致。它们在程序化路线分支和 Run RNG 消耗之前物化；固定 `layoutSeed` 使合同及实际敌方坐标不受 Run 初始种子影响：
+
+| 深度 / 名称 | 合同 ID | 险局 | `formation` | `mods` | `trait` | `aiProfile` | `layoutSeed` | 奖励 |
+|---|---|---|---|---|---|---|---:|---:|
+| 3 / 雾中围猎 | `setpiece-outer-mist-hunt` | 否 | `pincer` | `[cavalry]` | `mist` | `aggressive` | `0x4F555445` | 1 |
+| 5 / 双生门 | `setpiece-gallery-twin-gate` | 是 | `fortress` | `[]` | `guarded` | `crownGuard` | `0x47415445` | 2 |
+| 7 / 伪加冕 | `setpiece-throne-false-coronation` | 是 | `vanguard` | `[promoted, executioner]` | `berserk` | `aggressive` | `0x5448524F` | 2 |
+
+#### 主题生命周期
+
+只在 Run 战斗画面中，`activeAct()` 才根据当前合同深度返回幕；`syncActPresentation()` 把 `themeKey` 写入 `#app[data-act]`，离开 Run 战斗则移除属性。CSS 由该属性选择对应的背景与粒子 SVG，Canvas 同时读取唯一的幕调色板来绘制径向背景、环境粒子、棋盘边框与格色。`prefers-reduced-motion` 不移除舞台语义层，只冻结或压缩粒子运动；练习、标题等非 Run 画面使用中性调色。
+
+#### 叙事时序与结局
+
+幕首战开始时，消息队列严格按“幕名与 `intro` → 当前王冠特性 → 首次选子教学”播放，后一个消息不再覆盖前一个。每次胜利结算显示所属幕的 `victory`；固定剧情合同卡显示对应 `setpieceName` 与 `setpieceLine`。这些文案在 English、简体中文、日本語目录中保持严格同构，运行中切换语言会重绘当前消息、结算和结局。
+
+最终 BOSS 只由初始 Run seed 派生，布局 seed 也从该初始 seed 的命名空间哈希派生，不消耗 Run RNG。双后、铁壁、兵暴各绑定唯一 `endingKey`；结局必须经真实的破冠、战斗结束、逐行结算和 `finishRun()` 路径到达，不提供独立捷径。
+
+#### 视觉方向选择
+
+Issue #3 的运行时舞台先用 `imagegen` 生成三套独立方案再比较：A **Spectral Architectural Wash** 以低对比建筑雾洗保留棋盘可读性；B **Deco Proscenium Court** 提供更明确的舞台框景；C **Tactical Court Cartography** 把战术标记压到棋盘区域。最终选择 A 作为主方向，只借用 B 的细框语言；B 的整体重量会抢夺战斗焦点，C 会干扰落点与危险标记，因此均未整套采用。三张概念 PNG 仅用于选择过程，未纳入仓库或发行包。
 
 ## 4. 战术资源
 
@@ -223,9 +255,13 @@ profile 只改变黑方合法着的排序，不改变棋子走法或 `enemyLayou
 
 Run 使用 xorshift32 随机序列。敌阵、敌方选招、奖励和路线均从同一 Run 状态推进。
 
+三场固定剧情战是显式例外：它们由 `SETPIECE_DEFS` 与固定 `layoutSeed` 直接构造，不读取或推进 Run RNG。最终 BOSS 的身份与布局只由非零 uint32 初始 seed 派生，同一初始 seed 必定得到同一最终合同。
+
 今日局以本地日期生成固定种子。同一设备在同一天使用相同初始序列。
 
 重开本局会恢复本局开始时的随机状态，防止通过反复失败刷新奖励或敌方序列。
+
+活动 Run 使用版本 3 的严格存档键与 v3.7 schema。读取时会检查战斗深度、阶段、合同字段、canonical layout、固定剧情战 ID/深度以及 seed 对应的 BOSS；任何不一致都使该活动 Run 无效。旧 Run 不迁移、不补字段、不采用默认合同，也不回退到程序化路线；玩家设置与永久记录仍使用各自独立的存储合同。
 
 ## 7. 新手保护
 
@@ -255,7 +291,7 @@ Run 使用 xorshift32 随机序列。敌阵、敌方选招、奖励和路线均�
 - 手数、护盾、王冠 HP、连击、能量、棋印 6 个 HUD 图标。
 - 横向标志与 maskable 应用图标源。
 
-Issue 正文明确把游戏集成列为另一任务。因此本包不替换当前 Canvas / Unicode 绘制路径，也不加入隐藏回退或一半接入的双轨渲染。后续集成必须显式消费 canonical asset ID，并在缺少资源时直接报错。
+Issue #5 交付时，游戏集成明确属于另一任务。v3.7 已由唯一运行时路径显式消费三幕背景与粒子 SVG，并把它们内联进 standalone；棋子轮廓仍使用既有 Canvas / Unicode 路径。不存在隐藏回退、双轨舞台渲染或资源缺失时的静默替代。
 
 ### 9.2 Deco Court 视觉语法
 

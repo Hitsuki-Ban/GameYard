@@ -23,7 +23,10 @@ const mime = {
 };
 const webAssets = new Set([
   'index.html', 'styles.css', 'i18n.js', 'game.js', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest'
+  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest',
+  'assets/acts/outer.svg', 'assets/acts/outer-particles.svg',
+  'assets/acts/gallery.svg', 'assets/acts/gallery-particles.svg',
+  'assets/acts/throne.svg', 'assets/acts/throne-particles.svg'
 ]);
 let expectedHost = null;
 
@@ -65,8 +68,22 @@ await new Promise((resolveListen, reject) => {
 const address = server.address();
 expectedHost = `127.0.0.1:${address.port}`;
 const url = `http://127.0.0.1:${address.port}/?qa`;
+const expectedOrigin = new URL(url).origin;
+const externalRequests = [];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ serviceWorkers: 'block' });
+const blockExternalRequests = async browserContext => {
+  await browserContext.route('**/*', async route => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.origin !== expectedOrigin) {
+      externalRequests.push(requestUrl.href);
+      await route.abort('blockedbyclient');
+      return;
+    }
+    await route.continue();
+  });
+};
+await blockExternalRequests(context);
 const installFastTimers = () => {
   const nativeSetTimeout = window.setTimeout.bind(window);
   window.setTimeout = (callback, delay = 0, ...args) => nativeSetTimeout(callback, Math.min(Number(delay) || 0, 12), ...args);
@@ -672,6 +689,7 @@ async function runSeedSmoke() {
 
   await Promise.all(shards.map(async (shard, workerIndex) => {
     const workerContext = await browser.newContext({ serviceWorkers: 'block' });
+    await blockExternalRequests(workerContext);
     await workerContext.addInitScript(installFastTimers);
     const workerPage = await workerContext.newPage();
     let pageError = null;
@@ -727,6 +745,7 @@ try {
     await context.close();
     await runSeedSmoke();
   }
+  assert.deepEqual(externalRequests, [], `external requests were attempted:\n${externalRequests.join('\n')}`);
   console.log('Trait checks passed.');
 } finally {
   await browser.close();

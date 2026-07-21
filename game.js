@@ -31,9 +31,9 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.6.0';
+  const VERSION = '3.7.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
-  const RUN_KEY = 'crownBreaker.run.v2';
+  const RUN_KEY = 'crownBreaker.run.v3';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
 
   const defaultSettings = {
@@ -63,6 +63,7 @@
       reward: false
     }
   };
+  const TUTORIAL_FLAGS = new Set(Object.keys(defaultSave.tutorial));
 
   function loadJSON(key, fallback) {
     try {
@@ -184,16 +185,139 @@
   };
   const FORMATION_IDS = new Set(Object.keys(FORMATIONS));
 
-  const ACTS = [
-    { from: 1, nameKey: 'act.outer.name', lineKey: 'act.outer.line' },
-    { from: 4, nameKey: 'act.gallery.name', lineKey: 'act.gallery.line' },
-    { from: 7, nameKey: 'act.throne.name', lineKey: 'act.throne.line' }
-  ];
+  const ACTS = Object.freeze([
+    Object.freeze({
+      from: 1,
+      to: 3,
+      themeKey: 'outer',
+      nameKey: 'act.outer.name',
+      lineKey: 'act.outer.line',
+      setpieceDepth: 3,
+      flavorKeys: Object.freeze({
+        intro: 'act.outer.line',
+        victory: 'story.outer.victory',
+        setpieceName: 'story.outer.setpiece.name',
+        setpieceLine: 'story.outer.setpiece.line'
+      })
+    }),
+    Object.freeze({
+      from: 4,
+      to: 6,
+      themeKey: 'gallery',
+      nameKey: 'act.gallery.name',
+      lineKey: 'act.gallery.line',
+      setpieceDepth: 5,
+      flavorKeys: Object.freeze({
+        intro: 'act.gallery.line',
+        victory: 'story.gallery.victory',
+        setpieceName: 'story.gallery.setpiece.name',
+        setpieceLine: 'story.gallery.setpiece.line'
+      })
+    }),
+    Object.freeze({
+      from: 7,
+      to: 8,
+      themeKey: 'throne',
+      nameKey: 'act.throne.name',
+      lineKey: 'act.throne.line',
+      setpieceDepth: 7,
+      flavorKeys: Object.freeze({
+        intro: 'act.throne.line',
+        victory: 'story.throne.victory',
+        setpieceName: 'story.throne.setpiece.name',
+        setpieceLine: 'story.throne.setpiece.line'
+      })
+    })
+  ]);
+
+  const SETPIECE_DEFS = Object.freeze({
+    outer: Object.freeze({
+      id: 'setpiece-outer-mist-hunt',
+      elite: false,
+      mods: Object.freeze(['cavalry']),
+      trait: 'mist',
+      formation: 'pincer',
+      aiProfile: 'aggressive',
+      layoutSeed: 0x4F555445,
+      reward: 1
+    }),
+    gallery: Object.freeze({
+      id: 'setpiece-gallery-twin-gate',
+      elite: true,
+      mods: Object.freeze([]),
+      trait: 'guarded',
+      formation: 'fortress',
+      aiProfile: 'crownGuard',
+      layoutSeed: 0x47415445,
+      reward: 2
+    }),
+    throne: Object.freeze({
+      id: 'setpiece-throne-false-coronation',
+      elite: true,
+      mods: Object.freeze(['promoted', 'executioner']),
+      trait: 'berserk',
+      formation: 'vanguard',
+      aiProfile: 'aggressive',
+      layoutSeed: 0x5448524F,
+      reward: 2
+    })
+  });
+
+  const STAGE_PALETTES = Object.freeze({
+    neutral: Object.freeze({
+      backdropCenter: 'rgba(42, 21, 79, .16)',
+      backdropMiddle: 'rgba(4, 4, 12, .02)',
+      backdropEdge: 'rgba(0, 0, 0, .35)',
+      ambientNear: '#55f6ff',
+      ambientFar: '#ff4fc8',
+      ambientKind: 'rain',
+      frame: Object.freeze(['#55f6ff', '#5b7cff', '#ff4fc8']),
+      boardLight: 'rgba(51,38,82,.92)',
+      boardDark: 'rgba(16,13,31,.97)',
+      boardShadow: 'rgba(91,124,255,.34)'
+    }),
+    outer: Object.freeze({
+      backdropCenter: 'rgba(17, 92, 94, .18)',
+      backdropMiddle: 'rgba(3, 20, 27, .06)',
+      backdropEdge: 'rgba(0, 8, 13, .42)',
+      ambientNear: '#66fff0',
+      ambientFar: '#78bfff',
+      ambientKind: 'mist',
+      frame: Object.freeze(['#55f6ff', '#35b9c7', '#6b79ff']),
+      boardLight: 'rgba(29,65,72,.92)',
+      boardDark: 'rgba(8,21,29,.97)',
+      boardShadow: 'rgba(54,222,214,.30)'
+    }),
+    gallery: Object.freeze({
+      backdropCenter: 'rgba(85, 40, 132, .20)',
+      backdropMiddle: 'rgba(18, 8, 35, .06)',
+      backdropEdge: 'rgba(4, 2, 12, .42)',
+      ambientNear: '#b980ff',
+      ambientFar: '#ff4fc8',
+      ambientKind: 'shadow',
+      frame: Object.freeze(['#b980ff', '#6b79ff', '#ff4fc8']),
+      boardLight: 'rgba(57,39,91,.92)',
+      boardDark: 'rgba(17,12,34,.97)',
+      boardShadow: 'rgba(155,94,255,.32)'
+    }),
+    throne: Object.freeze({
+      backdropCenter: 'rgba(122, 50, 25, .20)',
+      backdropMiddle: 'rgba(34, 8, 14, .07)',
+      backdropEdge: 'rgba(10, 2, 4, .46)',
+      ambientNear: '#ffd769',
+      ambientFar: '#ff4668',
+      ambientKind: 'ember',
+      frame: Object.freeze(['#ffd769', '#ff923f', '#ff4668']),
+      boardLight: 'rgba(75,42,47,.92)',
+      boardDark: 'rgba(25,10,19,.97)',
+      boardShadow: 'rgba(255,128,61,.32)'
+    })
+  });
 
   const BOSS_DEFS = {
-    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex', formation: 'lance', aiProfile: 'aggressive', extras: ['q'] },
-    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'], trait: 'guarded', formation: 'fortress', aiProfile: 'crownGuard', extras: ['p', 'p'] },
-    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'], trait: 'summoner', formation: 'vanguard', aiProfile: 'aggressive', extras: ['p', 'p'] }
+    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', endingKey: 'boss.twinQueens.ending', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex', formation: 'lance', aiProfile: 'aggressive', extras: ['q'] },
+    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', endingKey: 'boss.ironBastion.ending', hp: 3, extraTurns: 2, mods: ['walls', 'armor'], trait: 'guarded', formation: 'fortress', aiProfile: 'crownGuard', extras: ['p', 'p'] },
+    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', endingKey: 'boss.pawnstorm.ending', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'], trait: 'summoner', formation: 'vanguard', aiProfile: 'aggressive', extras: ['p', 'p'] }
   };
 
   const CONTRACT_MODS = {
@@ -226,6 +350,45 @@
     }
   };
   const AI_PROFILE_IDS = new Set(Object.keys(AI_PROFILES));
+
+  function assertStageDefinitions() {
+    const seenThemes = new Set();
+    const seenSetpieceDepths = new Set();
+    const seenSetpieceIds = new Set();
+    ACTS.forEach((act, index) => {
+      if (!Number.isInteger(act.from) || !Number.isInteger(act.to) || act.from < 1 || act.to < act.from || act.to > 8) {
+        throw new RangeError(`ACTS[${index}] must define a valid inclusive depth range.`);
+      }
+      if (index > 0 && ACTS[index - 1].to + 1 !== act.from) throw new RangeError('ACTS depth ranges must be contiguous.');
+      if (seenThemes.has(act.themeKey) || !Object.hasOwn(STAGE_PALETTES, act.themeKey)) throw new RangeError(`Invalid or duplicate act theme: ${String(act.themeKey)}.`);
+      seenThemes.add(act.themeKey);
+      if (!Number.isInteger(act.setpieceDepth) || act.setpieceDepth < act.from || act.setpieceDepth > act.to || seenSetpieceDepths.has(act.setpieceDepth)) {
+        throw new RangeError(`Invalid or duplicate setpiece depth: ${String(act.setpieceDepth)}.`);
+      }
+      seenSetpieceDepths.add(act.setpieceDepth);
+      for (const key of ['nameKey', 'lineKey']) if (typeof act[key] !== 'string' || !act[key]) throw new TypeError(`ACTS[${index}].${key} must be a non-empty i18n key.`);
+      for (const key of ['intro', 'victory', 'setpieceName', 'setpieceLine']) {
+        if (typeof act.flavorKeys?.[key] !== 'string' || !act.flavorKeys[key]) throw new TypeError(`ACTS[${index}].flavorKeys.${key} must be a non-empty i18n key.`);
+      }
+      const setpiece = SETPIECE_DEFS[act.themeKey];
+      if (!setpiece || seenSetpieceIds.has(setpiece.id)) throw new RangeError(`Missing or duplicate setpiece definition for ${act.themeKey}.`);
+      seenSetpieceIds.add(setpiece.id);
+      if (!Array.isArray(setpiece.mods) || setpiece.mods.some(id => !MOD_IDS.has(id)) || new Set(setpiece.mods).size !== setpiece.mods.length) {
+        throw new RangeError(`Setpiece ${setpiece.id} contains invalid mods.`);
+      }
+      if (!TRAIT_IDS.has(setpiece.trait) || !FORMATION_IDS.has(setpiece.formation) || !AI_PROFILE_IDS.has(setpiece.aiProfile)) {
+        throw new RangeError(`Setpiece ${setpiece.id} references an unknown gameplay definition.`);
+      }
+      if (!Number.isInteger(setpiece.layoutSeed) || setpiece.layoutSeed < 1 || setpiece.layoutSeed > 0xFFFFFFFF) {
+        throw new RangeError(`Setpiece ${setpiece.id} requires a non-zero uint32 layout seed.`);
+      }
+      const expectedReward = setpiece.elite ? 2 : 1;
+      if (setpiece.reward !== expectedReward) throw new RangeError(`Setpiece ${setpiece.id} reward must equal ${expectedReward}.`);
+    });
+    if (ACTS[0].from !== 1 || ACTS.at(-1).to !== 8) throw new RangeError('ACTS must cover depths 1 through 8 exactly.');
+  }
+
+  assertStageDefinitions();
 
   function hashString(text) {
     let hash = 2166136261 >>> 0;
@@ -514,9 +677,11 @@
 
   const particles = [];
   const floatingTexts = [];
+  const ambientRandomState = { rngState: 0x434F5552 };
+  const ambientRandom = () => rngNext(ambientRandomState);
   const ambient = Array.from({ length: 64 }, () => ({
-    x: Math.random(), y: Math.random(), z: Math.random() * 0.8 + 0.2,
-    speed: Math.random() * 0.022 + 0.008, size: Math.random() * 1.7 + 0.5
+    x: ambientRandom(), y: ambientRandom(), z: ambientRandom() * 0.8 + 0.2,
+    speed: ambientRandom() * 0.022 + 0.008, size: ambientRandom() * 1.7 + 0.5
   }));
 
   let run = null;
@@ -526,7 +691,9 @@
   let bannerTimer = null;
   let currentInfoKind = null;
   let currentTutorialMessage = null;
+  let tutorialQueue = [];
   let currentBannerMessage = null;
+  let currentRunResult = null;
 
   function activeRelicLevel(id) {
     return run && run.relics ? Number(run.relics[id] || 0) : 0;
@@ -714,6 +881,7 @@
         throw new RangeError(`Boss contract ${contract.boss} does not match its definition.`);
       }
     }
+    assertSetpieceContract(contract);
     if (!Number.isInteger(contract.layoutSeed) || contract.layoutSeed < 1 || contract.layoutSeed > 0xFFFFFFFF) throw new RangeError('Contract layoutSeed must be a non-zero uint32.');
     if (!Array.isArray(contract.enemyLayout) || !contract.enemyLayout.length) throw new RangeError('Contract enemyLayout must not be empty.');
     const occupied = new Set();
@@ -750,25 +918,146 @@
     return assertContract(contract, playerRoster);
   }
 
-  function makeContract(depth, elite = false, final = false) {
-    const layoutSeed = Math.floor(runRandom() * 0xFFFFFFFF) + 1;
-    if (final) {
-      const bossId = choose(Object.keys(BOSS_DEFS));
-      const boss = BOSS_DEFS[bossId];
-      return createContract({
-        id: `boss-${bossId}-${run.rngState}`,
-        depth,
-        elite: true,
-        final: true,
-        boss: bossId,
-        mods: [...boss.mods],
-        trait: boss.trait,
-        formation: boss.formation,
-        aiProfile: boss.aiProfile,
-        layoutSeed,
-        reward: 0,
-      }, run.roster);
+  function actForDepth(depth) {
+    if (!Number.isInteger(depth) || depth < 1 || depth > 8) throw new RangeError(`Act depth must be an integer from 1 to 8; received ${String(depth)}.`);
+    const act = ACTS.find(entry => depth >= entry.from && depth <= entry.to);
+    if (!act) throw new RangeError(`No act covers depth ${depth}.`);
+    return act;
+  }
+
+  function activeAct() {
+    if (currentScreen !== 'playing' || game.mode !== 'run' || !run?.currentContract) return null;
+    return actForDepth(run.currentContract.depth);
+  }
+
+  function syncActPresentation() {
+    const act = activeAct();
+    if (act) app.dataset.act = act.themeKey;
+    else delete app.dataset.act;
+  }
+
+  function syncMotionPresentation() {
+    app.dataset.motion = settings.reducedMotion ? 'reduced' : 'full';
+  }
+
+  function activeStagePalette() {
+    const themeKey = activeAct()?.themeKey || 'neutral';
+    const palette = STAGE_PALETTES[themeKey];
+    if (!palette) throw new RangeError(`Unknown stage palette: ${String(themeKey)}.`);
+    return palette;
+  }
+
+  function setpieceActForDepth(depth) {
+    return ACTS.find(entry => entry.setpieceDepth === depth) || null;
+  }
+
+  function setpieceActForId(id) {
+    return ACTS.find(entry => SETPIECE_DEFS[entry.themeKey].id === id) || null;
+  }
+
+  function assertSetpieceContract(contract) {
+    const act = setpieceActForId(contract.id);
+    if (!act) {
+      if (contract.id.startsWith('setpiece-')) throw new RangeError(`Unknown setpiece contract: ${contract.id}.`);
+      return contract;
     }
+    const definition = SETPIECE_DEFS[act.themeKey];
+    const exact = contract.depth === act.setpieceDepth
+      && contract.elite === definition.elite
+      && contract.final === false
+      && contract.boss === null
+      && contract.trait === definition.trait
+      && contract.formation === definition.formation
+      && contract.aiProfile === definition.aiProfile
+      && contract.layoutSeed === definition.layoutSeed
+      && contract.reward === definition.reward
+      && contract.mods.length === definition.mods.length
+      && contract.mods.every((id, index) => id === definition.mods[index]);
+    if (!exact) throw new RangeError(`Setpiece contract ${contract.id} does not match its definition.`);
+    return contract;
+  }
+
+  function assertRunContractAtDepth(contract, depth, playerRoster, runSeed) {
+    assertContract(contract, playerRoster);
+    if (!Number.isInteger(runSeed) || runSeed < 1 || runSeed > 0xFFFFFFFF) throw new RangeError('Run contracts require a non-zero uint32 run seed.');
+    if (contract.depth !== depth) throw new RangeError(`Run depth ${depth} cannot use a depth ${contract.depth} contract.`);
+    const setpieceAct = setpieceActForDepth(depth);
+    if (setpieceAct) {
+      const expectedId = SETPIECE_DEFS[setpieceAct.themeKey].id;
+      if (contract.id !== expectedId) throw new RangeError(`Run depth ${depth} requires setpiece contract ${expectedId}.`);
+    } else if (setpieceActForId(contract.id)) {
+      throw new RangeError(`Setpiece contract ${contract.id} cannot run at depth ${depth}.`);
+    }
+    if (depth === 8) {
+      const bossId = bossIdForSeed(runSeed);
+      const expectedId = `boss-${bossId}-${formatSeed(runSeed).toLowerCase()}`;
+      const expectedLayoutSeed = derivedSeed(`boss-layout:${bossId}`, runSeed);
+      if (contract.boss !== bossId) {
+        throw new RangeError(`Run seed ${formatSeed(runSeed)} requires boss ${bossId}.`);
+      }
+      if (contract.id !== expectedId) {
+        throw new RangeError(`Run seed ${formatSeed(runSeed)} requires boss contract id ${expectedId}.`);
+      }
+      if (contract.layoutSeed !== expectedLayoutSeed) {
+        throw new RangeError(`Run seed ${formatSeed(runSeed)} requires boss layout seed ${expectedLayoutSeed}.`);
+      }
+    }
+    return contract;
+  }
+
+  function derivedSeed(namespace, seed) {
+    const normalized = Number(seed) >>> 0;
+    if (!normalized) throw new RangeError(`${namespace} requires a non-zero uint32 run seed.`);
+    return hashString(`${namespace}:${normalized}`) || 1;
+  }
+
+  function bossIdForSeed(seed) {
+    const ids = Object.keys(BOSS_DEFS);
+    return ids[derivedSeed('boss', seed) % ids.length];
+  }
+
+  function makeBossContract(bossId, seed, playerRoster) {
+    const boss = BOSS_DEFS[bossId];
+    if (!boss) throw new RangeError(`Unknown boss id: ${String(bossId)}.`);
+    return createContract({
+      id: `boss-${bossId}-${formatSeed(seed).toLowerCase()}`,
+      depth: 8,
+      elite: true,
+      final: true,
+      boss: bossId,
+      mods: [...boss.mods],
+      trait: boss.trait,
+      formation: boss.formation,
+      aiProfile: boss.aiProfile,
+      layoutSeed: derivedSeed(`boss-layout:${bossId}`, seed),
+      reward: 0,
+    }, playerRoster);
+  }
+
+  function makeSetpieceContract(depth, playerRoster) {
+    const act = setpieceActForDepth(depth);
+    if (!act) throw new RangeError(`Depth ${String(depth)} is not a setpiece depth.`);
+    const definition = SETPIECE_DEFS[act.themeKey];
+    return createContract({
+      id: definition.id,
+      depth,
+      elite: definition.elite,
+      final: false,
+      boss: null,
+      mods: [...definition.mods],
+      trait: definition.trait,
+      formation: definition.formation,
+      aiProfile: definition.aiProfile,
+      layoutSeed: definition.layoutSeed,
+      reward: definition.reward,
+    }, playerRoster);
+  }
+
+  function makeProceduralContract(depth, elite, trait, playerRoster) {
+    if (!Number.isInteger(depth) || depth < 2 || depth > 7 || setpieceActForDepth(depth)) throw new RangeError(`Depth ${String(depth)} is not procedural.`);
+    if (typeof elite !== 'boolean') throw new TypeError('Procedural contract elite must be boolean.');
+    if (typeof trait !== 'string' || !TRAIT_IDS.has(trait)) throw new RangeError(`Unknown procedural trait: ${String(trait)}.`);
+    const layoutSeed = Math.floor(runRandom() * 0xFFFFFFFF) + 1;
     const modPool = [...MOD_IDS];
     const count = elite ? (depth >= 4 ? 3 : 2) : 1;
     const mods = shuffled(modPool).slice(0, count);
@@ -780,12 +1069,12 @@
       final: false,
       boss: null,
       mods,
-      trait: elite ? choose(eligibleTraitIds()) : null,
+      trait,
       formation: choose([...FORMATION_IDS]),
       aiProfile: choose([...AI_PROFILE_IDS]),
       layoutSeed,
       reward: elite ? 2 : 1,
-    }, run.roster);
+    }, playerRoster);
   }
 
   function activeTraitId() {
@@ -830,21 +1119,15 @@
   }
 
   function buildContractChoices() {
-    if (!run || run.battle >= run.totalBattles) return [makeContract(run.totalBattles, true, true)];
+    if (!run) throw new Error('An active run is required to build contract choices.');
+    const bossContract = () => makeBossContract(bossIdForSeed(run.seed), run.seed, run.roster);
+    if (run.battle >= run.totalBattles) return [bossContract()];
     const nextDepth = run.battle + 1;
-    if (nextDepth === run.totalBattles) return [makeContract(nextDepth, true, true)];
+    if (nextDepth === run.totalBattles) return [bossContract()];
+    if (setpieceActForDepth(nextDepth)) return [makeSetpieceContract(nextDepth, run.roster)];
     const [traitA, traitB] = shuffled(eligibleTraitIds());
-    if (nextDepth === 5) {
-      const gateA = makeContract(nextDepth, true, false);
-      gateA.trait = traitA;
-      const gateB = makeContract(nextDepth, true, false);
-      gateB.trait = traitB;
-      return [gateA, gateB];
-    }
-    const safe = makeContract(nextDepth, false, false);
-    safe.trait = traitA;
-    const elite = makeContract(nextDepth, true, false);
-    elite.trait = traitB;
+    const safe = makeProceduralContract(nextDepth, false, traitA, run.roster);
+    const elite = makeProceduralContract(nextDepth, true, traitB, run.roster);
     return runRandom() < 0.5 ? [safe, elite] : [elite, safe];
   }
 
@@ -852,22 +1135,30 @@
     if (!candidate || candidate.version !== VERSION) return false;
     if (!Array.isArray(candidate.roster) || !candidate.roster.length) return false;
     if (!candidate.relics || typeof candidate.relics !== 'object') return false;
-    if (!Number.isFinite(candidate.seed) || !Number.isFinite(candidate.battle)) return false;
+    if (!Number.isInteger(candidate.seed) || candidate.seed < 1 || candidate.seed > 0xFFFFFFFF) return false;
+    if (!Number.isInteger(candidate.battle) || candidate.battle < 1 || candidate.battle > 8) return false;
+    if (candidate.totalBattles !== 8) return false;
+    if (!['battle', 'promotion', 'reward', 'contract'].includes(candidate.stage)) return false;
     try {
       if (!candidate.battleStartMeta || !Array.isArray(candidate.battleStartMeta.roster)) {
         throw new RangeError('Saved run requires its frozen battle roster.');
       }
       const battleRoster = candidate.battleStartMeta.roster;
-      assertContract(candidate.currentContract, battleRoster);
+      assertRunContractAtDepth(candidate.currentContract, candidate.battle, battleRoster, candidate.seed);
       if (candidate.battleState) {
-        assertContract(candidate.battleState.contract, battleRoster);
+        assertRunContractAtDepth(candidate.battleState.contract, candidate.battle, battleRoster, candidate.seed);
         if (!AI_PROFILE_IDS.has(candidate.battleState.aiProfile)) throw new RangeError('Saved battle has an unknown AI profile.');
       }
       if (candidate.battleStart) {
-        assertContract(candidate.battleStart.contract, battleRoster);
+        assertRunContractAtDepth(candidate.battleStart.contract, candidate.battle, battleRoster, candidate.seed);
         if (!AI_PROFILE_IDS.has(candidate.battleStart.aiProfile)) throw new RangeError('Saved battle start has an unknown AI profile.');
       }
-      if (candidate.pendingContracts) candidate.pendingContracts.forEach(contract => assertContract(contract, candidate.roster));
+      if (candidate.pendingContracts) {
+        if (!Array.isArray(candidate.pendingContracts) || !candidate.pendingContracts.length || candidate.battle >= candidate.totalBattles) {
+          throw new RangeError('Saved pending contracts require a non-final route depth.');
+        }
+        candidate.pendingContracts.forEach(contract => assertRunContractAtDepth(contract, candidate.battle + 1, candidate.roster, candidate.seed));
+      }
     } catch (_) {
       return false;
     }
@@ -985,10 +1276,12 @@
     if (name !== 'playing') hud.classList.remove('active');
     if (name === 'title') {
       closeModal();
+      clearTutorialSequence();
       game.active = false;
       game.paused = false;
       updateContinueButton();
     }
+    syncActPresentation();
   }
 
   function updateContinueButton() {
@@ -1096,6 +1389,7 @@
       const input = $(selector);
       input.addEventListener('change', event => {
         settings[key] = event.target.checked;
+        if (key === 'reducedMotion') syncMotionPresentation();
         audio.applySettings();
         persistSettings();
       });
@@ -1254,6 +1548,7 @@
 
   function enterBattleScreen() {
     setScreen('playing');
+    syncActPresentation();
     closeModal();
     hud.classList.add('active');
     updateHUD(true);
@@ -1262,6 +1557,7 @@
 
   function startNewRun(seed = makeSeed(), daily = false) {
     audio.start();
+    currentRunResult = null;
     run = newRunState(seed, daily);
     run.currentContract = createContract({
       id: 'opening', depth: 1, elite: false, final: false, boss: null,
@@ -1282,7 +1578,7 @@
     if (fromResume && run.battleState) {
       const state = run.battleState;
       if (!run.battleStartMeta || !Array.isArray(run.battleStartMeta.roster)) throw new Error('Resuming a battle requires its frozen roster.');
-      assertContract(state.contract, run.battleStartMeta.roster);
+      assertRunContractAtDepth(state.contract, run.battle, run.battleStartMeta.roster, run.seed);
       data = {
         pieces: state.pieces.map(piece => makePiece(piece.color, piece.type, piece.x, piece.y, {
           id: piece.id,
@@ -1322,15 +1618,32 @@
       run.shield = state.shield;
       run.currentContract = deepClone(state.contract);
     } else {
+      assertRunContractAtDepth(run.currentContract, run.battle, run.roster, run.seed);
       data = buildBattleFromContract(run.currentContract, run.roster);
       resetRuntimeForBattle(data);
       game.hype = clamp(Number(run.energyCarry || 0), 0, 50);
       run.energyCarry = 0;
     }
     enterBattleScreen();
+    const tutorialMessages = [];
+    if (!fromResume) {
+      const act = ACTS.find(entry => entry.from === run.battle);
+      const introTrait = activeTraitId();
+      if (act) tutorialMessages.push({
+        kind: 'story',
+        nameKey: act.nameKey,
+        lineKey: act.flavorKeys.intro,
+        duration: 3000
+      });
+      if (introTrait) tutorialMessages.push({ key: TRAITS[introTrait].lineKey, duration: 3200 });
+    }
+    if (!save.tutorial.select) tutorialMessages.push({ key: 'tutorial.select', duration: 2400 });
+    if (tutorialMessages.length) showTutorialSequence(tutorialMessages);
+    else clearTutorialSequence();
     if (restoredIntent) {
       game.enemyIntent = restoredIntent;
       $('#intent-key').classList.add('show');
+      offerIntentTutorial();
     } else if (!fromResume || run.stage === 'battle') {
       prepareEnemyIntent();
     } else {
@@ -1339,18 +1652,6 @@
     }
     updateHUD(true);
     showBanner(fromResume ? 'banner.continue' : run.battle === 1 ? 'banner.opening' : 'banner.battle', run.battle === 1 || fromResume ? undefined : { number: run.battle });
-    if (!fromResume) {
-      const act = ACTS.find(entry => entry.from === run.battle);
-      const introTrait = activeTraitId();
-      if (act) {
-        showTutorial(act.lineKey, 2800);
-        if (introTrait) window.setTimeout(() => {
-          if (game.active) showTutorial(TRAITS[introTrait].lineKey, 3200);
-        }, 3000);
-      } else if (introTrait) {
-        showTutorial(TRAITS[introTrait].lineKey, 3400);
-      }
-    }
     if (!fromResume) {
       run.stage = 'battle';
       run.battleState = snapshotBattle();
@@ -1370,7 +1671,6 @@
     } else {
       game.battleStartSnapshot = deepClone(run.battleStart || run.battleState);
     }
-    offerFirstTutorial();
   }
 
   function resumeSavedRun() {
@@ -1416,6 +1716,7 @@
 
   function startTraining() {
     audio.start();
+    currentRunResult = null;
     run = null;
     game.mode = 'training';
     const pieces = [
@@ -1689,9 +1990,7 @@
     game.idleHintShown = false;
     audio.sfx('select');
     if (!save.tutorial.select) {
-      save.tutorial.select = true;
-      persistSave();
-      showTutorial('tutorial.move', 1800);
+      showTutorial('tutorial.move', 1800, undefined, 'select');
     }
   }
 
@@ -1783,6 +2082,11 @@
     return pool[0];
   }
 
+  function offerIntentTutorial() {
+    if (save.tutorial.intent || game.moveCount !== 0 || activeTraitId() === 'mist') return;
+    showTutorial('tutorial.intent', 2200, undefined, 'intent');
+  }
+
   function prepareEnemyIntent() {
     if (!game.active || game.mode === 'training') {
       game.enemyIntent = null;
@@ -1804,11 +2108,7 @@
       madeAt: now()
     };
     $('#intent-key').classList.toggle('show', activeTraitId() !== 'mist');
-    if (!save.tutorial.intent && game.moveCount === 0 && activeTraitId() !== 'mist') {
-      save.tutorial.intent = true;
-      persistSave();
-      window.setTimeout(() => showTutorial('tutorial.intent', 2200), 500);
-    }
+    offerIntentTutorial();
   }
 
   function beginPlayerTurn(newIntent = true) {
@@ -2680,14 +2980,20 @@
     return bonuses;
   }
 
+  function renderTallyStory() {
+    const element = $('#tally-story');
+    if (!element) throw new Error('The tally story element is required.');
+    if (!run?.currentContract) throw new Error('Tally story requires a current run contract.');
+    const act = actForDepth(run.currentContract.depth);
+    element.textContent = t(act.flavorKeys.victory);
+  }
+
   function runTallySequence(bonuses, done) {
     const overlay = $('#tally');
     const lines = $('#tally-lines');
-    if (!overlay || !lines) {
-      done();
-      return;
-    }
+    if (!overlay || !lines) throw new Error('The tally overlay is required.');
     $('#tally-head').textContent = t('tally.title');
+    renderTallyStory();
     lines.innerHTML = '';
     overlay.classList.add('show');
     const stepDelay = settings.reducedMotion ? 110 : 420;
@@ -2855,16 +3161,24 @@
   function renderContractChoices(choices) {
     if (!Array.isArray(choices) || !choices.length) return;
     if (!run || !Array.isArray(run.roster)) throw new Error('Contract previews require the current run roster.');
-    choices.forEach(contract => assertContract(contract, run.roster));
+    choices.forEach(contract => assertRunContractAtDepth(contract, run.battle + 1, run.roster, run.seed));
     const grid = $('#contract-grid');
-    $('#contract-title').textContent = t(choices.length === 1 ? 'contract.final' : 'contract.next');
+    const routeSetpieceAct = choices.length === 1 ? setpieceActForId(choices[0].id) : null;
+    const titleKey = choices.every(contract => contract.final)
+      ? 'contract.final'
+      : routeSetpieceAct ? 'contract.setpiece' : 'contract.next';
+    $('#contract-title').textContent = t(titleKey);
     grid.innerHTML = choices.map((contract, index) => {
       const bossDef = contract.boss ? BOSS_DEFS[contract.boss] : null;
+      const setpieceAct = setpieceActForId(contract.id);
       const hp = bossDef ? bossDef.hp : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
       const crowns = Array.from({ length: hp }, () => '<span>♚</span>').join('');
       const typeKey = contract.final ? 'contract.type.final' : contract.elite ? 'contract.type.elite' : 'contract.type.normal';
       const mods = contract.mods.map(id => `<span class="mod"><b>${t(CONTRACT_MODS[id].nameKey)}</b><small>${t(CONTRACT_MODS[id].lineKey)}</small></span>`).join('');
       const bossHead = bossDef ? `<strong class="contract-name">${t(bossDef.nameKey)}</strong><span class="contract-boss-line">${t(bossDef.lineKey)}</span>` : '';
+      const setpieceHead = setpieceAct
+        ? `<strong class="contract-name setpiece-name">${t(setpieceAct.flavorKeys.setpieceName)}</strong><span class="contract-boss-line setpiece-line">${t(setpieceAct.flavorKeys.setpieceLine)}</span>`
+        : '';
       const traitRow = typeof contract.trait === 'string' && TRAIT_IDS.has(contract.trait)
         ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
         : '';
@@ -2888,9 +3202,10 @@
       </span>`;
       const type = t(contract.final ? 'aria.contract.final' : contract.elite ? 'aria.contract.elite' : 'aria.contract.normal');
       const modLines = contract.mods.map(id => t(CONTRACT_MODS[id].lineKey)).join(locale === 'en' ? '; ' : '、');
-      return `<button class="contract-card ${contract.elite ? 'elite' : ''} ${contract.final ? 'final' : ''}" type="button" data-index="${index}" aria-label="${t('aria.contract', { type, mods: modLines })}">
+      return `<button class="contract-card ${contract.elite ? 'elite' : ''} ${contract.final ? 'final' : ''} ${setpieceAct ? 'setpiece' : ''}" type="button" data-index="${index}" aria-label="${t('aria.contract', { type, mods: modLines })}">
         <span class="contract-top"><span class="contract-type ${contract.final ? 'final' : contract.elite ? 'elite' : ''}">${t(typeKey)}</span><span class="contract-crowns">${crowns}</span></span>
         ${bossHead}
+        ${setpieceHead}
         ${traitRow}
         ${formationRow}
         ${profileRow}
@@ -2906,6 +3221,7 @@
     if (!run || run.stage !== 'contract') return;
     const contract = run.pendingContracts?.[index];
     if (!contract) return;
+    assertRunContractAtDepth(contract, run.battle + 1, run.roster, run.seed);
     audio.sfx('ui');
     closeModal();
     run.battle += 1;
@@ -2926,8 +3242,24 @@
     return 'C';
   }
 
+  function renderRunResultTranslations() {
+    if (!currentRunResult) throw new Error('Run result translations require a completed run result.');
+    const boss = BOSS_DEFS[currentRunResult.bossId];
+    if (!boss) throw new RangeError(`Unknown completed boss: ${String(currentRunResult.bossId)}.`);
+    $('#result-kicker').textContent = t(currentRunResult.daily ? 'result.dailyClear' : 'result.runClear');
+    $('#result-title').textContent = t('result.cleared');
+    $('#result-seed').textContent = t('result.seed', { seed: formatSeed(currentRunResult.seed) });
+    const ending = $('#result-ending');
+    if (!ending) throw new Error('The run result ending element is required.');
+    ending.textContent = t(boss.endingKey);
+  }
+
   function finishRun() {
     if (!run) return;
+    if (!run.battleStartMeta || !Array.isArray(run.battleStartMeta.roster)) throw new Error('A completed run requires its frozen final-battle roster.');
+    assertRunContractAtDepth(run.currentContract, 8, run.battleStartMeta.roster, run.seed);
+    const bossId = run.currentContract.boss;
+    if (!bossId || !BOSS_DEFS[bossId]) throw new Error('A completed run requires a canonical final boss.');
     game.active = false;
     game.phase = 'result';
     run.score = game.score;
@@ -2940,16 +3272,15 @@
     save.bestScore = Math.max(save.bestScore, Math.floor(run.score));
     save.clears += 1;
     persistSave();
+    currentRunResult = { daily: run.daily, seed: run.seed, bossId };
     clearActiveRun();
     audio.sfx('victory');
-    $('#result-kicker').textContent = t(run.daily ? 'result.dailyClear' : 'result.runClear');
     $('#result-rank').textContent = rank;
-    $('#result-title').textContent = t('result.cleared');
     $('#result-score').textContent = formatScore(run.score);
     $('#result-promotions').textContent = run.promotions;
     $('#result-captures').textContent = run.captures;
     $('#result-combo').textContent = run.maxCombo;
-    $('#result-seed').textContent = t('result.seed', { seed: formatSeed(run.seed) });
+    renderRunResultTranslations();
     $('#result-newbest').classList.toggle('show', newBest);
     openModal(runResultModal);
   }
@@ -2969,7 +3300,7 @@
       const classes = ['run-node'];
       if (number < run.battle) classes.push('done');
       if (number === run.battle) classes.push('current');
-      if (number === 5) classes.push('gate');
+      if (ACTS.some(act => act.setpieceDepth === number)) classes.push('setpiece');
       if (number === run.totalBattles) classes.push('boss');
       return `<i class="${classes.join(' ')}"></i>`;
     }).join('');
@@ -3033,22 +3364,103 @@
     $('#intent-key').classList.toggle('show', Boolean(game.enemyIntent) && activeTraitId() !== 'mist');
   }
 
-  function offerFirstTutorial() {
-    if (!save.tutorial.select) showTutorial('tutorial.select', 2400);
-  }
-
-  function showTutorial(key, duration = 1800, params) {
-    if (!key) return;
+  function clearTutorialSequence() {
     const element = $('#tutorial-chip');
     clearTimeout(tutorialTimer);
-    currentTutorialMessage = { key, params };
-    element.textContent = t(key, params);
+    tutorialTimer = null;
+    tutorialQueue = [];
+    currentTutorialMessage = null;
+    element.classList.remove('show', 'story');
+    element.replaceChildren();
+  }
+
+  function renderCurrentTutorialMessage() {
+    const element = $('#tutorial-chip');
+    const message = currentTutorialMessage;
+    element.replaceChildren();
+    element.classList.toggle('story', message?.kind === 'story');
+    if (!message) return;
+    if (message.kind === 'story') {
+      const name = document.createElement('strong');
+      const line = document.createElement('span');
+      name.textContent = t(message.nameKey);
+      line.textContent = t(message.lineKey);
+      element.append(name, line);
+      return;
+    }
+    element.textContent = t(message.key, message.params);
+  }
+
+  function advanceTutorialSequence() {
+    clearTimeout(tutorialTimer);
+    const element = $('#tutorial-chip');
+    const next = tutorialQueue.shift();
+    if (!next) {
+      currentTutorialMessage = null;
+      element.classList.remove('show', 'story');
+      element.replaceChildren();
+      tutorialTimer = null;
+      return;
+    }
+    currentTutorialMessage = next;
+    renderCurrentTutorialMessage();
+    element.classList.remove('show');
+    void element.offsetWidth;
     element.classList.add('show');
+    if (next.seenFlag && !save.tutorial[next.seenFlag]) {
+      save.tutorial[next.seenFlag] = true;
+      persistSave();
+    }
     tutorialTimer = window.setTimeout(() => {
       element.classList.remove('show');
-      element.textContent = '';
       currentTutorialMessage = null;
-    }, duration);
+      tutorialTimer = window.setTimeout(advanceTutorialSequence, settings.reducedMotion ? 20 : 140);
+    }, next.duration);
+  }
+
+  function normalizeTutorialMessages(messages) {
+    if (!Array.isArray(messages) || !messages.length) throw new RangeError('Tutorial sequence must contain at least one message.');
+    return messages.map((message, index) => {
+      if (!message || typeof message !== 'object' || Array.isArray(message)) throw new TypeError(`Tutorial message ${index} must be an object.`);
+      const duration = Number(message.duration);
+      if (!Number.isInteger(duration) || duration < 1) throw new RangeError(`Tutorial message ${index} requires a positive integer duration.`);
+      if (message.kind === 'story') {
+        if (typeof message.nameKey !== 'string' || !message.nameKey || typeof message.lineKey !== 'string' || !message.lineKey) {
+          throw new TypeError(`Story message ${index} requires nameKey and lineKey.`);
+        }
+        return { kind: 'story', nameKey: message.nameKey, lineKey: message.lineKey, duration };
+      }
+      if (message.kind !== undefined || typeof message.key !== 'string' || !message.key) throw new TypeError(`Tutorial message ${index} requires a key.`);
+      if (message.seenFlag !== undefined && (typeof message.seenFlag !== 'string' || !TUTORIAL_FLAGS.has(message.seenFlag))) {
+        throw new RangeError(`Tutorial message ${index} has an unknown seen flag.`);
+      }
+      return { key: message.key, params: message.params, duration, seenFlag: message.seenFlag };
+    });
+  }
+
+  function showTutorialSequence(messages) {
+    const normalized = normalizeTutorialMessages(messages);
+    clearTutorialSequence();
+    tutorialQueue = normalized;
+    advanceTutorialSequence();
+  }
+
+  function enqueueTutorialSequence(messages) {
+    const normalized = normalizeTutorialMessages(messages);
+    if (currentTutorialMessage || tutorialQueue.length) {
+      tutorialQueue.push(...normalized);
+      return;
+    }
+    tutorialQueue = normalized;
+    advanceTutorialSequence();
+  }
+
+  function showTutorial(key, duration = 1800, params, seenFlag) {
+    if (!key) return;
+    if (seenFlag && (save.tutorial[seenFlag]
+      || currentTutorialMessage?.seenFlag === seenFlag
+      || tutorialQueue.some(message => message.seenFlag === seenFlag))) return;
+    enqueueTutorialSequence([{ key, duration, params, seenFlag }]);
   }
 
   function showBanner(key, params) {
@@ -3141,26 +3553,51 @@
     floatingTexts.push({ x, y, text, kind, life: 1050, maxLife: 1050 });
   }
 
-  function drawBackground(time) {
+  function drawBackground(time, palette) {
     ctx.clearRect(0, 0, view.width, view.height);
     const gradient = ctx.createRadialGradient(view.width * 0.5, view.height * 0.48, 20, view.width * 0.5, view.height * 0.48, Math.max(view.width, view.height) * 0.75);
-    gradient.addColorStop(0, 'rgba(42, 21, 79, .16)');
-    gradient.addColorStop(0.52, 'rgba(4, 4, 12, .02)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, .35)');
+    gradient.addColorStop(0, palette.backdropCenter);
+    gradient.addColorStop(0.52, palette.backdropMiddle);
+    gradient.addColorStop(1, palette.backdropEdge);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, view.width, view.height);
 
     for (const star of ambient) {
-      star.y += star.speed * 0.016;
-      if (star.y > 1.1) { star.y = -0.1; star.x = Math.random(); }
-      const px = star.x * view.width + Math.sin(time * 0.0002 + star.z * 10) * 18;
+      if (!settings.reducedMotion) {
+        star.y += (palette.ambientKind === 'ember' ? -1 : 1) * star.speed * 0.016;
+        if (star.y > 1.1 || star.y < -0.1) {
+          star.y = palette.ambientKind === 'ember' ? 1.1 : -0.1;
+          star.x = ambientRandom();
+        }
+      }
+      const drift = settings.reducedMotion ? 0 : Math.sin(time * 0.0002 + star.z * 10) * 18;
+      const px = star.x * view.width + drift;
       const py = star.y * view.height;
       ctx.globalAlpha = 0.08 + star.z * 0.2;
-      ctx.fillStyle = star.z > 0.65 ? '#55f6ff' : '#ff4fc8';
-      ctx.fillRect(px, py, star.size, star.size * 4);
+      ctx.fillStyle = star.z > 0.65 ? palette.ambientNear : palette.ambientFar;
+      if (palette.ambientKind === 'mist') {
+        ctx.beginPath();
+        ctx.ellipse(px, py, star.size * 7, star.size * 1.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (palette.ambientKind === 'shadow') {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-star.size, -star.size, star.size * 2, star.size * 2);
+        ctx.restore();
+      } else if (palette.ambientKind === 'ember') {
+        ctx.beginPath();
+        ctx.moveTo(px, py - star.size * 2);
+        ctx.lineTo(px + star.size, py + star.size * 2);
+        ctx.lineTo(px - star.size, py + star.size * 2);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(px, py, star.size, star.size * 4);
+      }
     }
     ctx.globalAlpha = 1;
-    if (currentScreen === 'title') drawTitleOrbit(time);
+    if (currentScreen === 'title') drawTitleOrbit(settings.reducedMotion ? 0 : time);
   }
 
   function drawTitleOrbit(time) {
@@ -3190,7 +3627,8 @@
     const frozen = time < game.hitStopUntil;
     const dt = game.paused || frozen ? 0 : rawDt;
 
-    drawBackground(time);
+    const palette = activeStagePalette();
+    drawBackground(time, palette);
     if (currentScreen === 'playing') {
       if (game.active && game.phase === 'player' && settings.hints && time - game.lastInputAt > 3200) {
         game.hintMove = getRecommendedMove();
@@ -3199,7 +3637,7 @@
         game.hintMove = null;
       }
       updateSimulation(dt);
-      drawGame(time);
+      drawGame(time, palette);
       game.displayedScore = lerp(game.displayedScore, game.score, clamp(rawDt * 0.012, 0, 1));
       $('#hud-score').textContent = formatScore(game.displayedScore);
     }
@@ -3227,25 +3665,26 @@
     }
   }
 
-  function drawGame(time) {
+  function drawGame(time, palette) {
     const shake = settings.shake && !settings.reducedMotion ? game.screenShake : 0;
     const offsetX = shake ? (Math.random() * 2 - 1) * shake : 0;
     const offsetY = shake ? (Math.random() * 2 - 1) * shake : 0;
     ctx.save();
     ctx.translate(offsetX, offsetY);
-    drawBoard(time);
+    drawBoard(time, palette);
     drawParticles();
     drawFloatingTexts();
     ctx.restore();
   }
 
-  function drawBoard(time) {
+  function drawBoard(time, palette) {
     const board = view.board;
     const { x, y, size, tile } = board;
-    const pulse = (Math.sin(time * 0.006) + 1) / 2;
+    const motionTime = settings.reducedMotion ? 0 : time;
+    const pulse = (Math.sin(motionTime * 0.006) + 1) / 2;
 
     ctx.save();
-    ctx.shadowColor = game.overdriveMoves > 0 ? 'rgba(255,215,105,.45)' : 'rgba(91,124,255,.34)';
+    ctx.shadowColor = game.overdriveMoves > 0 ? 'rgba(255,215,105,.45)' : palette.boardShadow;
     ctx.shadowBlur = game.overdriveMoves > 0 ? 44 : 30;
     ctx.fillStyle = 'rgba(5,3,10,.89)';
     roundRect(ctx, x - 10, y - 10, size + 20, size + 20, 10);
@@ -3253,9 +3692,9 @@
     ctx.shadowBlur = 0;
 
     const frame = ctx.createLinearGradient(x, y, x + size, y + size);
-    frame.addColorStop(0, '#55f6ff');
-    frame.addColorStop(0.5, '#5b7cff');
-    frame.addColorStop(1, '#ff4fc8');
+    frame.addColorStop(0, palette.frame[0]);
+    frame.addColorStop(0.5, palette.frame[1]);
+    frame.addColorStop(1, palette.frame[2]);
     ctx.strokeStyle = frame;
     ctx.lineWidth = 2;
     ctx.strokeRect(x - 3, y - 3, size + 6, size + 6);
@@ -3265,7 +3704,7 @@
         const px = x + bx * tile;
         const py = y + by * tile;
         const light = (bx + by) % 2 === 0;
-        ctx.fillStyle = light ? 'rgba(51,38,82,.92)' : 'rgba(16,13,31,.97)';
+        ctx.fillStyle = light ? palette.boardLight : palette.boardDark;
         ctx.fillRect(px, py, tile + .5, tile + .5);
         const edge = ctx.createLinearGradient(px, py, px + tile, py + tile);
         edge.addColorStop(0, 'rgba(255,255,255,.025)');
@@ -3275,7 +3714,7 @@
       }
     }
 
-    drawPromotionZone(time);
+    drawPromotionZone(motionTime);
     if (game.overdriveMoves > 0) {
       const overdrive = ctx.createLinearGradient(x, y, x + size, y + size);
       overdrive.addColorStop(0, `rgba(84,246,255,${0.06 + pulse * 0.04})`);
@@ -3285,16 +3724,16 @@
       ctx.fillRect(x, y, size, size);
     }
 
-    drawHighlights(time);
-    drawHint(time);
-    drawEnemyIntent(time);
+    drawHighlights(motionTime);
+    drawHint(motionTime);
+    drawEnemyIntent(motionTime);
 
     const pieces = game.pieces.filter(piece => piece.alive || piece.anim).sort((a, b) => {
       if (a.anim && !b.anim) return 1;
       if (!a.anim && b.anim) return -1;
       return a.y - b.y;
     });
-    pieces.forEach(piece => drawPiece(piece, time));
+    pieces.forEach(piece => drawPiece(piece, time, motionTime));
     ctx.restore();
   }
 
@@ -3455,7 +3894,7 @@
     ctx.restore();
   }
 
-  function drawPiece(piece, time) {
+  function drawPiece(piece, time, motionTime = time) {
     const tile = view.board.tile;
     let drawX = piece.x;
     let drawY = piece.y;
@@ -3474,7 +3913,7 @@
     const isCrown = piece.type === 'k' && piece.color === 'b';
     const selected = game.selectedId === piece.id;
     const intentActor = game.enemyIntent?.pieceId === piece.id;
-    const pulse = (Math.sin(time * .009 + Number(piece.id.replace(/\D/g, '') || 0)) + 1) / 2;
+    const pulse = (Math.sin(motionTime * .009 + Number(piece.id.replace(/\D/g, '') || 0)) + 1) / 2;
     const radius = tile * (isCrown ? .37 : .34);
     const glyphSize = tile * (isCrown ? .72 : .68);
 
@@ -3530,9 +3969,9 @@
 
     if (isCrown) {
       ctx.save();
-      ctx.rotate(time * .00035);
+      ctx.rotate(motionTime * .00035);
       ctx.setLineDash([tile * .08, tile * .045]);
-      ctx.lineDashOffset = -time * .018;
+      ctx.lineDashOffset = -motionTime * .018;
       ctx.strokeStyle = `rgba(255,215,105,${.55 + pulse * .35})`;
       ctx.lineWidth = Math.max(2, tile * .035);
       ctx.beginPath();
@@ -3728,17 +4167,14 @@
     if (promotionModal.classList.contains('active')) renderPromotionChoices();
     if (rewardModal.classList.contains('active') && Array.isArray(run?.pendingRewards)) renderRewardDraft(run.pendingRewards);
     if (contractModal.classList.contains('active') && Array.isArray(run?.pendingContracts)) renderContractChoices(run.pendingContracts);
-    if (runResultModal.classList.contains('active') && run) {
-      $('#result-kicker').textContent = t(run.daily ? 'result.dailyClear' : 'result.runClear');
-      $('#result-title').textContent = t('result.cleared');
-      $('#result-seed').textContent = t('result.seed', { seed: formatSeed(run.seed) });
-    }
+    if ($('#tally')?.classList.contains('show')) renderTallyStory();
+    if (runResultModal.classList.contains('active') && currentRunResult) renderRunResultTranslations();
     if (failModal.classList.contains('active') && game.failureReason) $('#fail-reason').textContent = t(`failure.${game.failureReason}`);
     if (infoModal.classList.contains('active') && currentInfoKind) {
       renderInfo(currentInfoKind);
       if (currentInfoKind === 'settings') bindSettingsControls();
     }
-    if (currentTutorialMessage) $('#tutorial-chip').textContent = t(currentTutorialMessage.key, currentTutorialMessage.params);
+    if (currentTutorialMessage) renderCurrentTutorialMessage();
     if (currentBannerMessage) $('#turn-banner').textContent = t(currentBannerMessage.key, currentBannerMessage.params);
   }
 
@@ -3929,6 +4365,23 @@
       persistRun('battle');
       updateHUD(true);
     };
+    const startQAContractBattle = (seed, depth, contractFactory) => {
+      assertInteger(seed, 1, 0xFFFFFFFF, 'seed');
+      assertInteger(depth, 1, 8, 'depth');
+      clearActiveRun();
+      currentRunResult = null;
+      run = newRunState(seed, false);
+      run.battle = depth;
+      run.currentContract = contractFactory(run.roster);
+      assertRunContractAtDepth(run.currentContract, depth, run.roster, run.seed);
+      startRunBattle(false);
+      return true;
+    };
+    const seedForBoss = bossId => {
+      if (!Object.hasOwn(BOSS_DEFS, bossId)) throw new RangeError(`Unknown boss id: ${String(bossId)}.`);
+      for (let seed = 1; seed <= 0xFFFF; seed++) if (bossIdForSeed(seed) === bossId) return seed;
+      throw new Error(`Could not derive a QA seed for boss ${bossId}.`);
+    };
 
     window.__CB_TEST__ = {
       version: VERSION,
@@ -3957,6 +4410,8 @@
         battleCharges: deepClone(game.battleCharges),
         failureReason: game.failureReason,
         trait: activeTraitId(),
+        act: activeAct()?.themeKey || null,
+        appAct: app.dataset.act || null,
         pieces: game.pieces.map(piece => ({
           id: piece.id,
           uid: piece.uid || null,
@@ -3979,6 +4434,12 @@
       locale: () => locale,
       preference: () => localePreference,
       traits: () => [...TRAIT_IDS],
+      acts: () => deepClone(ACTS),
+      tutorial: () => ({
+        current: currentTutorialMessage ? deepClone(currentTutorialMessage) : null,
+        queue: deepClone(tutorialQueue),
+        seen: deepClone(save.tutorial),
+      }),
       formations: () => [...FORMATION_IDS],
       mods: () => [...MOD_IDS],
       aiProfiles: () => [...AI_PROFILE_IDS],
@@ -3993,7 +4454,31 @@
           run.roster
         ));
       },
-      startRun: (seed = 123456) => { clearActiveRun(); startNewRun(Number(seed) || 1, false); },
+      startRun: (seed = 123456) => {
+        assertInteger(seed, 1, 0xFFFFFFFF, 'seed');
+        clearActiveRun();
+        startNewRun(seed, false);
+      },
+      startSetpiece: (depth, seed = 123456) => {
+        assertInteger(depth, 1, 8, 'depth');
+        if (!setpieceActForDepth(depth)) throw new RangeError(`Depth ${depth} is not a setpiece depth.`);
+        return startQAContractBattle(seed, depth, roster => makeSetpieceContract(depth, roster));
+      },
+      startBoss: (bossId, seed = undefined) => {
+        if (typeof bossId !== 'string' || !Object.hasOwn(BOSS_DEFS, bossId)) throw new RangeError(`Unknown boss id: ${String(bossId)}.`);
+        const runSeed = seed === undefined ? seedForBoss(bossId) : seed;
+        assertInteger(runSeed, 1, 0xFFFFFFFF, 'seed');
+        if (bossIdForSeed(runSeed) !== bossId) throw new RangeError(`Seed ${formatSeed(runSeed)} does not select boss ${bossId}.`);
+        return startQAContractBattle(runSeed, 8, roster => makeBossContract(bossId, runSeed, roster));
+      },
+      materializeSetpiece: depth => {
+        if (!run || !Array.isArray(run.roster)) throw new Error('An active run roster is required.');
+        assertInteger(depth, 1, 8, 'depth');
+        const before = run.rngState;
+        const contract = makeSetpieceContract(depth, run.roster);
+        const after = run.rngState;
+        return { before, after, contract: deepClone(contract) };
+      },
       startDaily: () => { clearActiveRun(); startNewRun(dailySeed(), true); },
       startTraining,
       setLanguage: setLanguagePreference,
@@ -4001,6 +4486,12 @@
         const piece = uid ? game.pieces.find(item => item.uid === uid || item.id === uid) : null;
         const list = piece ? getLegalMoves(piece).map(move => ({ pieceId: piece.id, ...move })) : allMoves('w').map(item => ({ pieceId: item.piece.id, uid: item.piece.uid, ...item.move }));
         return deepClone(list);
+      },
+      selectPiece: pieceRef => {
+        const piece = game.pieces.find(item => item.id === pieceRef || item.uid === pieceRef);
+        if (!piece) return false;
+        selectPiece(piece);
+        return game.selectedId === piece.id;
       },
       play: (pieceRef, x, y) => {
         const piece = game.pieces.find(item => item.id === pieceRef || item.uid === pieceRef);
@@ -4023,7 +4514,10 @@
         const pick = getRecommendedMove(false);
         return pick ? { pieceId: pick.piece.id, uid: pick.piece.uid, ...deepClone(pick.move) } : null;
       },
-      fast: value => { settings.reducedMotion = value !== false; },
+      fast: value => {
+        settings.reducedMotion = value !== false;
+        syncMotionPresentation();
+      },
       openPromotion: (pieceRef = 'pawn-a', after = 'move') => {
         const piece = game.pieces.find(item => item.id === pieceRef || item.uid === pieceRef);
         if (!piece || piece.color !== 'w' || piece.type !== 'p' || !game.active) return false;
@@ -4155,6 +4649,11 @@
         if (!run) throw new Error('An active run is required.');
         if (!Array.isArray(contracts) || !contracts.length) throw new RangeError('contracts must be a non-empty array.');
         const choices = contracts.map(entry => deepClone(assertContract(entry, run.roster)));
+        const targetDepth = choices[0].depth;
+        if (!Number.isInteger(targetDepth) || targetDepth < 2 || targetDepth > 8) throw new RangeError('Contract drafts must target depth 2 through 8.');
+        if (choices.some(contract => contract.depth !== targetDepth)) throw new RangeError('Contract draft entries must share one target depth.');
+        choices.forEach(contract => assertRunContractAtDepth(contract, targetDepth, run.roster, run.seed));
+        run.battle = targetDepth - 1;
         run.pendingContracts = choices;
         run.stage = 'contract';
         renderContractChoices(choices);
@@ -4198,6 +4697,7 @@
   }
 
   function init() {
+    syncMotionPresentation();
     resize();
     applyLocale();
     bindEvents();

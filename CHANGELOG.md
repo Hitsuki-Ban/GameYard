@@ -1,5 +1,15 @@
 # 更新记录
 
+## v3.7.0 — 三幕舞台叙事版（2026-07-21）
+
+- 将 8 战 Run 固化为外苑 `outer`（1–3）、回廊 `gallery`（4–6）、王座厅 `throne`（7–8）三幕；`ACTS` 统一登记 `themeKey`、`setpieceDepth` 与幕启/胜利/固定战文案键。
+- 第 3、5、7 战分别成为 seed 无关的“雾中围猎”“双生门”“伪加冕”canonical 固定合同；合同字段、布局 seed、深度与实际坐标严格校验，物化不消耗 Run RNG。
+- 三幕 SVG 背景/粒子层与 Canvas 调色板正式进入唯一运行时路径；`#app[data-act]` 随当前合同深度同步，减少动态模式保留主题但冻结粒子运动。
+- 幕首消息改为“剧情 → 王冠特性 → 首次教学”队列；胜利结算追加幕剧情，固定战卡显示专名与短句。第 8 战的三种 Boss 由初始 seed 派生，并各自提供经真实战斗、结算与最终结果路径到达的中日英结局。
+- 活动 Run 升级为严格 v3 存档合同；旧 schema、错位深度、非 canonical setpiece、seed 不匹配 Boss 与被改写的 layout 均无迁移、无补值地拒绝。
+- `imagegen` 对比 A Spectral Architectural Wash、B Deco Proscenium Court、C Tactical Court Cartography 后选择 A，并只借用 B 的细框语言；概念 PNG 不进入仓库。
+- 新增 `pnpm check:stages` 与 `pnpm render:stages`，覆盖三幕主题、固定合同/坐标确定性、剧情键及 reduced motion，并输出三张 1440×900 舞台参考图；standalone 构建会内联全部六张幕 SVG。
+
 ## v3.6.0 — Deco Court 美术素材包（2026-07-21）
 
 - 新增 50 项原创 SVG 源素材：12 枚双方棋子、3 枚 Boss 王冠、当前完整的 15 个王冠特性、6 种阵形、三幕背景与粒子表、6 枚 HUD 图标，以及 2 项品牌标记。

@@ -1,5 +1,29 @@
 # QA 报告
 
+## v3.7.0
+
+构建：CROWN//BREAKER v3.7.0 三幕舞台叙事版
+日期：2026-07-21
+
+### 本地冻结结果
+
+- `pnpm check`：通过；50 / 50 个 SVG 素材合同、English / 简体中文 / 日本語严格目录与设备语言协商、67 个必需文件、3 份 Manifest、66 个 Service Worker 精确预缓存项均通过。
+- `pnpm check:stages`：通过；覆盖 `outer`、`gallery`、`throne` 三幕，第 3 / 5 / 7 战固定 setpiece 的合同与实际敌方坐标跨 seed 一致，物化前后 Run RNG 不变。减少动态同时覆盖 OS `reduce`，以及 OS `no-preference` + 应用内 reduced 两条路径；未显示的教程消息不会提前写入 seen 标记，并能在 retry 与 reload 后重新入队。
+- `pnpm render:stages`：连续两次生成结果逐字节一致。三张图片均为 1440 × 900、sRGB，并已完成目视验收：外苑 SHA-256 `ABC73F09D35A4F8BA1952FD437FFEE6A6E23332BD5E04141820394A47766BB6D`；回廊 `4BCE3382387B1D62D33DB0C64A5BFAC878B6516B983C18A6E4BACBF52D5C2B08`；王座厅 `8BB67A0735C3FDF8B397F93061B3C252E04FDD5CF5B05441ECE8D6B1A7784722`。
+- Boss 结局：双后、铁壁、兵暴均由 `startBoss()` 开始，经真实 `finishBattle()` → tally → `finishRun()` 到达各自结局。English / 简体中文 / 日本語可在结果界面实时切换，文案保持 1–2 行；切换前后 Boss、seed 与 RNG 均不变。
+- `pnpm check:enemies`：38.1 秒通过；6 个固定 seed 分别走完 8 战，并保留 canonical layout、阵型、词缀与 AI profile 回归覆盖。
+- `pnpm check:traits`：302.2 秒通过；6 个 worker 各执行 250 个组合，合计覆盖 15 个特性 × 100 seeds × 前三次玩家行动，无流程错误。
+- `pnpm sim -- --runs 100 --policy greedy --seed-base 1000`：222.6 秒通过；51 胜 / 49 负，胜率 51%，平均深度 5.73，分数中位数 78,436。失败分布为 `crown_broken` 44、`turns_exhausted` 5、`no_legal_moves` 0、`simulation_error` 0、`simulation_timeout` 0。JSON 为 243,441 字节，SHA-256 `48A6ADCBF2A37F23B00D1FCB40FEB94466937B35C4A9382152BEA1B8864D3A9A`；Markdown 为 7,357 字节，SHA-256 `BB5ACBDA640A42D531E8C503F72D47AFE0EABDEC3AB6889774CE1E0FF66B2731`。相较 v3.5 的 63% 胜率，三场新增固定战把基线降至 51%；本轮无流程故障，该结果作为 v3.7 后续调平基线。
+- 最终 standalone：345,155 字节，SHA-256 `6E8D28B80D8DF739C7C13B0119271033811922107797F341A05AC6547EE09EB9`；内联 6 个幕 SVG data URL，遗留 act 路径 0，外部 link / script 0，Service Worker 注册 0。Playwright 覆盖 1440 × 900、390 × 844、320 × 568 与 English / 简体中文 / 日本語的 9 / 9 组合；title / training 均无 `data-act`，第 3 / 5 / 7 战幕属性正确，无横向溢出、外部请求、Service Worker controller、console error、page error 或 request error。
+
+### 独立审查
+
+- Owner review 与 security review 均通过。Standalone 构建严格拒绝 raw-text closing tags、CSS escapes、`@import`、`image-set` 以及非精确 data SVG URL；特性 QA 的全部浏览器 context 均执行同源请求阻断。
+
+### 发布后门禁
+
+- GitHub Pages 合并提交与构建提交一致性、线上资源与 Service Worker、离线刷新，以及三语三幕实机验证需在发布后补录。这是合并部署后的发布门禁，不是本地实现或验证缺陷。
+
 ## v3.6.0
 
 构建：CROWN//BREAKER v3.6.0 Deco Court 美术素材包

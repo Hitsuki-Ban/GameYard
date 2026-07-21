@@ -28,12 +28,84 @@ function removeExactlyOnce(source, pattern, label) {
 }
 
 function escapeInlineScript(source) {
-  return source.replaceAll('</script', '<\\/script');
+  return source.replace(/<\/script/gi, '<\\/script');
 }
 
+function escapeInlineStyle(source) {
+  return source.replace(/<\/style/gi, '<\\/style');
+}
+
+function assertRawTextEscaped(source, tagName) {
+  if (new RegExp(`<\\/${tagName}`, 'i').test(source)) {
+    throw new Error(`Inline ${tagName} content contains an unescaped closing tag.`);
+  }
+}
+
+function assertInlineCssResources(source, expectedDataUrls) {
+  if (source.includes('\\')) throw new Error('Standalone CSS must not contain escapes.');
+  if (/@import\b/i.test(source)) throw new Error('Standalone CSS must not contain @import.');
+  if (/(?:^|[^\w-])(?:-webkit-)?image-set\s*\(/i.test(source)) {
+    throw new Error('Standalone CSS must not contain image-set().');
+  }
+  const tokens = [];
+  const tokenPattern = /\burl\s*\(\s*(?:(["'])(.*?)\1|([^"'()]*))\s*\)/gi;
+  for (const match of source.matchAll(tokenPattern)) {
+    const value = (match[2] ?? match[3] ?? '').trim();
+    if (!value || !/^data:image\/svg\+xml;base64,/i.test(value)) {
+      throw new Error(`Standalone CSS contains a non-data URL: ${value || '<empty>'}.`);
+    }
+    tokens.push(value);
+  }
+  const starts = source.match(/\burl\s*\(/gi) || [];
+  if (tokens.length !== starts.length) throw new Error('Standalone CSS contains a malformed url() token.');
+  if (tokens.length !== expectedDataUrls) {
+    throw new Error(`Standalone CSS must contain exactly ${expectedDataUrls} data URLs; found ${tokens.length}.`);
+  }
+}
+
+function assertInlineCssRejected(source, label) {
+  try {
+    assertInlineCssResources(source, 0);
+  } catch {
+    return;
+  }
+  throw new Error(`Standalone CSS guard accepted ${label}.`);
+}
+
+assertRawTextEscaped(escapeInlineScript('</SCRIPT><\/ScRiPt>'), 'script');
+assertRawTextEscaped(escapeInlineStyle('</STYLE><\/StYlE>'), 'style');
+assertInlineCssRejected('.probe{background-image:u\\72l("https://example.invalid/pixel")}', 'an escaped url() identifier');
+assertInlineCssRejected('@im\\70ort "https://example.invalid/style.css";', 'an escaped @import identifier');
+assertInlineCssRejected('.probe{background-image:image-set("https://example.invalid/image.png" 1x)}', 'an image-set() URL');
+
+const actAssetPaths = Object.freeze([
+  'assets/acts/outer.svg',
+  'assets/acts/outer-particles.svg',
+  'assets/acts/gallery.svg',
+  'assets/acts/gallery-particles.svg',
+  'assets/acts/throne.svg',
+  'assets/acts/throne-particles.svg',
+]);
+
 let html = await readFile(resolve(root, 'index.html'), 'utf8');
-const css = await readFile(resolve(root, 'styles.css'), 'utf8');
+let css = await readFile(resolve(root, 'styles.css'), 'utf8');
+for (const assetPath of actAssetPaths) {
+  const encoded = (await readFile(resolve(root, assetPath))).toString('base64');
+  css = replaceExactlyOnce(
+    css,
+    `url("./${assetPath}")`,
+    `url("data:image/svg+xml;base64,${encoded}")`,
+    `CSS reference to ./${assetPath}`,
+  );
+}
+if (css.includes('./assets/acts/')) {
+  throw new Error('Standalone CSS still contains an ./assets/acts/ resource reference.');
+}
+assertInlineCssResources(css, actAssetPaths.length);
+css = escapeInlineStyle(css);
+assertRawTextEscaped(css, 'style');
 const i18n = escapeInlineScript(await readFile(resolve(root, 'i18n.js'), 'utf8'));
+assertRawTextEscaped(i18n, 'script');
 const icon = (await readFile(resolve(root, 'icon-192.png'))).toString('base64');
 const gameSource = await readFile(resolve(root, 'game.js'), 'utf8');
 const standaloneGame = replaceExactlyOnce(
@@ -43,6 +115,7 @@ const standaloneGame = replaceExactlyOnce(
   'service worker registration block in game.js',
 );
 const game = escapeInlineScript(standaloneGame);
+assertRawTextEscaped(game, 'script');
 
 html = removeExactlyOnce(
   html,
@@ -81,6 +154,9 @@ html = replaceExactlyOnce(
 
 if (/<script\b[^>]*\bsrc\s*=|<link\b[^>]*\bhref\s*=\s*["'](?!data:)[^"']+|<link\b[^>]*\bimagesrcset\s*=|<(?:img|audio|video|source)\b[^>]*\bsrc\s*=/i.test(html)) {
   throw new Error('Standalone output still contains an external resource reference.');
+}
+if (html.includes('./assets/acts/')) {
+  throw new Error('Standalone output still contains an ./assets/acts/ resource reference.');
 }
 
 await mkdir(dirname(output), { recursive: true });

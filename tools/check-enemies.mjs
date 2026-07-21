@@ -33,7 +33,10 @@ const mime = {
 };
 const webAssets = new Set([
   'index.html', 'styles.css', 'i18n.js', 'game.js', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest'
+  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest',
+  'assets/acts/outer.svg', 'assets/acts/outer-particles.svg',
+  'assets/acts/gallery.svg', 'assets/acts/gallery-particles.svg',
+  'assets/acts/throne.svg', 'assets/acts/throne-particles.svg'
 ]);
 let expectedHost = null;
 
@@ -195,22 +198,21 @@ async function testRegistriesAndLayouts() {
     await assertPreviewToBattle(contract, `mod ${mod}`);
   }
 
-  for (const [index, [boss, definition]] of Object.entries(bosses).entries()) {
-    const contract = await materialize({
-      id: `qa-boss-${boss}`,
-      depth: 8,
-      elite: true,
-      final: true,
-      boss,
-      mods: [...definition.mods],
-      trait: definition.trait,
-      formation: definition.formation,
-      aiProfile: definition.aiProfile,
-      layoutSeed: 400 + index,
-      reward: 0
-    });
+  for (const [boss, definition] of Object.entries(bosses)) {
+    await qa('startBoss', boss);
+    await qa('fast', true);
+    await waitForPlayerOrTerminal();
+    const snapshot = await state();
+    const contract = snapshot.run.currentContract;
+    assert.equal(contract.boss, boss, `boss ${boss} identity mismatch`);
+    assert.equal(contract.formation, definition.formation, `boss ${boss} formation mismatch`);
+    assert.equal(contract.aiProfile, definition.aiProfile, `boss ${boss} AI profile mismatch`);
+    assert.equal(contract.trait, definition.trait, `boss ${boss} trait mismatch`);
+    assert.deepEqual(contract.mods, definition.mods, `boss ${boss} modifiers mismatch`);
     assert.equal(contract.enemyLayout.length, bossLayoutCounts[boss], `boss ${boss} canonical layout count`);
-    await assertPreviewToBattle(contract, `boss ${boss}`);
+    assert.deepEqual(runtimeBlackLayout(snapshot), normalizedLayout(contract.enemyLayout), `boss ${boss}: runtime diverged from canonical layout`);
+    assert.ok((await qa('moves')).length > 0, `boss ${boss}: battle start has no legal white move`);
+    assertClean(`boss ${boss}`);
   }
 }
 
@@ -377,24 +379,26 @@ async function testStrictAtomicRejection() {
   );
 
   const bossDefinition = bosses.twinQueens;
-  const bossContract = await materialize({
-    id: 'qa-atomic-boss',
-    depth: 8,
-    elite: true,
-    final: true,
-    boss: 'twinQueens',
-    mods: [...bossDefinition.mods],
-    trait: bossDefinition.trait,
-    formation: bossDefinition.formation,
-    aiProfile: bossDefinition.aiProfile,
-    layoutSeed: 703,
-    reward: 0
-  });
-  await qa('showContracts', [bossContract]);
-  await qa('selectContract', 0);
+  await qa('startBoss', 'twinQueens');
+  await qa('fast', true);
   await waitForPlayerOrTerminal();
   const bossStable = await state();
   assert.equal(bossStable.run.currentContract.boss, 'twinQueens', 'boss atomic fixture did not enter the requested boss contract');
+  const { enemyLayout: _bossLayout, ...bossInput } = bossStable.run.currentContract;
+  const alternateBossLayout = await qa('materializeContract', {
+    ...bossInput,
+    layoutSeed: bossInput.layoutSeed === 0xFFFFFFFF ? 1 : bossInput.layoutSeed + 1
+  });
+  await assertAtomicReject(
+    () => qa('showContracts', [{ ...bossStable.run.currentContract, id: `${bossStable.run.currentContract.id}-tampered` }]),
+    'showContracts non-canonical boss id',
+    bossStable
+  );
+  await assertAtomicReject(
+    () => qa('showContracts', [alternateBossLayout]),
+    'showContracts non-canonical boss layout seed',
+    bossStable
+  );
   const bossConfig = battleConfig(bossDefinition.aiProfile, bossStable.pieces, {
     trait: bossDefinition.trait,
     mods: [...bossDefinition.mods],
@@ -575,6 +579,55 @@ async function testLocalizedContractCards() {
   }
 }
 
+async function testBossEndings() {
+  for (const boss of Object.keys(bosses)) {
+    await qa('startBoss', boss);
+    await qa('fast', true);
+    await waitForPlayerOrTerminal();
+    const battle = await state();
+    assert.equal(battle.run.currentContract.boss, boss, `${boss}: startBoss entered the wrong boss battle`);
+    assert.equal(await qa('finishBattle'), true, `${boss}: real battle completion hook was rejected`);
+    await page.waitForFunction(() => {
+      const modal = document.querySelector('#run-result-modal');
+      return window.__CB_TEST__.state().phase === 'result' && modal?.classList.contains('active');
+    }, null, { timeout: 5000, polling: 10 });
+
+    const completed = await state();
+    const completedIdentity = {
+      boss: completed.run.currentContract.boss,
+      seed: completed.run.seed,
+      rngState: completed.run.rngState,
+    };
+    assert.equal(completedIdentity.boss, boss, `${boss}: completed result lost boss identity`);
+    const endings = [];
+    for (const locale of ['en', 'zh-CN', 'ja']) {
+      await qa('setLanguage', locale);
+      const rendered = await page.locator('#result-ending').evaluate(element => {
+        const text = element.textContent?.trim() ?? '';
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+        const textHeight = range.getBoundingClientRect().height;
+        return {
+          text,
+          lines: text && Number.isFinite(lineHeight) && lineHeight > 0 ? Math.ceil((textHeight / lineHeight) - 0.02) : 0,
+        };
+      });
+      assert.ok(rendered.text.length > 0, `${boss} ${locale}: ending is empty`);
+      assert.ok(rendered.lines >= 1 && rendered.lines <= 2, `${boss} ${locale}: ending occupies ${rendered.lines} lines`);
+      endings.push(rendered.text);
+      const localizedState = await state();
+      assert.deepEqual({
+        boss: localizedState.run.currentContract.boss,
+        seed: localizedState.run.seed,
+        rngState: localizedState.run.rngState,
+      }, completedIdentity, `${boss} ${locale}: language switch changed boss, seed, or Run RNG`);
+    }
+    assert.equal(new Set(endings).size, 3, `${boss}: en/zh-CN/ja endings must be distinct`);
+    assertClean(`${boss} endings`);
+  }
+}
+
 async function completeBattleWithRecommendedMove(label) {
   let recommendedMovePlayed = false;
   for (;;) {
@@ -641,12 +694,17 @@ async function testEightBattleFormationRuns() {
       await completeBattleWithRecommendedMove(`${formation} depth ${depth}`);
       if (depth === 8) break;
       const routeState = await chooseRewardsUntilContract(`${formation} depth ${depth}`);
-      if (depth + 1 === 8) {
+      const nextDepth = depth + 1;
+      if ([3, 5, 7].includes(nextDepth)) {
+        assert.equal(routeState.run.pendingContracts.length, 1, `${formation}: depth ${nextDepth} must contain one fixed setpiece`);
+        assert.equal(routeState.run.pendingContracts[0].id.startsWith('setpiece-'), true, `${formation}: depth ${nextDepth} route is not a fixed setpiece`);
+        await qa('selectContract', 0);
+      } else if (nextDepth === 8) {
         assert.equal(routeState.run.pendingContracts.length, 1, `${formation}: final route must contain one natural boss`);
         assert.equal(routeState.run.pendingContracts[0].final, true, `${formation}: final route is not a boss contract`);
         await qa('selectContract', 0);
       } else {
-        const choices = await routeContracts(formation, depth + 1, formationIndex);
+        const choices = await routeContracts(formation, nextDepth, formationIndex);
         await qa('showContracts', choices);
         await qa('selectContract', 0);
       }
@@ -703,6 +761,8 @@ try {
   await testVeteranAndExecutionerRuntime();
   console.log('- en/zh-CN/ja route-card formation, profile, and new-mod copy');
   await testLocalizedContractCards();
+  console.log('- three canonical boss endings through real battle completion, with live locale switching');
+  await testBossEndings();
   console.log('- promoted, mirror, veteran, and executioner semantics');
   await testModSemantics();
   assertClean('targeted checks');
