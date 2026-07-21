@@ -1,6 +1,6 @@
 {
   "name": "crown-breaker",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "A compact chess-movement board roguelite for the browser.",
   "private": true,
   "license": "MIT",
@@ -12,7 +12,8 @@
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
-    "check": "node --check i18n.js && node --check game.js && node --check sw.js && node --check tools/build-standalone.mjs && node --check tools/check-i18n.mjs && node --check tools/check-static.mjs && node --check tools/sim-run.mjs && node tools/check-i18n.mjs && node tools/check-static.mjs",
+    "check": "node --check i18n.js && node --check game.js && node --check sw.js && node --check tools/build-standalone.mjs && node --check tools/check-i18n.mjs && node --check tools/check-static.mjs && node --check tools/check-traits.mjs && node --check tools/sim-run.mjs && node tools/check-i18n.mjs && node tools/check-static.mjs",
+    "check:traits": "node tools/check-traits.mjs",
     "build:standalone": "node tools/build-standalone.mjs",
     "sim": "node tools/sim-run.mjs"
   },

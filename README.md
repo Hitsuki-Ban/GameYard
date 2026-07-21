@@ -7,7 +7,7 @@
 <a id="english"></a>
 ## English
 
-CROWN//BREAKER is a compact, browser-based board roguelite built around chess movement. Capture the crowned black king directly, carry promotions into later battles, collect seals, and choose a route through a six-battle run. Check, checkmate, castling, and en passant are not part of the rules.
+CROWN//BREAKER is a compact, browser-based board roguelite built around chess movement. Capture the crowned black king directly, carry promotions into later battles, collect seals, and choose a route through an eight-battle run. Check, checkmate, castling, and en passant are not part of the rules.
 
 **[Play on GitHub Pages](https://hitsuki-ban.github.io/CrownBreaker/)**
 
@@ -47,9 +47,12 @@ The game has no third-party runtime dependencies. The balance simulator uses Pla
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:traits
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:traits` runs targeted checks for all 15 crown traits plus 100 seeds per trait through the first three player hands.
 
 `--runs`, `--policy` (`greedy` or `random`), and `--seed-base` are required. The simulator drives the real browser game through its QA interface and writes deterministic JSON plus Markdown reports to `reports/`. Repeating the same command produces identical report contents; the current date appears only in the default filenames.
 
@@ -75,7 +78,7 @@ Released under the [MIT License](LICENSE.txt).
 <a id="简体中文"></a>
 ## 简体中文
 
-CROWN//BREAKER 是一款基于国际象棋走法的浏览器短局棋盘肉鸽。直接吃掉戴冠黑王，在六场对局中保留升变棋子、取得棋印并选择路线。规则不采用将军、将死、王车易位或吃过路兵。
+CROWN//BREAKER 是一款基于国际象棋走法的浏览器短局棋盘肉鸽。直接吃掉戴冠黑王，在八场对局中保留升变棋子、取得棋印并选择路线。规则不采用将军、将死、王车易位或吃过路兵。
 
 **[在 GitHub Pages 直接体验](https://hitsuki-ban.github.io/CrownBreaker/)**
 
@@ -108,9 +111,12 @@ uv run python -m http.server 8080
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:traits
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:traits` 会逐项检查全部 15 种王冠特性，并为每种特性运行 100 个种子的前三次玩家行动。
 
 `--runs`、`--policy`（`greedy` 或 `random`）和 `--seed-base` 均为必填。模拟器通过 QA 接口驱动真实浏览器游戏，并在 `reports/` 输出确定性的 JSON 与 Markdown 报告；同一命令重复执行时报告内容完全一致，当前日期只会进入默认文件名。
 
@@ -136,7 +142,7 @@ pnpm build:standalone dist/crown-breaker.html
 <a id="日本語"></a>
 ## 日本語
 
-CROWN//BREAKER は、チェスの駒の動きを土台にしたブラウザ向け短編ボードローグライトです。冠を持つ黒のキングを直接取り、6 戦のあいだ昇格した駒を引き継ぎ、シールを獲得し、次のルートを選びます。チェック、チェックメイト、キャスリング、アンパッサンは使用しません。
+CROWN//BREAKER は、チェスの駒の動きを土台にしたブラウザ向け短編ボードローグライトです。冠を持つ黒のキングを直接取り、8 戦のあいだ昇格した駒を引き継ぎ、シールを獲得し、次のルートを選びます。チェック、チェックメイト、キャスリング、アンパッサンは使用しません。
 
 **[GitHub Pages でプレイ](https://hitsuki-ban.github.io/CrownBreaker/)**
 
@@ -169,9 +175,12 @@ Service Worker には HTTP または HTTPS が必要なため、`index.html` の
 pnpm install
 pnpm exec playwright install chromium
 pnpm check
+pnpm check:traits
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`pnpm check:traits` は全 15 種のクラウン特性を個別検証し、各特性 100 シードの最初のプレイヤー 3 手を実行します。
 
 `--runs`、`--policy`（`greedy` または `random`）、`--seed-base` はすべて必須です。シミュレーターは QA インターフェースを通して実ブラウザー上のゲームを操作し、`reports/` に決定的な JSON と Markdown のレポートを出力します。同じコマンドのレポート内容は一致し、現在の日付は既定のファイル名だけに入ります。
 

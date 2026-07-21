@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.3.0';
+  const VERSION = '3.4.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -126,6 +126,7 @@
     { id: 'crownSurge', nameKey: 'relic.crownSurge.name', lineKey: 'relic.crownSurge.line', max: 2, glyph: '♚', kind: 'tempo', rarity: 'rare' }
   ];
   const RELIC_BY_ID = Object.fromEntries(RELICS.map(item => [item.id, item]));
+  const RELIC_IDS = new Set(RELICS.map(item => item.id));
 
   function relicEffectLine(id, level = 1) {
     const value = clamp(Number(level) || 1, 1, 2);
@@ -164,8 +165,12 @@
     berserk: { id: 'berserk', nameKey: 'trait.berserk.name', lineKey: 'trait.berserk.line', glyph: '♚' },
     rampart: { id: 'rampart', nameKey: 'trait.rampart.name', lineKey: 'trait.rampart.line', glyph: '♜' },
     swift: { id: 'swift', nameKey: 'trait.swift.name', lineKey: 'trait.swift.line', glyph: '♙' },
-    echo: { id: 'echo', nameKey: 'trait.echo.name', lineKey: 'trait.echo.line', glyph: '✦' }
+    echo: { id: 'echo', nameKey: 'trait.echo.name', lineKey: 'trait.echo.line', glyph: '✦' },
+    gravity: { id: 'gravity', nameKey: 'trait.gravity.name', lineKey: 'trait.gravity.line', glyph: '⬇' },
+    possession: { id: 'possession', nameKey: 'trait.possession.name', lineKey: 'trait.possession.line', glyph: '♞' },
+    lockstep: { id: 'lockstep', nameKey: 'trait.lockstep.name', lineKey: 'trait.lockstep.line', glyph: '⌁' }
   };
+  const TRAIT_IDS = new Set(Object.keys(TRAITS));
 
   const FORMATIONS = {
     scatter: { id: 'scatter', nameKey: 'formation.scatter.name', lineKey: 'formation.scatter.line', mix: null },
@@ -474,6 +479,8 @@
     promotionPending: null,
     pendingAfterMove: null,
     battleCharges: {},
+    enemyTurns: 0,
+    enemyCycles: 0,
     battleStartSnapshot: null,
     tutorialStep: 0,
     trainingPromoted: false,
@@ -574,7 +581,7 @@
       elite,
       final: false,
       mods,
-      trait: elite ? choose(Object.keys(TRAITS)) : null,
+      trait: elite ? choose(eligibleTraitIds()) : null,
       formation: choose(Object.keys(FORMATIONS)),
       reward: elite ? 2 : 1,
       previewSeed: run.rngState
@@ -584,12 +591,20 @@
   function activeTraitId() {
     if (game.mode !== 'run' || !run) return null;
     const trait = run.currentContract?.trait;
-    return trait && TRAITS[trait] ? trait : null;
+    return typeof trait === 'string' && TRAIT_IDS.has(trait) ? trait : null;
   }
 
   function activeSpoilLevel(id) {
     if (game.mode !== 'run' || !run || !run.spoils) return 0;
     return clamp(Number(run.spoils[id] || 0), 0, 2);
+  }
+
+  function eligibleTraitIds() {
+    if (!run || !Array.isArray(run.roster)) throw new Error('An active run roster is required to choose traits.');
+    const hasKnight = run.roster.some(member => member.type === 'n');
+    const ids = [...TRAIT_IDS].filter(id => id !== 'gravity' || hasKnight);
+    if (ids.length < 2) throw new Error('At least two eligible crown traits are required.');
+    return ids;
   }
 
   function spoilEffectLine(id, level = 1) {
@@ -607,6 +622,9 @@
       case 'rampart': return t('spoil.rampart', { count: value });
       case 'swift': return t(value === 1 ? 'spoil.swift.one' : 'spoil.swift.two');
       case 'echo': return t('spoil.echo', { count: value >= 2 ? 3 : 4 });
+      case 'gravity': return t(value === 1 ? 'spoil.gravity.one' : 'spoil.gravity.two');
+      case 'possession': return t('spoil.possession', { count: value });
+      case 'lockstep': return t('spoil.lockstep', { count: value });
       default: throw new RangeError(`Unknown spoil id: ${String(id)}`);
     }
   }
@@ -615,7 +633,7 @@
     if (!run || run.battle >= run.totalBattles) return [makeContract(run.totalBattles, true, true)];
     const nextDepth = run.battle + 1;
     if (nextDepth === run.totalBattles) return [makeContract(nextDepth, true, true)];
-    const [traitA, traitB] = shuffled(Object.keys(TRAITS));
+    const [traitA, traitB] = shuffled(eligibleTraitIds());
     if (nextDepth === 5) {
       const gateA = makeContract(nextDepth, true, false);
       gateA.trait = traitA;
@@ -668,6 +686,7 @@
         hasMoved: Boolean(piece.hasMoved),
         dashUsed: Number(piece.dashUsed || 0),
         stunUntil: Number(piece.stunUntil || 0),
+        enemyLockUntil: Number(piece.enemyLockUntil || 0),
         startY: piece.startY
       })),
       turnsLeft: game.turnsLeft,
@@ -688,6 +707,7 @@
       battleMaxCombo: Number(game.battleMaxCombo || 0),
       crownVeil: Number(game.crownVeil || 0),
       enemyTurns: Number(game.enemyTurns || 0),
+      enemyCycles: Number(game.enemyCycles || 0),
       enemyIntent: game.enemyIntent ? deepClone(game.enemyIntent) : null,
       shield: run.shield,
       contract: deepClone(run.currentContract)
@@ -885,6 +905,7 @@
       hasMoved: Boolean(extra.hasMoved),
       dashUsed: Number(extra.dashUsed || 0),
       stunUntil: Number(extra.stunUntil || 0),
+      enemyLockUntil: Number(extra.enemyLockUntil || 0),
       startY: Number.isFinite(extra.startY) ? extra.startY : y,
       anim: null,
       spawnAt: now() + Math.random() * 120
@@ -1074,6 +1095,7 @@
     game.battleMaxCombo = 0;
     game.crownVeil = 0;
     game.enemyTurns = 0;
+    game.enemyCycles = 0;
     game.failureReason = null;
     particles.length = 0;
     floatingTexts.length = 0;
@@ -1116,6 +1138,7 @@
           hasMoved: piece.hasMoved,
           dashUsed: piece.dashUsed,
           stunUntil: piece.stunUntil,
+          enemyLockUntil: piece.enemyLockUntil,
           startY: piece.startY
         })),
         turns: state.turnsLeft,
@@ -1139,6 +1162,7 @@
       game.battleMaxCombo = Number(state.battleMaxCombo || 0);
       game.crownVeil = Number(state.crownVeil || 0);
       game.enemyTurns = Number(state.enemyTurns || 0);
+      game.enemyCycles = Number(state.enemyCycles || 0);
       run.shield = state.shield;
       run.currentContract = state.contract || run.currentContract;
     } else {
@@ -1333,6 +1357,7 @@
   function getPseudoMoves(piece, attackOnly = false) {
     if (!piece || !piece.alive) return [];
     if (piece.color === 'w' && Number(piece.stunUntil || 0) > game.moveCount) return [];
+    if (piece.color === 'b' && Number(piece.enemyLockUntil || 0) > game.enemyCycles) return [];
     const moves = [];
     const add = (x, y) => {
       if (!inBounds(x, y)) return false;
@@ -1355,9 +1380,9 @@
           let extraDashes = 0;
           if (piece.color === 'w') {
             const swiftSpoil = activeSpoilLevel('swift');
-            extraDashes = activeRelicLevel('doubleStep') + (swiftSpoil >= 2 ? 99 : swiftSpoil * 2);
+            extraDashes = activeRelicLevel('doubleStep') + (swiftSpoil >= 2 ? Infinity : swiftSpoil * 2);
           } else if (activeTraitId() === 'swift') {
-            extraDashes = 99;
+            extraDashes = Infinity;
           }
           const canDouble = !piece.hasMoved || Number(piece.dashUsed || 0) < extraDashes;
           if (canDouble && inBounds(piece.x, twoY) && !pieceAt(piece.x, twoY)) {
@@ -1374,7 +1399,14 @@
         else if (target && target.color !== piece.color) moves.push({ x, y, captureId: target.id });
       }
     } else if (piece.type === 'n') {
+      const gravitySpoil = piece.color === 'b' ? activeSpoilLevel('gravity') : 0;
       [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]
+        .filter(([, dy]) => {
+          if (piece.color === 'w' && activeTraitId() === 'gravity') return Math.abs(dy) !== 2;
+          if (gravitySpoil >= 2) return Math.abs(dy) !== 2;
+          if (gravitySpoil === 1) return dy !== 2;
+          return true;
+        })
         .forEach(([dx, dy]) => add(piece.x + dx, piece.y + dy));
     } else if (piece.type === 'k') {
       const kingRange = piece.color === 'w' ? 1 + activeSpoilLevel('berserk') : 1;
@@ -1600,7 +1632,7 @@
       madeAt: now()
     };
     $('#intent-key').classList.toggle('show', activeTraitId() !== 'mist');
-    if (!save.tutorial.intent && game.moveCount === 0) {
+    if (!save.tutorial.intent && game.moveCount === 0 && activeTraitId() !== 'mist') {
       save.tutorial.intent = true;
       persistSave();
       window.setTimeout(() => showTutorial('tutorial.intent', 2200), 500);
@@ -1722,6 +1754,10 @@
     if (activeTraitId() === 'tithe') factor *= 0.6;
     factor *= 1 + 0.3 * activeSpoilLevel('tithe');
     return factor;
+  }
+
+  function crownBreakScore() {
+    return Math.round((1900 + game.enemyHPMax * 360) * comboMultiplier() * scoreTaxFactor());
   }
 
   function registerComboStep() {
@@ -1884,24 +1920,33 @@
   function resolveMove(piece, captured, actor, context) {
     if (piece.type === 'p' && context.move.doubleStep && piece.hasMoved) piece.dashUsed += 1;
     piece.hasMoved = true;
+    if (actor === 'player' && activeTraitId() === 'lockstep') {
+      piece.stunUntil = Math.max(Number(piece.stunUntil || 0), game.moveCount + 1);
+    }
 
     if (captured?.type === 'k') {
       if (actor === 'player' && captured.color === 'b') {
         handleEnemyCrownHit(piece, captured);
       } else if (actor === 'enemy' && captured.color === 'w') {
-        handlePlayerCrownHit(piece, captured);
+        handlePlayerCrownHit(piece, captured, Boolean(context.isEcho));
       }
       return 'terminal';
     }
 
     if (captured && actor === 'player') handlePlayerCapture(piece, captured, context);
 
-    if (captured && actor === 'enemy' && captured.color === 'w' && captured.type !== 'k' && piece.type !== 'k') {
+    if (captured && actor === 'enemy' && captured.color === 'w' && captured.type !== 'k') {
       const thornsLevel = activeSpoilLevel('thorns');
       const thornsUsed = Number(game.battleCharges.thornsRevenge || 0);
       if (thornsLevel > thornsUsed) {
         game.battleCharges.thornsRevenge = thornsUsed + 1;
         piece.alive = false;
+        if (piece.type === 'k') {
+          if (!context.isEcho) afterEnemyAction();
+          applyEnemyLock(piece);
+          recordEnemyCrownBreak(captured, piece, false);
+          return 'terminal';
+        }
         const point = tileCenter(piece.x, piece.y);
         addImpact(point.x, point.y, 'player', 20);
         addScore(150, point.x, point.y, '+150');
@@ -1954,6 +1999,7 @@
 
   function executeEnemyIntent(isEcho = false) {
     if (!game.active) return;
+    if (!isEcho) game.enemyCycles = Number(game.enemyCycles || 0) + 1;
     const intent = game.enemyIntent;
     game.enemyIntent = null;
     $('#intent-key').classList.remove('show');
@@ -2000,17 +2046,11 @@
       const fromY = actor.y;
       game.phase = 'animating';
       startMoveAnimation(actor, move, captured, 'enemy', () => {
-        const outcome = resolveMove(actor, captured, 'enemy', { fromX, fromY, move, credit: null });
+        const outcome = resolveMove(actor, captured, 'enemy', { fromX, fromY, move, credit: null, isEcho });
         if (outcome === 'terminal') return;
-        if (!isEcho) {
-          afterEnemyAction();
-          if (game.active && activeTraitId() === 'echo' && game.enemyTurns % 3 === 0) {
-            prepareEnemyIntent();
-            executeEnemyIntent(true);
-            return;
-          }
-        }
-        beginPlayerTurn(true);
+        if (!isEcho) afterEnemyAction();
+        applyEnemyLock(actor);
+        continueEnemySequence(isEcho);
       });
     }, delay);
   }
@@ -2093,6 +2133,7 @@
       closeModal();
       return;
     }
+    const wasPawn = piece.type === 'p';
     piece.type = type;
     if (run && game.mode === 'run') {
       const member = run.roster.find(item => item.uid === piece.uid);
@@ -2101,6 +2142,27 @@
     }
     if (game.mode === 'training') game.trainingPromoted = true;
     save.totalPromotions += 1;
+    const possessionLevel = activeSpoilLevel('possession');
+    if (wasPawn && possessionLevel && !game.battleCharges.possessionPromotion) {
+      game.battleCharges.possessionPromotion = 1;
+      const candidates = game.pieces
+        .filter(candidate => candidate.alive && candidate.color === 'w' && candidate.id !== piece.id && candidate.uid)
+        .map(candidate => ({ candidate, member: run?.roster?.find(entry => entry.uid === candidate.uid) || null }))
+        .filter(entry => entry.member?.type === 'p' && entry.candidate.type === 'p')
+        .sort((a, b) => {
+          const distanceA = Math.abs(a.candidate.x - piece.x) + Math.abs(a.candidate.y - piece.y);
+          const distanceB = Math.abs(b.candidate.x - piece.x) + Math.abs(b.candidate.y - piece.y);
+          return distanceA - distanceB || a.candidate.uid.localeCompare(b.candidate.uid);
+        });
+      candidates.slice(0, possessionLevel).forEach(({ candidate, member }) => {
+        candidate.type = 'n';
+        member.type = 'n';
+        run.promotions += 1;
+        save.totalPromotions += 1;
+        const syncPoint = tileCenter(candidate.x, candidate.y);
+        addImpact(syncPoint.x, syncPoint.y, 'promotion', 24);
+      });
+    }
     persistSave();
     const point = tileCenter(piece.x, piece.y);
     addImpact(point.x, point.y, 'promotion', 38);
@@ -2129,9 +2191,13 @@
   }
 
   function handleEnemyCrownHit(attacker, crown) {
+    recordEnemyCrownBreak(attacker, crown, true);
+  }
+
+  function recordEnemyCrownBreak(attacker, crown, allowPromotion) {
     game.enemyIntent = null;
     $('#intent-key').classList.remove('show');
-    if (activeTraitId() === 'thorns' && attacker.color === 'w') {
+    if (allowPromotion && activeTraitId() === 'thorns' && attacker.color === 'w') {
       attacker.stunUntil = game.moveCount + 1;
     }
     game.captures += 1;
@@ -2140,15 +2206,30 @@
     registerComboStep();
     game.enemyHP -= 1;
     if (run) run.crownBreaks += 1;
+    if (activeTraitId() === 'possession' && !game.battleCharges.possessionCrown) {
+      game.battleCharges.possessionCrown = 1;
+      const pawn = game.pieces
+        .filter(piece => piece.alive && piece.color === 'b' && piece.type === 'p')
+        .sort((a, b) => {
+          const distanceA = Math.abs(a.x - crown.x) + Math.abs(a.y - crown.y);
+          const distanceB = Math.abs(b.x - crown.x) + Math.abs(b.y - crown.y);
+          return distanceA - distanceB || a.id.localeCompare(b.id);
+        })[0];
+      if (pawn) {
+        pawn.type = 'n';
+        const possessionPoint = tileCenter(pawn.x, pawn.y);
+        addImpact(possessionPoint.x, possessionPoint.y, 'enemy', 18);
+      }
+    }
     const point = tileCenter(attacker.x, attacker.y);
-    const value = Math.round((1900 + game.enemyHPMax * 360) * comboMultiplier());
+    const value = crownBreakScore();
     addScore(value, point.x, point.y, `+${value}`, 'gold');
     addHype(40);
     triggerFlash('crown');
     updateHUD();
 
     const continueHit = () => continueEnemyCrownHit(attacker, crown);
-    if (shouldPromote(attacker)) {
+    if (allowPromotion && attacker.alive && shouldPromote(attacker)) {
       requestPromotion(attacker, continueHit);
       return;
     }
@@ -2287,6 +2368,22 @@
     }
   }
 
+  function applyEnemyLock(piece) {
+    const level = activeSpoilLevel('lockstep');
+    if (!level || !piece) return;
+    piece.enemyLockUntil = Math.max(Number(piece.enemyLockUntil || 0), game.enemyCycles + level);
+  }
+
+  function continueEnemySequence(isEcho) {
+    if (!game.active) return;
+    if (!isEcho && activeTraitId() === 'echo' && game.enemyTurns % 3 === 0) {
+      prepareEnemyIntent();
+      executeEnemyIntent(true);
+      return;
+    }
+    beginPlayerTurn(true);
+  }
+
   function spawnPhaseReinforcements() {
     if (!run || game.mode !== 'run') return;
     const occupied = new Set(game.pieces.filter(piece => piece.alive).map(piece => `${piece.x},${piece.y}`));
@@ -2304,11 +2401,13 @@
     }
   }
 
-  function handlePlayerCrownHit(attacker, crown) {
+  function handlePlayerCrownHit(attacker, crown, isEcho = false) {
     setShield(getShield() - 1);
     game.battleShieldLost = true;
     const hitX = attacker.x;
     const hitY = attacker.y;
+    if (!isEcho) afterEnemyAction();
+    applyEnemyLock(attacker);
     if (attacker.type === 'k' && attacker.color === 'b') {
       respawnEnemyCrown(attacker);
     } else {
@@ -2330,7 +2429,7 @@
       game.transitionTimer = window.setTimeout(() => failBattle('crown_broken'), settings.reducedMotion ? 180 : 650);
     } else {
       game.phase = 'transition';
-      game.transitionTimer = window.setTimeout(() => beginPlayerTurn(true), settings.reducedMotion ? 120 : 480);
+      game.transitionTimer = window.setTimeout(() => continueEnemySequence(isEcho), settings.reducedMotion ? 120 : 480);
     }
   }
 
@@ -2447,7 +2546,7 @@
     run.promotionState = null;
     const bonuses = computeBattleBonuses();
     const stolenTrait = run.currentContract?.trait;
-    if (stolenTrait && TRAITS[stolenTrait]) {
+    if (typeof stolenTrait === 'string' && TRAIT_IDS.has(stolenTrait)) {
       if (!run.spoils) run.spoils = {};
       const before = clamp(Number(run.spoils[stolenTrait] || 0), 0, 2);
       const after = clamp(before + (run.currentContract.elite ? 2 : 1), 0, 2);
@@ -2634,16 +2733,22 @@
       const typeKey = contract.final ? 'contract.type.final' : contract.elite ? 'contract.type.elite' : 'contract.type.normal';
       const mods = contract.mods.map(id => `<span class="mod"><b>${t(CONTRACT_MODS[id].nameKey)}</b><small>${t(CONTRACT_MODS[id].lineKey)}</small></span>`).join('');
       const bossHead = bossDef ? `<strong class="contract-name">${t(bossDef.nameKey)}</strong><span class="contract-boss-line">${t(bossDef.lineKey)}</span>` : '';
-      const traitRow = contract.trait && TRAITS[contract.trait]
+      const traitRow = typeof contract.trait === 'string' && TRAIT_IDS.has(contract.trait)
         ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
         : '';
       const formationDef = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : null;
       const formationRow = formationDef
         ? `<span class="contract-formation"><b>⚔ ${t(formationDef.nameKey)}</b><small>${t(formationDef.lineKey)}</small></span>`
         : '';
-      const spoilLine = contract.trait && TRAITS[contract.trait]
-        ? `<span class="reward-line gold">♚ ${t('contract.reward.spoil', { name: t(TRAITS[contract.trait].nameKey), level: contract.elite ? 2 : 1 })}</span>`
-        : '';
+      let spoilLine = '';
+      if (typeof contract.trait === 'string' && TRAIT_IDS.has(contract.trait)) {
+        const name = t(TRAITS[contract.trait].nameKey);
+        const currentLevel = activeSpoilLevel(contract.trait);
+        const nextLevel = clamp(currentLevel + (contract.elite ? 2 : 1), 0, 2);
+        spoilLine = currentLevel >= 2
+          ? `<span class="reward-line gold">♚ ${t('contract.reward.mastered', { name })}</span>`
+          : `<span class="reward-line gold">♚ ${t('contract.reward.spoil', { name, level: nextLevel })}</span>`;
+      }
       const rewardLines = contract.final ? '' : `<span class="contract-rewards">
         ${spoilLine}
         <span class="reward-line">◆ ${t('contract.reward.picks', { count: 1 })}</span>
@@ -2769,7 +2874,7 @@
     }
     const spoilsRail = $('#spoils-rail');
     const spoilEntries = game.mode === 'run' && run?.spoils
-      ? Object.entries(run.spoils).filter(([id, level]) => TRAITS[id] && level > 0)
+      ? Object.entries(run.spoils).filter(([id, level]) => TRAIT_IDS.has(id) && level > 0)
       : [];
     if (spoilEntries.length) {
       spoilsRail.hidden = false;
@@ -3333,7 +3438,9 @@
       ctx.fill();
     }
 
-    if (piece.color === 'w' && Number(piece.stunUntil || 0) > game.moveCount) {
+    const actionLocked = (piece.color === 'w' && Number(piece.stunUntil || 0) > game.moveCount)
+      || (piece.color === 'b' && Number(piece.enemyLockUntil || 0) > game.enemyCycles);
+    if (actionLocked) {
       ctx.globalAlpha = .45;
       ctx.fillStyle = '#0a0a16';
       ctx.beginPath();
@@ -3569,6 +3676,110 @@
   }
 
   function installTestHooks() {
+    const configurationFields = Object.freeze([
+      'trait', 'spoils', 'pieces', 'enemyHP', 'enemyHPMax', 'turnsLeft', 'moveCount',
+      'enemyTurns', 'enemyCycles', 'battleCharges', 'rngState', 'shield'
+    ]);
+    const battleChargeIds = new Set([
+      'momentum', 'interceptor', 'captureTempo', 'knightSpur', 'phantomEscape',
+      'thornsRevenge', 'possessionPromotion', 'possessionCrown'
+    ]);
+    const pieceFields = new Set(['id', 'uid', 'origin', 'color', 'type', 'x', 'y', 'alive', 'hasMoved', 'dashUsed', 'stunUntil', 'enemyLockUntil', 'startY']);
+    const isPlainRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+      && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+    const assertExactFields = (value, allowed, label) => {
+      if (!isPlainRecord(value)) throw new TypeError(`${label} must be a plain object.`);
+      const extra = Object.keys(value).filter(key => !allowed.has(key));
+      if (extra.length) throw new RangeError(`${label} has unsupported field: ${extra[0]}.`);
+    };
+    const assertInteger = (value, min, max, label) => {
+      if (!Number.isInteger(value) || value < min || value > max) throw new RangeError(`${label} must be an integer from ${min} to ${max}.`);
+    };
+    const validateSpoils = spoils => {
+      if (!isPlainRecord(spoils)) throw new TypeError('spoils must be a plain object.');
+      for (const [id, level] of Object.entries(spoils)) {
+        if (!TRAIT_IDS.has(id)) throw new RangeError(`Unknown spoil id: ${id}.`);
+        assertInteger(level, 0, 2, `spoils.${id}`);
+      }
+      return deepClone(spoils);
+    };
+    const validateBattleCharges = charges => {
+      if (!isPlainRecord(charges)) throw new TypeError('battleCharges must be a plain object.');
+      for (const [id, count] of Object.entries(charges)) {
+        if (!battleChargeIds.has(id)) throw new RangeError(`Unknown battle charge id: ${id}.`);
+        assertInteger(count, 0, Number.MAX_SAFE_INTEGER, `battleCharges.${id}`);
+      }
+      return deepClone(charges);
+    };
+    const validatePieces = pieces => {
+      if (!Array.isArray(pieces) || pieces.length < 2 || pieces.length > 64) throw new RangeError('pieces must contain 2 to 64 entries.');
+      const ids = new Set();
+      const occupied = new Set();
+      const kings = { w: 0, b: 0 };
+      const validated = pieces.map((piece, index) => {
+        const label = `pieces[${index}]`;
+        assertExactFields(piece, pieceFields, label);
+        for (const required of ['id', 'color', 'type', 'x', 'y']) {
+          if (!Object.prototype.hasOwnProperty.call(piece, required)) throw new RangeError(`${label}.${required} is required.`);
+        }
+        if (typeof piece.id !== 'string' || !piece.id.trim() || ids.has(piece.id)) throw new RangeError(`${label}.id must be a unique non-empty string.`);
+        ids.add(piece.id);
+        if (!['w', 'b'].includes(piece.color)) throw new RangeError(`${label}.color must be w or b.`);
+        if (!Object.prototype.hasOwnProperty.call(PIECE_VALUES, piece.type)) throw new RangeError(`${label}.type is invalid.`);
+        assertInteger(piece.x, 0, 7, `${label}.x`);
+        assertInteger(piece.y, 0, 7, `${label}.y`);
+        if (piece.uid !== undefined && piece.uid !== null && (typeof piece.uid !== 'string' || !piece.uid.trim())) throw new TypeError(`${label}.uid must be null or a non-empty string.`);
+        if (piece.origin !== undefined && !Object.prototype.hasOwnProperty.call(PIECE_VALUES, piece.origin)) throw new RangeError(`${label}.origin is invalid.`);
+        if (piece.alive !== undefined && typeof piece.alive !== 'boolean') throw new TypeError(`${label}.alive must be boolean.`);
+        if (piece.hasMoved !== undefined && typeof piece.hasMoved !== 'boolean') throw new TypeError(`${label}.hasMoved must be boolean.`);
+        for (const field of ['dashUsed', 'stunUntil', 'enemyLockUntil']) {
+          if (piece[field] !== undefined) assertInteger(piece[field], 0, Number.MAX_SAFE_INTEGER, `${label}.${field}`);
+        }
+        if (piece.startY !== undefined) assertInteger(piece.startY, 0, 7, `${label}.startY`);
+        if (piece.alive !== false) {
+          const square = `${piece.x},${piece.y}`;
+          if (occupied.has(square)) throw new RangeError(`${label} overlaps another living piece.`);
+          occupied.add(square);
+          if (piece.type === 'k') kings[piece.color] += 1;
+        }
+        return { ...piece };
+      });
+      if (kings.w !== 1 || kings.b !== 1) throw new RangeError('pieces must contain exactly one living king per color.');
+      return validated;
+    };
+    const syncQABattleBaseline = () => {
+      const snapshot = snapshotBattle();
+      run.battleState = deepClone(snapshot);
+      run.battleStart = deepClone(snapshot);
+      run.battleStartMeta = {
+        roster: deepClone(run.roster),
+        promotions: run.promotions,
+        crownBreaks: run.crownBreaks,
+        score: run.score,
+        captures: run.captures,
+        maxCombo: run.maxCombo,
+        shield: run.shield,
+        rngState: run.rngState
+      };
+      game.battleStartSnapshot = deepClone(snapshot);
+      persistRun('battle');
+    };
+    const recomputeIntentAndSyncTrait = () => {
+      game.enemyIntent = null;
+      prepareEnemyIntent();
+      const contract = deepClone(run.currentContract);
+      const intent = game.enemyIntent ? deepClone(game.enemyIntent) : null;
+      run.battleState = snapshotBattle();
+      if (run.battleStart) {
+        run.battleStart.contract = deepClone(contract);
+        run.battleStart.enemyIntent = intent;
+      }
+      if (run.battleStartMeta) run.battleStartMeta.rngState = run.rngState;
+      game.battleStartSnapshot = deepClone(run.battleStart);
+      persistRun('battle');
+      updateHUD(true);
+    };
+
     window.__CB_TEST__ = {
       version: VERSION,
       state: () => ({
@@ -3589,15 +3800,33 @@
         bonusActions: game.bonusActions,
         shield: getShield(),
         crownVeil: Number(game.crownVeil || 0),
+        moveCount: Number(game.moveCount || 0),
         enemyTurns: Number(game.enemyTurns || 0),
+        enemyCycles: Number(game.enemyCycles || 0),
+        battleCharges: deepClone(game.battleCharges),
         failureReason: game.failureReason,
         trait: activeTraitId(),
-        pieces: deepClone(game.pieces),
+        pieces: game.pieces.map(piece => ({
+          id: piece.id,
+          uid: piece.uid || null,
+          origin: piece.origin || piece.type,
+          color: piece.color,
+          type: piece.type,
+          x: piece.x,
+          y: piece.y,
+          alive: piece.alive,
+          hasMoved: Boolean(piece.hasMoved),
+          dashUsed: Number(piece.dashUsed || 0),
+          stunUntil: Number(piece.stunUntil || 0),
+          enemyLockUntil: Number(piece.enemyLockUntil || 0),
+          startY: piece.startY
+        })),
         intent: deepClone(game.enemyIntent),
         run: run ? deepClone(run) : null
       }),
       locale: () => locale,
       preference: () => localePreference,
+      traits: () => [...TRAIT_IDS],
       startRun: (seed = 123456) => { clearActiveRun(); startNewRun(Number(seed) || 1, false); },
       startDaily: () => { clearActiveRun(); startNewRun(dailySeed(), true); },
       startTraining,
@@ -3633,22 +3862,143 @@
       },
       retry: restoreBattleStart,
       forceFail: (reason = 'qa') => failBattle(reason),
-      applyRelic: id => { if (run && RELIC_BY_ID[id]) applyRelic(id); },
+      applyRelic: id => {
+        if (typeof id !== 'string' || !RELIC_IDS.has(id)) throw new RangeError(`Unknown relic id: ${String(id)}.`);
+        if (!run) throw new Error('An active run is required.');
+        applyRelic(id);
+        return true;
+      },
       setTrait: id => {
-        if (!run || !run.currentContract || (id !== null && !TRAITS[id])) return false;
+        if (!run || !run.currentContract) throw new Error('An active run battle is required.');
+        if (id !== null && (typeof id !== 'string' || !TRAIT_IDS.has(id))) throw new RangeError(`Unknown trait id: ${String(id)}.`);
         run.currentContract.trait = id;
-        updateHUD(true);
+        recomputeIntentAndSyncTrait();
         return true;
       },
       setSpoil: (id, level = 1) => {
-        if (!run || !TRAITS[id]) return false;
-        if (!run.spoils) run.spoils = {};
-        run.spoils[id] = clamp(Number(level) || 0, 0, 2);
+        if (!run) throw new Error('An active run battle is required.');
+        if (typeof id !== 'string' || !TRAIT_IDS.has(id)) throw new RangeError(`Unknown spoil id: ${String(id)}.`);
+        assertInteger(level, 0, 2, `spoil ${id} level`);
+        run.spoils[id] = level;
+        recomputeIntentAndSyncTrait();
+        return true;
+      },
+      configureBattle: config => {
+        if (!run || game.mode !== 'run') throw new Error('An active run battle is required.');
+        if (game.currentAnimation || ['enemy', 'animating', 'transition', 'promotion'].includes(game.phase)) {
+          throw new Error(`configureBattle requires a stable battle phase; current phase is ${game.phase}.`);
+        }
+        assertExactFields(config, new Set(configurationFields), 'config');
+        for (const field of configurationFields) {
+          if (!Object.prototype.hasOwnProperty.call(config, field)) throw new RangeError(`config.${field} is required.`);
+        }
+        if (config.trait !== null && (typeof config.trait !== 'string' || !TRAIT_IDS.has(config.trait))) throw new RangeError(`Unknown trait id: ${String(config.trait)}.`);
+        const spoils = validateSpoils(config.spoils);
+        const pieces = validatePieces(config.pieces);
+        const battleCharges = validateBattleCharges(config.battleCharges);
+        assertInteger(config.enemyHPMax, 1, 20, 'enemyHPMax');
+        assertInteger(config.enemyHP, 1, config.enemyHPMax, 'enemyHP');
+        assertInteger(config.turnsLeft, 1, 99, 'turnsLeft');
+        assertInteger(config.moveCount, 0, Number.MAX_SAFE_INTEGER, 'moveCount');
+        assertInteger(config.enemyTurns, 0, Number.MAX_SAFE_INTEGER, 'enemyTurns');
+        assertInteger(config.enemyCycles, 0, Number.MAX_SAFE_INTEGER, 'enemyCycles');
+        assertInteger(config.rngState, 1, 0xFFFFFFFF, 'rngState');
+        assertInteger(config.shield, 1, 20, 'shield');
+
+        const runtimePieces = pieces.map(piece => makePiece(piece.color, piece.type, piece.x, piece.y, piece));
+        clearTimeout(game.transitionTimer);
+        closeModal();
+        run.currentContract = { ...run.currentContract, trait: config.trait };
+        run.spoils = spoils;
+        run.roster = runtimePieces
+          .filter(piece => piece.color === 'w' && piece.uid)
+          .map(piece => ({ uid: piece.uid, type: piece.type, origin: piece.origin || piece.type }));
+        run.rngState = config.rngState >>> 0;
+        run.score = 0;
+        run.captures = 0;
+        run.maxCombo = 0;
+        run.crownBreaks = 0;
+        run.promotions = 0;
+        run.shield = config.shield;
+        resetRuntimeForBattle({
+          pieces: runtimePieces,
+          turns: config.turnsLeft,
+          enemyHP: config.enemyHP,
+          enemyHPMax: config.enemyHPMax,
+          aiSkill: 0.5
+        });
+        game.moveCount = config.moveCount;
+        game.enemyTurns = config.enemyTurns;
+        game.enemyCycles = config.enemyCycles;
+        game.battleCharges = battleCharges;
+        game.phase = 'player';
+        game.failureReason = null;
+        prepareEnemyIntent();
+        enterBattleScreen();
+        syncQABattleBaseline();
         updateHUD(true);
         return true;
       },
-      selectReward: chooseReward,
-      selectContract: chooseContract,
+      forceEnemyMove: (pieceRef, x, y) => {
+        if (game.phase !== 'player' || !game.active) throw new Error('forceEnemyMove requires an active player phase.');
+        if (typeof pieceRef !== 'string' || !pieceRef.trim()) throw new TypeError('pieceRef must be a non-empty string.');
+        assertInteger(x, 0, 7, 'x');
+        assertInteger(y, 0, 7, 'y');
+        const piece = game.pieces.find(item => item.alive && item.color === 'b' && (item.id === pieceRef || item.uid === pieceRef));
+        if (!piece) throw new RangeError(`Unknown living black piece: ${pieceRef}.`);
+        const move = getLegalMoves(piece).find(candidate => candidate.x === x && candidate.y === y);
+        if (!move) throw new RangeError(`Illegal enemy move for ${pieceRef}: ${x},${y}.`);
+        game.enemyIntent = {
+          pieceId: piece.id,
+          fromX: piece.x,
+          fromY: piece.y,
+          x,
+          y,
+          captureId: move.captureId,
+          madeAt: now()
+        };
+        executeEnemyIntent(false);
+        return true;
+      },
+      showTraitContracts: contracts => {
+        if (!run) throw new Error('An active run is required.');
+        if (!Array.isArray(contracts) || !contracts.length) throw new RangeError('contracts must be a non-empty array.');
+        const choices = contracts.map((entry, index) => {
+          assertExactFields(entry, new Set(['trait', 'elite']), `contracts[${index}]`);
+          if (typeof entry.trait !== 'string' || !TRAIT_IDS.has(entry.trait)) throw new RangeError(`Unknown trait id: ${String(entry.trait)}.`);
+          if (typeof entry.elite !== 'boolean') throw new TypeError(`contracts[${index}].elite must be boolean.`);
+          return {
+            id: `qa-trait-${index}`,
+            depth: 2,
+            elite: entry.elite,
+            final: false,
+            mods: [],
+            trait: entry.trait,
+            formation: 'scatter',
+            reward: entry.elite ? 2 : 1,
+            previewSeed: index + 1
+          };
+        });
+        run.pendingContracts = choices;
+        run.stage = 'contract';
+        renderContractChoices(choices);
+        openModal(contractModal);
+        return true;
+      },
+      selectReward: id => {
+        if (typeof id !== 'string' || !RELIC_IDS.has(id)) throw new RangeError(`Unknown relic id: ${String(id)}.`);
+        if (!run || run.stage !== 'reward' || !Array.isArray(run.pendingRewards)) throw new Error('An active reward draft is required.');
+        if (!run.pendingRewards.some(entry => entry.id === id)) throw new RangeError(`Relic ${id} is not in the pending reward draft.`);
+        chooseReward(id);
+        return true;
+      },
+      selectContract: index => {
+        if (!Number.isInteger(index)) throw new TypeError('Contract index must be an integer.');
+        if (!run || run.stage !== 'contract' || !Array.isArray(run.pendingContracts)) throw new Error('An active contract draft is required.');
+        if (index < 0 || index >= run.pendingContracts.length) throw new RangeError(`Contract index out of range: ${index}.`);
+        chooseContract(index);
+        return true;
+      },
       forceCrownBreak: () => {
         const crown = kingOf('b');
         const attacker = game.pieces.find(piece => piece.alive && piece.color === 'w' && piece.type !== 'k');
