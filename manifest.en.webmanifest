@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "PULSE LINK // OVERDRIVE",
+  "short_name": "PULSE LINK",
+  "description": "An original split-board competitive falling-block web game in Chinese, Japanese, and English.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07071a",
+  "theme_color": "#07071a",
+  "orientation": "any",
+  "icons": [
+    {"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

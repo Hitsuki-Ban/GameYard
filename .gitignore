@@ -1,0 +1,7 @@
+dist/
+test-results/
+.playwright/
+.playwright-cli/
+output/playwright/
+.DS_Store
+Thumbs.db
