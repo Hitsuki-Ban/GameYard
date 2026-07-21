@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#080612" />
+  <meta name="description" content="CROWN//BREAKER: a short board roguelite built around promotion." data-i18n="meta.description" />
+  <title data-i18n="meta.title">CROWN//BREAKER — Promotion Run</title>
+  <link id="app-manifest" rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <noscript data-i18n="noscript">JavaScript is required.</noscript>
+  <main id="app" aria-label="CROWN//BREAKER" data-i18n-aria="aria.app">
+    <canvas id="game-canvas" aria-label="Board" data-i18n-aria="aria.board"></canvas>
+    <div id="bg-grid" aria-hidden="true"></div>
+    <div id="scanlines" aria-hidden="true"></div>
+    <div id="vignette" aria-hidden="true"></div>
+    <div id="flash" aria-hidden="true"></div>
+
+    <section id="title-screen" class="screen active" aria-labelledby="game-title">
+      <div class="title-wrap">
+        <p class="eyebrow" data-i18n="title.eyebrow">PROMOTION RUN</p>
+        <h1 id="game-title"><span>CROWN</span><b>//</b><span>BREAKER</span></h1>
+        <p class="subtitle" data-i18n="title.subtitle">PROMOTION RUN</p>
+        <div class="title-promotion" aria-hidden="true">
+          <span class="pawn">♙</span><i></i>
+          <span>♘</span><span>♗</span><span>♖</span><span>♕</span>
+        </div>
+        <div class="title-actions">
+          <button id="btn-continue" class="btn btn-primary btn-xl" type="button" hidden>
+            <span class="btn-kicker" data-i18n="title.runKicker">RUN</span><span data-i18n="title.continue">Continue</span>
+          </button>
+          <button id="btn-new" class="btn btn-primary btn-xl" type="button">
+            <span class="btn-kicker" data-i18n="title.runKicker">RUN</span><span data-i18n="title.newRun">New Run</span>
+          </button>
+          <button id="btn-daily" class="btn btn-secondary" type="button">
+            <span class="btn-kicker" data-i18n="title.dailyKicker">DAILY</span><span data-i18n="title.daily">Daily Run</span>
+          </button>
+          <button id="btn-training" class="btn btn-ghost" type="button" data-i18n="title.training">Practice</button>
+        </div>
+        <div class="minor-actions">
+          <button id="btn-records" class="text-btn" type="button" data-i18n="title.records">Records</button>
+          <button id="btn-rules" class="text-btn" type="button" data-i18n="title.legend">Legend</button>
+          <button id="btn-settings" class="text-btn" type="button" data-i18n="title.settings">Settings</button>
+        </div>
+        <label class="title-language-control" for="title-language">
+          <span data-i18n="language.label">Language</span>
+          <select id="title-language" class="language-select">
+            <option value="system" data-i18n="language.system">System language</option>
+            <option value="zh-CN" data-i18n="language.zh-CN">中文</option>
+            <option value="ja" data-i18n="language.ja">日本語</option>
+            <option value="en" data-i18n="language.en">English</option>
+          </select>
+        </label>
+        <p class="input-hint" data-i18n="title.inputHint">Click to move · Space: burst · H: hint · Esc: pause</p>
+      </div>
+      <div class="title-crown" aria-hidden="true">♛</div>
+      <div class="version" data-i18n="title.version">v2.1.0 · LOCAL SAVE</div>
+    </section>
+
+    <section id="hud" class="hud" aria-label="Battle status" data-i18n-aria="aria.battleStatus">
+      <header class="hud-top">
+        <div id="run-track" class="run-track" aria-label="Run progress" data-i18n-aria="aria.runTrack"></div>
+        <div class="score-chip" aria-label="Score" data-i18n-aria="aria.score"><span>◆</span><strong id="hud-score">000000</strong></div>
+        <button id="btn-pause" class="icon-btn hud-pause" type="button" aria-label="Pause" data-i18n-aria="aria.pause">Ⅱ</button>
+      </header>
+
+      <aside class="status-rail" aria-label="Status" data-i18n-aria="aria.status">
+        <div class="status-cell" title="Moves left" data-i18n-title="hud.turnsTitle"><span class="status-icon">⌛</span><strong id="hud-turns">12</strong></div>
+        <div class="status-cell shield-cell" title="Shield" data-i18n-title="hud.shieldTitle"><span class="status-icon">♔</span><strong id="hud-shield">◆◆◆</strong></div>
+        <div class="crown-cell" title="Enemy crown" data-i18n-title="hud.crownTitle"><span class="status-icon">♚</span><div id="boss-pips" class="boss-pips"></div></div>
+      </aside>
+
+      <div id="roster-rail" class="roster-rail" aria-label="Current roster" data-i18n-aria="aria.roster"></div>
+
+      <div class="combo-readout" aria-live="polite">
+        <span>×</span><strong id="combo-value">1.0</strong>
+      </div>
+
+      <div class="tempo-wrap">
+        <button id="btn-burst" class="tempo-btn" type="button" disabled aria-label="Take three moves" data-i18n-aria="aria.overdrive">
+          <span class="tempo-mark">⚡</span>
+          <span id="tempo-count" class="tempo-count">0</span>
+        </button>
+        <div class="tempo-bar" aria-hidden="true"><i id="hype-fill"></i></div>
+      </div>
+
+      <div id="intent-key" class="intent-key" aria-hidden="true"><i></i><span data-i18n="hud.intent">Next move</span></div>
+      <div id="turn-banner" class="turn-banner" aria-live="assertive"></div>
+      <div id="tutorial-chip" class="tutorial-chip" role="status"></div>
+    </section>
+
+    <section id="modal-layer" class="modal-layer" aria-live="polite">
+      <div id="pause-modal" class="modal compact-modal">
+        <h2 data-i18n="pause.title">Paused</h2>
+        <div class="modal-actions">
+          <button id="btn-resume" class="btn btn-primary" type="button" data-i18n="action.resume">Resume</button>
+          <button id="btn-restart" class="btn btn-secondary" type="button" data-i18n="action.restartBattle">Restart Battle</button>
+          <button id="btn-pause-settings" class="btn btn-ghost" type="button" data-i18n="title.settings">Settings</button>
+          <button id="btn-quit" class="text-btn" type="button" data-i18n="action.backToTitle">Back to Title</button>
+        </div>
+      </div>
+
+      <div id="promotion-modal" class="modal choice-modal promotion-modal">
+        <div class="choice-head"><span class="choice-glyph">♙</span><i></i><strong data-i18n="promotion.title">Promote</strong></div>
+        <div id="promotion-grid" class="promotion-grid"></div>
+      </div>
+
+      <div id="reward-modal" class="modal choice-modal reward-modal">
+        <div class="choice-head"><span class="choice-glyph">◇</span><strong data-i18n="reward.title">Choose One</strong></div>
+        <div id="reward-grid" class="reward-grid"></div>
+      </div>
+
+      <div id="contract-modal" class="modal choice-modal contract-modal">
+        <div class="choice-head"><span class="choice-glyph">♚</span><strong id="contract-title" data-i18n="contract.next">Next Battle</strong></div>
+        <div id="contract-grid" class="contract-grid"></div>
+      </div>
+
+      <div id="run-result-modal" class="modal result-modal">
+        <p id="result-kicker" class="eyebrow" data-i18n="result.runClear">RUN CLEAR</p>
+        <div id="result-rank" class="result-rank">S</div>
+        <h2 id="result-title" data-i18n="result.cleared">Cleared</h2>
+        <div class="result-stats">
+          <div><span data-i18n="result.score">Score</span><strong id="result-score">000000</strong></div>
+          <div><span data-i18n="result.promotions">Promotions</span><strong id="result-promotions">0</strong></div>
+          <div><span data-i18n="result.captures">Captures</span><strong id="result-captures">0</strong></div>
+          <div><span data-i18n="result.combo">Combo</span><strong id="result-combo">0</strong></div>
+        </div>
+        <div id="result-seed" class="seed-readout"></div>
+        <div id="result-newbest" class="new-best" data-i18n="result.newBest">New Record</div>
+        <div class="modal-actions horizontal">
+          <button id="btn-result-new" class="btn btn-primary" type="button" data-i18n="action.playAgain">New Run</button>
+          <button id="btn-result-menu" class="btn btn-ghost" type="button" data-i18n="action.backToTitle">Back to Title</button>
+        </div>
+      </div>
+
+      <div id="fail-modal" class="modal result-modal">
+        <p class="eyebrow" data-i18n="result.runOver">RUN OVER</p>
+        <div class="result-rank fail">×</div>
+        <h2 data-i18n="result.failed">Run Over</h2>
+        <p id="fail-reason" class="result-note" data-i18n="failure.crown_broken">Crown broken</p>
+        <div class="modal-actions horizontal">
+          <button id="btn-fail-retry" class="btn btn-primary" type="button" data-i18n="action.restartBattle">Restart Battle</button>
+          <button id="btn-fail-new" class="btn btn-secondary" type="button" data-i18n="title.newRun">New Run</button>
+          <button id="btn-fail-menu" class="btn btn-ghost" type="button" data-i18n="action.backToTitle">Back to Title</button>
+        </div>
+      </div>
+
+      <div id="training-result-modal" class="modal compact-modal">
+        <div class="training-stamp">♙ → ♕</div>
+        <h2 data-i18n="training.complete">Complete</h2>
+        <div class="modal-actions horizontal">
+          <button id="btn-training-again" class="btn btn-secondary" type="button" data-i18n="action.practiceAgain">Practice Again</button>
+          <button id="btn-training-run" class="btn btn-primary" type="button" data-i18n="action.startRun">Start Run</button>
+          <button id="btn-training-menu" class="btn btn-ghost" type="button" data-i18n="action.backToTitle">Back to Title</button>
+        </div>
+      </div>
+
+      <div id="info-modal" class="modal info-modal">
+        <button id="btn-info-close" class="icon-btn modal-close" type="button" aria-label="Close" data-i18n-aria="aria.close">×</button>
+        <div id="info-content"></div>
+      </div>
+    </section>
+
+  </main>
+  <script src="./i18n.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>

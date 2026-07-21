@@ -1,0 +1,18 @@
+{
+  "name": "crown-breaker",
+  "version": "2.1.0",
+  "description": "A compact chess-movement board roguelite for the browser.",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hitsuki-Ban/CrownBreaker.git"
+  },
+  "homepage": "https://hitsuki-ban.github.io/CrownBreaker/",
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "check": "node --check i18n.js && node --check game.js && node --check sw.js && node --check tools/build-standalone.mjs && node --check tools/check-i18n.mjs && node --check tools/check-static.mjs && node tools/check-i18n.mjs && node tools/check-static.mjs",
+    "build:standalone": "node tools/build-standalone.mjs"
+  }
+}

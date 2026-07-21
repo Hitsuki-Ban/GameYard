@@ -1,0 +1,8 @@
+dist/
+node_modules/
+.playwright-cli/
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
