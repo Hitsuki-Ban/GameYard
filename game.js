@@ -1074,6 +1074,7 @@
     game.battleMaxCombo = 0;
     game.crownVeil = 0;
     game.enemyTurns = 0;
+    game.failureReason = null;
     particles.length = 0;
     floatingTexts.length = 0;
   }
@@ -2827,14 +2828,14 @@
     }, 1080);
   }
 
-  function getRecommendedMove() {
+  function getRecommendedMove(randomizeTies = true) {
     const options = allMoves('w');
     if (!options.length) return null;
     const intentVisible = activeTraitId() !== 'mist';
     const intentActor = intentVisible && game.enemyIntent ? game.pieces.find(piece => piece.id === game.enemyIntent.pieceId) : null;
-    return options.map(option => {
+    return options.map((option, index) => {
       const target = option.move.captureId ? game.pieces.find(piece => piece.id === option.move.captureId) : null;
-      let score = Math.random() * 20;
+      let score = randomizeTies ? Math.random() * 20 : 0;
       if (target) score += target.type === 'k' ? 100000 : PIECE_VALUES[target.type] * 5;
       if (option.move.danger) score -= PIECE_VALUES[option.piece.type] * 0.75;
       if (option.piece.type === 'p') {
@@ -2851,8 +2852,8 @@
         const threat = withTemporaryMove(option.piece, option.move, () => isSquareAttacked(crown.x, crown.y, 'w'));
         if (threat) score += 3200;
       }
-      return { ...option, score };
-    }).sort((a, b) => b.score - a.score)[0];
+      return { ...option, score, recommendationOrder: index };
+    }).sort((a, b) => b.score - a.score || a.recommendationOrder - b.recommendationOrder)[0];
   }
 
   function triggerFlash(kind = 'normal') {
@@ -3589,6 +3590,7 @@
         shield: getShield(),
         crownVeil: Number(game.crownVeil || 0),
         enemyTurns: Number(game.enemyTurns || 0),
+        failureReason: game.failureReason,
         trait: activeTraitId(),
         pieces: deepClone(game.pieces),
         intent: deepClone(game.enemyIntent),
@@ -3616,7 +3618,7 @@
       promote: choosePromotion,
       overdrive: () => { game.hype = 100; activateOverdrive(); },
       recommend: () => {
-        const pick = getRecommendedMove();
+        const pick = getRecommendedMove(false);
         return pick ? { pieceId: pick.piece.id, uid: pick.piece.uid, ...deepClone(pick.move) } : null;
       },
       fast: value => { settings.reducedMotion = value !== false; },

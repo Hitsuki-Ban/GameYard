@@ -1,6 +1,7 @@
 dist/
 node_modules/
 .playwright-cli/
+reports/
 
 # Operating system metadata
 .DS_Store

@@ -39,14 +39,19 @@ uv run python -m http.server 8080
 
 Opening `index.html` directly is not the supported PWA path because service workers require HTTP or HTTPS.
 
-### Verify and build
+### Verify, simulate, and build
 
-The project has no third-party runtime or build dependencies. With Node.js and pnpm available:
+The game has no third-party runtime dependencies. The balance simulator uses Playwright as an exact development dependency. Install dependencies and its Chromium browser once, then run the checks or a seeded simulation:
 
 ```bash
+pnpm install
+pnpm exec playwright install chromium
 pnpm check
+pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`--runs`, `--policy` (`greedy` or `random`), and `--seed-base` are required. The simulator drives the real browser game through its QA interface and writes deterministic JSON plus Markdown reports to `reports/`. Repeating the same command produces identical report contents; the current date appears only in the default filenames.
 
 The standalone build requires exactly one output path, creates its parent directory, and embeds the HTML, CSS, localization data, and game code into one file.
 
@@ -95,14 +100,19 @@ uv run python -m http.server 8080
 
 直接打开 `index.html` 不属于受支持的 PWA 运行方式，因为 Service Worker 需要 HTTP 或 HTTPS。
 
-### 验证与单文件构建
+### 验证、模拟与单文件构建
 
-项目没有第三方运行时或构建依赖。准备好 Node.js 与 pnpm 后运行：
+游戏本身没有第三方运行时依赖；平衡模拟器将 Playwright 固定为开发依赖。首次使用先安装依赖及其 Chromium 浏览器，再执行检查或固定种子模拟：
 
 ```bash
+pnpm install
+pnpm exec playwright install chromium
 pnpm check
+pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`--runs`、`--policy`（`greedy` 或 `random`）和 `--seed-base` 均为必填。模拟器通过 QA 接口驱动真实浏览器游戏，并在 `reports/` 输出确定性的 JSON 与 Markdown 报告；同一命令重复执行时报告内容完全一致，当前日期只会进入默认文件名。
 
 单文件构建命令必须明确提供唯一输出路径；工具会创建父目录，并把页面、样式、本地化数据和游戏代码内联到一个 HTML 文件中。
 
@@ -151,14 +161,19 @@ uv run python -m http.server 8080
 
 Service Worker には HTTP または HTTPS が必要なため、`index.html` の直接起動は PWA の対応経路ではありません。
 
-### 検証と単一 HTML ビルド
+### 検証・シミュレーション・単一 HTML ビルド
 
-サードパーティーの実行時依存・ビルド依存はありません。Node.js と pnpm を用意して実行します。
+ゲーム本体にサードパーティーの実行時依存はありません。バランスシミュレーターは Playwright を固定バージョンの開発依存として使用します。初回に依存関係と Chromium をインストールしてから、検証またはシード指定のシミュレーションを実行します。
 
 ```bash
+pnpm install
+pnpm exec playwright install chromium
 pnpm check
+pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
+
+`--runs`、`--policy`（`greedy` または `random`）、`--seed-base` はすべて必須です。シミュレーターは QA インターフェースを通して実ブラウザー上のゲームを操作し、`reports/` に決定的な JSON と Markdown のレポートを出力します。同じコマンドのレポート内容は一致し、現在の日付は既定のファイル名だけに入ります。
 
 単一 HTML ビルドには出力先を 1 つだけ明示する必要があります。親ディレクトリを作成し、HTML、CSS、翻訳データ、ゲームコードを 1 ファイルに埋め込みます。
 
