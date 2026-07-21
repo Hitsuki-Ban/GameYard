@@ -20,7 +20,13 @@
 
 ### 在线发布
 
-GitHub Pages 项目子路径与线上 Service Worker 作用域将在公开仓库发布后实测并补记；本地结果不代替线上部署验证。
+- 公开仓库：`https://github.com/Hitsuki-Ban/CrownBreaker`，可见性为 Public，默认分支为 `main`。
+- GitHub Pages：`https://hitsuki-ban.github.io/CrownBreaker/`，从 `main:/` 构建成功并强制 HTTPS；HTTP 请求返回 301 到 HTTPS。
+- 线上资源：页面、CSS、i18n、游戏脚本、Service Worker、3 份 Manifest、SVG 与 192/512 PNG 均在 `/CrownBreaker/` 子路径返回 200，MIME 类型正确。
+- 线上语言：设备默认解析为 `zh-CN`；切换英文后 `<html lang>`、标题与 Manifest 同步更新，再切回 `system` 后恢复中文。
+- 线上 Service Worker：作用域为 `https://hitsuki-ban.github.io/CrownBreaker/`，脚本为该目录下的 `sw.js`，缓存名为 `crown-breaker-v2.1.0`。
+- 线上离线：首次加载后断网刷新成功，页面、Canvas、活动局续接、语言偏好和 QA 页面均从缓存恢复；恢复联网后普通 URL 不暴露 `window.__CB_TEST__`。
+- 浏览器控制台：线上加载、语言切换、活动局、离线刷新和普通 URL 均为 0 errors / 0 warnings。
 
 ## v2.0.0（历史记录）
 
