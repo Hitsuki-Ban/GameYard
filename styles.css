@@ -421,6 +421,9 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .contract-trait { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; padding: 6px 9px; border: 1px solid rgba(255,215,105,.4); background: rgba(255,215,105,.06); text-align: left; }
 .contract-trait b { flex: 0 0 auto; color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
 .contract-trait small { color: var(--muted); font-size: 10px; }
+.contract-formation { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; padding: 6px 9px; border: 1px solid rgba(84,246,255,.3); background: rgba(84,246,255,.045); text-align: left; }
+.contract-formation b { flex: 0 0 auto; color: var(--cyan); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
+.contract-formation small { color: var(--muted); font-size: 10px; }
 .board-preview { display: grid; grid-template-columns: repeat(6, 1fr); width: min(340px, 90%); aspect-ratio: 1.45; margin: 14px auto; border: 1px solid rgba(255,255,255,.13); }
 .board-preview span { display: grid; place-items: center; font: clamp(17px, 2.2vw, 29px) Georgia, serif; background: rgba(255,255,255,.025); }
 .board-preview span:nth-child(12n + 2), .board-preview span:nth-child(12n + 4), .board-preview span:nth-child(12n + 6), .board-preview span:nth-child(12n + 7), .board-preview span:nth-child(12n + 9), .board-preview span:nth-child(12n + 11) { background: rgba(255,255,255,.07); }

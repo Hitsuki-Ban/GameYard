@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.2.0';
+  const VERSION = '3.3.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -157,7 +157,23 @@
     phantom: { id: 'phantom', nameKey: 'trait.phantom.name', lineKey: 'trait.phantom.line', glyph: '♚' },
     chains: { id: 'chains', nameKey: 'trait.chains.name', lineKey: 'trait.chains.line', glyph: '♛' },
     hex: { id: 'hex', nameKey: 'trait.hex.name', lineKey: 'trait.hex.line', glyph: '⚡' },
-    summoner: { id: 'summoner', nameKey: 'trait.summoner.name', lineKey: 'trait.summoner.line', glyph: '♟' }
+    summoner: { id: 'summoner', nameKey: 'trait.summoner.name', lineKey: 'trait.summoner.line', glyph: '♟' },
+    thorns: { id: 'thorns', nameKey: 'trait.thorns.name', lineKey: 'trait.thorns.line', glyph: '▲' },
+    tithe: { id: 'tithe', nameKey: 'trait.tithe.name', lineKey: 'trait.tithe.line', glyph: '◆' },
+    mist: { id: 'mist', nameKey: 'trait.mist.name', lineKey: 'trait.mist.line', glyph: '♝' },
+    berserk: { id: 'berserk', nameKey: 'trait.berserk.name', lineKey: 'trait.berserk.line', glyph: '♚' },
+    rampart: { id: 'rampart', nameKey: 'trait.rampart.name', lineKey: 'trait.rampart.line', glyph: '♜' },
+    swift: { id: 'swift', nameKey: 'trait.swift.name', lineKey: 'trait.swift.line', glyph: '♙' },
+    echo: { id: 'echo', nameKey: 'trait.echo.name', lineKey: 'trait.echo.line', glyph: '✦' }
+  };
+
+  const FORMATIONS = {
+    scatter: { id: 'scatter', nameKey: 'formation.scatter.name', lineKey: 'formation.scatter.line', mix: null },
+    phalanx: { id: 'phalanx', nameKey: 'formation.phalanx.name', lineKey: 'formation.phalanx.line', mix: ['p', 'p', 'p', 'p', 'r', 'r', 'p', 'b', 'p', 'r'] },
+    pincer: { id: 'pincer', nameKey: 'formation.pincer.name', lineKey: 'formation.pincer.line', mix: ['n', 'n', 'b', 'b', 'p', 'p', 'n', 'b', 'p', 'n'] },
+    fortress: { id: 'fortress', nameKey: 'formation.fortress.name', lineKey: 'formation.fortress.line', mix: ['p', 'p', 'n', 'b', 'r', 'p', 'r', 'b', 'p', 'q'] },
+    vanguard: { id: 'vanguard', nameKey: 'formation.vanguard.name', lineKey: 'formation.vanguard.line', mix: ['p', 'p', 'p', 'n', 'n', 'p', 'n', 'b', 'p', 'n'] },
+    lance: { id: 'lance', nameKey: 'formation.lance.name', lineKey: 'formation.lance.line', mix: ['b', 'b', 'q', 'p', 'p', 'b', 'p', 'r', 'b', 'p'] }
   };
 
   const ACTS = [
@@ -559,6 +575,7 @@
       final: false,
       mods,
       trait: elite ? choose(Object.keys(TRAITS)) : null,
+      formation: choose(Object.keys(FORMATIONS)),
       reward: elite ? 2 : 1,
       previewSeed: run.rngState
     };
@@ -583,6 +600,13 @@
       case 'chains': return t('spoil.chains', { count: value >= 2 ? 2 : 3 });
       case 'hex': return t('spoil.hex', { percent: value * 50 });
       case 'summoner': return t('spoil.summoner', { count: value >= 2 ? 2 : 3 });
+      case 'thorns': return t('spoil.thorns', { count: value });
+      case 'tithe': return t('spoil.tithe', { percent: value * 30 });
+      case 'mist': return t('spoil.mist', { percent: value >= 2 ? 75 : 50 });
+      case 'berserk': return t('spoil.berserk', { count: value + 1 });
+      case 'rampart': return t('spoil.rampart', { count: value });
+      case 'swift': return t(value === 1 ? 'spoil.swift.one' : 'spoil.swift.two');
+      case 'echo': return t('spoil.echo', { count: value >= 2 ? 3 : 4 });
       default: throw new RangeError(`Unknown spoil id: ${String(id)}`);
     }
   }
@@ -643,6 +667,7 @@
         alive: piece.alive,
         hasMoved: Boolean(piece.hasMoved),
         dashUsed: Number(piece.dashUsed || 0),
+        stunUntil: Number(piece.stunUntil || 0),
         startY: piece.startY
       })),
       turnsLeft: game.turnsLeft,
@@ -859,6 +884,7 @@
       alive: extra.alive !== false,
       hasMoved: Boolean(extra.hasMoved),
       dashUsed: Number(extra.dashUsed || 0),
+      stunUntil: Number(extra.stunUntil || 0),
       startY: Number.isFinite(extra.startY) ? extra.startY : y,
       anim: null,
       spawnAt: now() + Math.random() * 120
@@ -916,6 +942,43 @@
     return piece;
   }
 
+  function formationSquares(formationId, type, occupied, crownX) {
+    const open = rows => openSquares(occupied, rows);
+    switch (formationId) {
+      case 'phalanx':
+        return type === 'p' ? open([2, 3]) : open([0, 1]);
+      case 'pincer': {
+        const flank = open([1, 2, 3]).filter(spot => spot.x <= 1 || spot.x >= 6);
+        return flank.length ? flank : open([1, 2, 3]);
+      }
+      case 'fortress': {
+        const near = open([0, 1, 2]).filter(spot => Math.abs(spot.x - crownX) <= 1 && spot.y <= 1);
+        return near.length ? near : open([0, 1, 2]);
+      }
+      case 'vanguard': {
+        const forward = open([3, 4]);
+        return forward.length ? forward : open([2, 3, 4]);
+      }
+      case 'lance': {
+        const diag = open([1, 2, 3, 4]).filter(spot => Math.abs(spot.x - crownX) === spot.y);
+        return diag.length ? diag : open([1, 2, 3]);
+      }
+      default:
+        return open([1, 2, 3, 4]);
+    }
+  }
+
+  function addFormationPiece(list, occupied, type, formationId, crownX) {
+    const candidates = shuffled(formationSquares(formationId, type, occupied, crownX));
+    const fallback = candidates.length ? candidates : shuffled(openSquares(occupied, [1, 2, 3, 4]));
+    if (!fallback.length) return null;
+    const spot = fallback[0];
+    occupied.add(`${spot.x},${spot.y}`);
+    const piece = makePiece('b', type, spot.x, spot.y, { startY: spot.y });
+    list.push(piece);
+    return piece;
+  }
+
   function generateEnemyFormation(contract) {
     const placed = placeRoster(run.roster);
     const pieces = placed.pieces;
@@ -935,7 +998,12 @@
         ? ['p', 'p', 'n', 'b', 'r', 'q']
         : ['p', 'n', 'b', 'r', 'q'];
 
-    for (let i = 0; i < baseCount; i++) addEnemyPiece(pieces, occupied, choose(pool));
+    const formation = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : FORMATIONS.scatter;
+    for (let i = 0; i < baseCount; i++) {
+      let type = formation.mix ? formation.mix[i % formation.mix.length] : choose(pool);
+      if (depth <= 2 && type === 'q') type = 'b';
+      addFormationPiece(pieces, occupied, type, formation.id, crownX);
+    }
     if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) addEnemyPiece(pieces, occupied, 'p', [2, 3, 4]);
     if (hasMod(contract, 'cavalry')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'n', [1, 2, 3]);
     if (hasMod(contract, 'walls')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'r', [1, 2]);
@@ -1046,6 +1114,7 @@
           alive: piece.alive,
           hasMoved: piece.hasMoved,
           dashUsed: piece.dashUsed,
+          stunUntil: piece.stunUntil,
           startY: piece.startY
         })),
         turns: state.turnsLeft,
@@ -1262,6 +1331,7 @@
 
   function getPseudoMoves(piece, attackOnly = false) {
     if (!piece || !piece.alive) return [];
+    if (piece.color === 'w' && Number(piece.stunUntil || 0) > game.moveCount) return [];
     const moves = [];
     const add = (x, y) => {
       if (!inBounds(x, y)) return false;
@@ -1281,7 +1351,13 @@
         if (inBounds(piece.x, oneY) && !pieceAt(piece.x, oneY)) {
           moves.push({ x: piece.x, y: oneY, captureId: null });
           const twoY = piece.y + dir * 2;
-          const extraDashes = piece.color === 'w' ? activeRelicLevel('doubleStep') : 0;
+          let extraDashes = 0;
+          if (piece.color === 'w') {
+            const swiftSpoil = activeSpoilLevel('swift');
+            extraDashes = activeRelicLevel('doubleStep') + (swiftSpoil >= 2 ? 99 : swiftSpoil * 2);
+          } else if (activeTraitId() === 'swift') {
+            extraDashes = 99;
+          }
           const canDouble = !piece.hasMoved || Number(piece.dashUsed || 0) < extraDashes;
           if (canDouble && inBounds(piece.x, twoY) && !pieceAt(piece.x, twoY)) {
             moves.push({ x: piece.x, y: twoY, captureId: null, doubleStep: true });
@@ -1300,8 +1376,20 @@
       [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]
         .forEach(([dx, dy]) => add(piece.x + dx, piece.y + dy));
     } else if (piece.type === 'k') {
+      const kingRange = piece.color === 'w' ? 1 + activeSpoilLevel('berserk') : 1;
       for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) if (dx || dy) add(piece.x + dx, piece.y + dy);
+        for (let dy = -1; dy <= 1; dy++) {
+          if (!dx && !dy) continue;
+          let x = piece.x + dx;
+          let y = piece.y + dy;
+          let steps = 0;
+          while (inBounds(x, y) && steps < kingRange) {
+            if (!add(x, y)) break;
+            steps += 1;
+            x += dx;
+            y += dy;
+          }
+        }
       }
     } else {
       const dirs = [];
@@ -1448,12 +1536,23 @@
     if (!options.length) return null;
     const whiteKing = kingOf('w');
     const blackKing = kingOf('b');
+    const mistFactor = [1, 0.5, 0.25][activeSpoilLevel('mist')] || 1;
+    const berserkCrown = activeTraitId() === 'berserk';
     const scored = options.map(option => {
       const { piece, move } = option;
       const target = move.captureId ? game.pieces.find(item => item.id === move.captureId) : null;
       let score = runRandom() * 100;
-      if (target) score += target.type === 'k' ? 50000 : PIECE_VALUES[target.type] * (4 + game.aiSkill * 4);
+      if (target) score += target.type === 'k' ? 50000 : PIECE_VALUES[target.type] * (4 + game.aiSkill * 4) * mistFactor;
       if (move.danger) score -= PIECE_VALUES[piece.type] * (0.8 + game.aiSkill * 1.8);
+      if (berserkCrown && piece.type === 'k') {
+        score += 700;
+        if (move.danger) score += PIECE_VALUES.k * (0.8 + game.aiSkill * 1.8);
+        if (whiteKing) {
+          const kBefore = Math.abs(piece.x - whiteKing.x) + Math.abs(piece.y - whiteKing.y);
+          const kAfter = Math.abs(move.x - whiteKing.x) + Math.abs(move.y - whiteKing.y);
+          score += (kBefore - kAfter) * 90;
+        }
+      }
       if (whiteKing) {
         const before = Math.abs(piece.x - whiteKing.x) + Math.abs(piece.y - whiteKing.y);
         const after = Math.abs(move.x - whiteKing.x) + Math.abs(move.y - whiteKing.y);
@@ -1499,7 +1598,7 @@
       captureId: choice.move.captureId,
       madeAt: now()
     };
-    $('#intent-key').classList.add('show');
+    $('#intent-key').classList.toggle('show', activeTraitId() !== 'mist');
     if (!save.tutorial.intent && game.moveCount === 0) {
       save.tutorial.intent = true;
       persistSave();
@@ -1617,6 +1716,13 @@
     return clamp(1 + game.combo * 0.25, 1, 3);
   }
 
+  function scoreTaxFactor() {
+    let factor = 1;
+    if (activeTraitId() === 'tithe') factor *= 0.6;
+    factor *= 1 + 0.3 * activeSpoilLevel('tithe');
+    return factor;
+  }
+
   function registerComboStep() {
     game.combo += 1;
     game.maxCombo = Math.max(game.maxCombo, game.combo);
@@ -1654,7 +1760,7 @@
     save.totalCaptures += 1;
     const tierKey = registerComboStep();
     const point = tileCenter(target.x, target.y);
-    const value = Math.round(PIECE_VALUES[target.type] * comboMultiplier() * factor);
+    const value = Math.round(PIECE_VALUES[target.type] * comboMultiplier() * factor * scoreTaxFactor());
     addScore(value, point.x, point.y, `+${value}`);
     announceComboTier(tierKey, point.x, point.y);
     addHype(10 + PIECE_VALUES[target.type] / 30);
@@ -1729,7 +1835,7 @@
     const jackpotMult = bountyLevel && game.battleCaptures % 3 === 0 ? bountyLevel + 1 : 1;
     const wrathLevel = piece.type === 'k' ? activeRelicLevel('kingsWrath') : 0;
     const wrathMult = wrathLevel ? wrathLevel + 1 : 1;
-    const value = Math.round(PIECE_VALUES[captured.type] * comboMultiplier() * dangerBoost * jackpotMult * wrathMult);
+    const value = Math.round(PIECE_VALUES[captured.type] * comboMultiplier() * dangerBoost * jackpotMult * wrathMult * scoreTaxFactor());
     const point = tileCenter(piece.x, piece.y);
     addScore(value, point.x, point.y, `+${value}`, dangerBoost > 1 || jackpotMult > 1 ? 'gold' : 'cyan');
     announceComboTier(tierKey, point.x, point.y);
@@ -1789,7 +1895,22 @@
 
     if (captured && actor === 'player') handlePlayerCapture(piece, captured, context);
 
-    if (actor === 'enemy' && shouldPromote(piece)) {
+    if (captured && actor === 'enemy' && captured.color === 'w' && captured.type !== 'k' && piece.type !== 'k') {
+      const thornsLevel = activeSpoilLevel('thorns');
+      const thornsUsed = Number(game.battleCharges.thornsRevenge || 0);
+      if (thornsLevel > thornsUsed) {
+        game.battleCharges.thornsRevenge = thornsUsed + 1;
+        piece.alive = false;
+        const point = tileCenter(piece.x, piece.y);
+        addImpact(point.x, point.y, 'player', 20);
+        addScore(150, point.x, point.y, '+150');
+        audio.sfx('capture');
+        updateHUD();
+        return 'done';
+      }
+    }
+
+    if (actor === 'enemy' && piece.alive && shouldPromote(piece)) {
       piece.type = 'q';
       const point = tileCenter(piece.x, piece.y);
       addImpact(point.x, point.y, 'enemy', 25);
@@ -1817,6 +1938,10 @@
     if (recruitLevel && game.moveCount > 0 && game.moveCount % (recruitLevel >= 2 ? 2 : 3) === 0) {
       spawnAllyPawn();
     }
+    const echoLevel = activeSpoilLevel('echo');
+    if (echoLevel && game.moveCount > 0 && game.moveCount % (echoLevel >= 2 ? 3 : 4) === 0) {
+      grantBonusAction(1);
+    }
     updateHUD();
     if (game.bonusActions > 0 || game.overdriveMoves > 0) {
       showBanner('banner.extraMove');
@@ -1826,7 +1951,7 @@
     executeEnemyIntent();
   }
 
-  function executeEnemyIntent() {
+  function executeEnemyIntent(isEcho = false) {
     if (!game.active) return;
     const intent = game.enemyIntent;
     game.enemyIntent = null;
@@ -1876,7 +2001,14 @@
       startMoveAnimation(actor, move, captured, 'enemy', () => {
         const outcome = resolveMove(actor, captured, 'enemy', { fromX, fromY, move, credit: null });
         if (outcome === 'terminal') return;
-        afterEnemyAction();
+        if (!isEcho) {
+          afterEnemyAction();
+          if (game.active && activeTraitId() === 'echo' && game.enemyTurns % 3 === 0) {
+            prepareEnemyIntent();
+            executeEnemyIntent(true);
+            return;
+          }
+        }
         beginPlayerTurn(true);
       });
     }, delay);
@@ -1998,6 +2130,9 @@
   function handleEnemyCrownHit(attacker, crown) {
     game.enemyIntent = null;
     $('#intent-key').classList.remove('show');
+    if (activeTraitId() === 'thorns' && attacker.color === 'w') {
+      attacker.stunUntil = game.moveCount + 1;
+    }
     game.captures += 1;
     game.battleCaptures += 1;
     save.totalCaptures += 1;
@@ -2033,6 +2168,8 @@
     game.transitionTimer = window.setTimeout(() => {
       respawnEnemyCrown(crown);
       spawnPhaseReinforcements();
+      const rampartLevel = activeSpoilLevel('rampart');
+      for (let i = 0; i < rampartLevel; i++) spawnAllyPawn();
       grantBonusAction(1 + activeRelicLevel('crownSurge'));
       beginPlayerTurn(true);
     }, settings.reducedMotion ? 180 : 720);
@@ -2127,6 +2264,26 @@
       }
     }
     if (trait === 'phantom') phantomShiftCrown();
+    if (trait === 'rampart' && game.enemyTurns % 3 === 0) {
+      const crown = kingOf('b');
+      if (crown) {
+        const adjacent = [];
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (!dx && !dy) continue;
+            const x = crown.x + dx;
+            const y = crown.y + dy;
+            if (inBounds(x, y) && !pieceAt(x, y)) adjacent.push({ x, y });
+          }
+        }
+        if (adjacent.length) {
+          const spot = adjacent[Math.floor(runRandom() * adjacent.length)];
+          game.pieces.push(makePiece('b', 'p', spot.x, spot.y));
+          const point = tileCenter(spot.x, spot.y);
+          addImpact(point.x, point.y, 'enemy', 11);
+        }
+      }
+    }
   }
 
   function spawnPhaseReinforcements() {
@@ -2149,11 +2306,17 @@
   function handlePlayerCrownHit(attacker, crown) {
     setShield(getShield() - 1);
     game.battleShieldLost = true;
-    attacker.alive = false;
+    const hitX = attacker.x;
+    const hitY = attacker.y;
+    if (attacker.type === 'k' && attacker.color === 'b') {
+      respawnEnemyCrown(attacker);
+    } else {
+      attacker.alive = false;
+    }
     crown.alive = true;
     crown.anim = null;
-    crown.x = attacker.x;
-    crown.y = attacker.y;
+    crown.x = hitX;
+    crown.y = hitY;
     game.combo = 0;
     const point = tileCenter(crown.x, crown.y);
     addImpact(point.x, point.y, 'hurt', 38);
@@ -2405,6 +2568,15 @@
     return () => rngNext(holder);
   }
 
+  const FORMATION_PREVIEW = {
+    phalanx: [12, 13, 14, 15, 16, 17, 6, 7, 10, 11],
+    pincer: [6, 11, 12, 17, 18, 23, 0, 5],
+    fortress: [2, 4, 8, 9, 10, 1, 5],
+    vanguard: [18, 19, 20, 21, 22, 23, 12, 17],
+    lance: [8, 10, 13, 17, 18, 20]
+  };
+  const PREVIEW_GLYPHS = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
+
   function contractPreviewCells(contract) {
     const cells = Array(24).fill('');
     const random = previewRandomFactory(hashString(contract.id));
@@ -2422,8 +2594,26 @@
     place('♚', 3);
     const depth = contract.depth || 1;
     const base = 3 + Math.min(5, depth) + (contract.elite ? (depth <= 3 ? 1 : 2) : 0);
+    const formationDef = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : null;
+    const preferredList = formationDef ? FORMATION_PREVIEW[formationDef.id] || null : null;
     const pool = ['♟', '♟', '♞', '♝', '♜'];
-    for (let i = 0; i < base; i++) place(pool[Math.floor(random() * pool.length)]);
+    let prefCursor = 0;
+    for (let i = 0; i < base; i++) {
+      let glyph;
+      if (formationDef?.mix) {
+        let type = formationDef.mix[i % formationDef.mix.length];
+        if (depth <= 2 && type === 'q') type = 'b';
+        glyph = PREVIEW_GLYPHS[type];
+      } else {
+        glyph = pool[Math.floor(random() * pool.length)];
+      }
+      let index = null;
+      if (preferredList) {
+        while (prefCursor < preferredList.length && occupied.has(preferredList[prefCursor])) prefCursor += 1;
+        index = prefCursor < preferredList.length ? preferredList[prefCursor] : null;
+      }
+      place(glyph, index);
+    }
     if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) place('♟');
     if (hasMod(contract, 'cavalry')) for (let i = 0; i < 2; i++) place('♞');
     if (hasMod(contract, 'walls')) for (let i = 0; i < 2; i++) place('♜');
@@ -2446,6 +2636,10 @@
       const traitRow = contract.trait && TRAITS[contract.trait]
         ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
         : '';
+      const formationDef = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : null;
+      const formationRow = formationDef
+        ? `<span class="contract-formation"><b>⚔ ${t(formationDef.nameKey)}</b><small>${t(formationDef.lineKey)}</small></span>`
+        : '';
       const spoilLine = contract.trait && TRAITS[contract.trait]
         ? `<span class="reward-line gold">♚ ${t('contract.reward.spoil', { name: t(TRAITS[contract.trait].nameKey), level: contract.elite ? 2 : 1 })}</span>`
         : '';
@@ -2460,6 +2654,7 @@
         <span class="contract-top"><span class="contract-type ${contract.final ? 'final' : contract.elite ? 'elite' : ''}">${t(typeKey)}</span><span class="contract-crowns">${crowns}</span></span>
         ${bossHead}
         ${traitRow}
+        ${formationRow}
         <span class="board-preview">${contractPreviewCells(contract)}</span>
         <span class="contract-mods">${mods}</span>
         ${rewardLines}
@@ -2596,7 +2791,7 @@
     burstButton.classList.toggle('ready', ready);
     $('#hype-fill').style.width = `${game.hype}%`;
     $('#tempo-count').textContent = game.overdriveMoves + game.bonusActions;
-    $('#intent-key').classList.toggle('show', Boolean(game.enemyIntent));
+    $('#intent-key').classList.toggle('show', Boolean(game.enemyIntent) && activeTraitId() !== 'mist');
   }
 
   function offerFirstTutorial() {
@@ -2635,7 +2830,8 @@
   function getRecommendedMove() {
     const options = allMoves('w');
     if (!options.length) return null;
-    const intentActor = game.enemyIntent ? game.pieces.find(piece => piece.id === game.enemyIntent.pieceId) : null;
+    const intentVisible = activeTraitId() !== 'mist';
+    const intentActor = intentVisible && game.enemyIntent ? game.pieces.find(piece => piece.id === game.enemyIntent.pieceId) : null;
     return options.map(option => {
       const target = option.move.captureId ? game.pieces.find(piece => piece.id === option.move.captureId) : null;
       let score = Math.random() * 20;
@@ -2646,7 +2842,7 @@
         if (option.move.y <= promotionRank()) score += 12000;
       }
       if (intentActor && target?.id === intentActor.id) score += 8500;
-      if (game.enemyIntent && option.move.x === game.enemyIntent.x && option.move.y === game.enemyIntent.y && !target) score += 900;
+      if (intentVisible && game.enemyIntent && option.move.x === game.enemyIntent.x && option.move.y === game.enemyIntent.y && !target) score += 900;
       const crown = kingOf('b');
       if (crown) {
         const before = Math.abs(option.piece.x - crown.x) + Math.abs(option.piece.y - crown.y);
@@ -2985,7 +3181,7 @@
 
   function drawEnemyIntent(time) {
     const intent = game.enemyIntent;
-    if (!intent) return;
+    if (!intent || activeTraitId() === 'mist') return;
     const piece = game.pieces.find(item => item.id === intent.pieceId && item.alive);
     if (!piece) return;
     const from = tileCenter(piece.x, piece.y);
@@ -3134,6 +3330,21 @@
       }
       ctx.closePath();
       ctx.fill();
+    }
+
+    if (piece.color === 'w' && Number(piece.stunUntil || 0) > game.moveCount) {
+      ctx.globalAlpha = .45;
+      ctx.fillStyle = '#0a0a16';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
+      ctx.lineWidth = Math.max(1.5, tile * .02);
+      ctx.beginPath();
+      ctx.moveTo(-radius * .5, 0);
+      ctx.lineTo(radius * .5, 0);
+      ctx.stroke();
     }
 
     if (isCrown && game.enemyHPMax > 1) {
