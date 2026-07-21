@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.4.0';
+  const VERSION = '3.5.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -172,14 +172,17 @@
   };
   const TRAIT_IDS = new Set(Object.keys(TRAITS));
 
+  const enemyZone = Array.from({ length: 5 }, (_, y) => Array.from({ length: 8 }, (_, x) => ({ x, y }))).flat();
+  const orderedEnemySlots = compare => [...enemyZone].sort(compare);
   const FORMATIONS = {
-    scatter: { id: 'scatter', nameKey: 'formation.scatter.name', lineKey: 'formation.scatter.line', mix: null },
-    phalanx: { id: 'phalanx', nameKey: 'formation.phalanx.name', lineKey: 'formation.phalanx.line', mix: ['p', 'p', 'p', 'p', 'r', 'r', 'p', 'b', 'p', 'r'] },
-    pincer: { id: 'pincer', nameKey: 'formation.pincer.name', lineKey: 'formation.pincer.line', mix: ['n', 'n', 'b', 'b', 'p', 'p', 'n', 'b', 'p', 'n'] },
-    fortress: { id: 'fortress', nameKey: 'formation.fortress.name', lineKey: 'formation.fortress.line', mix: ['p', 'p', 'n', 'b', 'r', 'p', 'r', 'b', 'p', 'q'] },
-    vanguard: { id: 'vanguard', nameKey: 'formation.vanguard.name', lineKey: 'formation.vanguard.line', mix: ['p', 'p', 'p', 'n', 'n', 'p', 'n', 'b', 'p', 'n'] },
-    lance: { id: 'lance', nameKey: 'formation.lance.name', lineKey: 'formation.lance.line', mix: ['b', 'b', 'q', 'p', 'p', 'b', 'p', 'r', 'b', 'p'] }
+    scatter: { id: 'scatter', nameKey: 'formation.scatter.name', lineKey: 'formation.scatter.line', crownXs: [2, 3, 4, 5], randomSlots: true, types: ['p', 'n', 'p', 'b', 'r', 'p', 'n', 'q'] },
+    phalanx: { id: 'phalanx', nameKey: 'formation.phalanx.name', lineKey: 'formation.phalanx.line', crownXs: [3], slots: orderedEnemySlots((a, b) => Math.abs(a.y - 2) - Math.abs(b.y - 2) || a.y - b.y || a.x - b.x), types: ['p', 'p', 'p', 'p', 'r', 'r', 'p', 'b', 'p', 'r'] },
+    pincer: { id: 'pincer', nameKey: 'formation.pincer.name', lineKey: 'formation.pincer.line', crownXs: [3], slots: orderedEnemySlots((a, b) => Math.min(a.x, 7 - a.x) - Math.min(b.x, 7 - b.x) || b.y - a.y || a.x - b.x), types: ['n', 'n', 'b', 'b', 'p', 'p', 'n', 'b', 'p', 'n'] },
+    fortress: { id: 'fortress', nameKey: 'formation.fortress.name', lineKey: 'formation.fortress.line', crownXs: [4], slots: orderedEnemySlots((a, b) => (Math.abs(a.x - 4) + a.y) - (Math.abs(b.x - 4) + b.y) || a.y - b.y || a.x - b.x), types: ['p', 'p', 'n', 'b', 'r', 'p', 'r', 'b', 'p', 'q'] },
+    vanguard: { id: 'vanguard', nameKey: 'formation.vanguard.name', lineKey: 'formation.vanguard.line', crownXs: [3], slots: orderedEnemySlots((a, b) => b.y - a.y || Math.abs(a.x - 3.5) - Math.abs(b.x - 3.5) || a.x - b.x), types: ['p', 'p', 'p', 'n', 'n', 'p', 'n', 'b', 'p', 'n'] },
+    lance: { id: 'lance', nameKey: 'formation.lance.name', lineKey: 'formation.lance.line', crownXs: [4], slots: orderedEnemySlots((a, b) => Math.abs(Math.abs(a.x - 4) - a.y) - Math.abs(Math.abs(b.x - 4) - b.y) || b.y - a.y || a.x - b.x), types: ['b', 'b', 'q', 'p', 'p', 'b', 'p', 'r', 'b', 'p'] }
   };
+  const FORMATION_IDS = new Set(Object.keys(FORMATIONS));
 
   const ACTS = [
     { from: 1, nameKey: 'act.outer.name', lineKey: 'act.outer.line' },
@@ -188,9 +191,9 @@
   ];
 
   const BOSS_DEFS = {
-    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex' },
-    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'], trait: 'guarded' },
-    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'], trait: 'summoner' }
+    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex', formation: 'lance', aiProfile: 'aggressive', extras: ['q'] },
+    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'], trait: 'guarded', formation: 'fortress', aiProfile: 'crownGuard', extras: ['p', 'p'] },
+    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'], trait: 'summoner', formation: 'vanguard', aiProfile: 'aggressive', extras: ['p', 'p'] }
   };
 
   const CONTRACT_MODS = {
@@ -201,8 +204,28 @@
     queen: { id: 'queen', nameKey: 'contract.queen.name', glyph: '♛', lineKey: 'contract.queen.line' },
     armor: { id: 'armor', nameKey: 'contract.armor.name', glyph: '♚', lineKey: 'contract.armor.line' },
     race: { id: 'race', nameKey: 'contract.race.name', glyph: '♟', lineKey: 'contract.race.line' },
-    shortClock: { id: 'shortClock', nameKey: 'contract.shortClock.name', glyph: '⌛', lineKey: 'contract.shortClock.line' }
+    shortClock: { id: 'shortClock', nameKey: 'contract.shortClock.name', glyph: '⌛', lineKey: 'contract.shortClock.line' },
+    promoted: { id: 'promoted', nameKey: 'contract.promoted.name', glyph: '♛', lineKey: 'contract.promoted.line' },
+    veteran: { id: 'veteran', nameKey: 'contract.veteran.name', glyph: '★', lineKey: 'contract.veteran.line' },
+    mirror: { id: 'mirror', nameKey: 'contract.mirror.name', glyph: '◫', lineKey: 'contract.mirror.line' },
+    executioner: { id: 'executioner', nameKey: 'contract.executioner.name', glyph: '✕', lineKey: 'contract.executioner.line' }
   };
+  const MOD_IDS = new Set(Object.keys(CONTRACT_MODS));
+  const AI_PROFILES = {
+    aggressive: {
+      id: 'aggressive', nameKey: 'aiProfile.aggressive.name', lineKey: 'aiProfile.aggressive.line',
+      weights: { capture: 1.75, danger: 0.35, pursuit: 1.8, clearThreat: 900, guard: 20 }
+    },
+    defensive: {
+      id: 'defensive', nameKey: 'aiProfile.defensive.name', lineKey: 'aiProfile.defensive.line',
+      weights: { capture: 1, danger: 1, pursuit: 1, clearThreat: 1400, guard: 0 }
+    },
+    crownGuard: {
+      id: 'crownGuard', nameKey: 'aiProfile.crownGuard.name', lineKey: 'aiProfile.crownGuard.line',
+      weights: { capture: 1.05, danger: 1.15, pursuit: 0.8, clearThreat: 4200, guard: 520 }
+    }
+  };
+  const AI_PROFILE_IDS = new Set(Object.keys(AI_PROFILES));
 
   function hashString(text) {
     let hash = 2166136261 >>> 0;
@@ -466,6 +489,7 @@
     bonusActions: 0,
     moveCount: 0,
     aiSkill: 0.3,
+    aiProfile: 'defensive',
     enemyIntent: null,
     currentAnimation: null,
     transitionTimer: null,
@@ -553,39 +577,215 @@
   }
 
   function hasMod(contract, id) {
-    return Boolean(contract?.mods?.includes(id));
+    if (!MOD_IDS.has(id)) throw new RangeError(`Unknown contract mod: ${String(id)}.`);
+    if (contract === null || contract === undefined) return false;
+    if (!Array.isArray(contract.mods)) throw new TypeError('Contract mods must be an array.');
+    return contract.mods.includes(id);
+  }
+
+  const MOD_LAYOUT_ADDITIONS = {
+    swarm: ['p', 'p', 'p'], cavalry: ['n', 'n'], walls: ['r', 'r'], diagonals: ['b', 'b'],
+    queen: ['q'], armor: [], race: ['p', 'p', 'p'], shortClock: [],
+    promoted: [], veteran: [], mirror: [], executioner: []
+  };
+
+  function seededShuffle(values, random) {
+    const copy = [...values];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function materializeEnemyLayout({ depth, elite, final, boss, mods, formation, layoutSeed }, playerRoster) {
+    if (!FORMATION_IDS.has(formation)) throw new RangeError(`Unknown formation id: ${String(formation)}.`);
+    if (!Array.isArray(mods) || mods.some(id => !MOD_IDS.has(id))) throw new RangeError('Contract mods contain an unknown id.');
+    if (mods.length > 4) throw new RangeError('Contract mods may contain at most four entries.');
+    if (!Array.isArray(playerRoster) || !playerRoster.length) throw new TypeError('playerRoster must be a non-empty array.');
+    if (playerRoster.some(member => !member || typeof member !== 'object' || !Object.hasOwn(PIECE_VALUES, member.type))) {
+      throw new RangeError('playerRoster contains an invalid piece type.');
+    }
+    if (!Number.isInteger(layoutSeed) || layoutSeed < 1 || layoutSeed > 0xFFFFFFFF) throw new RangeError('layoutSeed must be a non-zero uint32.');
+    const holder = { rngState: layoutSeed >>> 0 };
+    const random = () => rngNext(holder);
+    const definition = FORMATIONS[formation];
+    const crownX = definition.crownXs[Math.floor(random() * definition.crownXs.length)];
+    const crown = { type: 'k', x: crownX, y: 0, veteran: false };
+    const baseCount = final ? 7 : 3 + Math.min(5, depth) + (elite ? (depth <= 3 ? 1 : 2) : 0);
+    const formationRole = type => formation === 'phalanx' ? (type === 'p' ? 'pawnWall' : 'rear') : 'formation';
+    const planned = Array.from({ length: baseCount }, (_, index) => {
+      const templateType = definition.types[index % definition.types.length];
+      return {
+        type: depth <= 2 && templateType === 'q' ? 'b' : templateType,
+        role: formationRole(templateType)
+      };
+    });
+    mods.forEach(id => MOD_LAYOUT_ADDITIONS[id].forEach(type => planned.push({
+      type,
+      role: id === 'race' ? 'forward' : formationRole(type)
+    })));
+    if (boss !== null) {
+      const bossDef = BOSS_DEFS[boss];
+      if (!bossDef) throw new RangeError(`Unknown boss id: ${String(boss)}.`);
+      bossDef.extras.forEach(type => planned.push({ type, role: formationRole(type) }));
+    }
+    if (mods.includes('promoted')) {
+      let pawnIndex = planned.findIndex(entry => entry.type === 'p');
+      if (pawnIndex < 0) {
+        if (!planned.length) throw new Error('Promoted mod requires a planned enemy slot.');
+        pawnIndex = 0;
+        planned[pawnIndex].type = 'p';
+      }
+      planned[pawnIndex].type = 'q';
+    }
+    if (mods.includes('mirror')) {
+      const mirroredTypes = [];
+      const seenTypes = new Set();
+      playerRoster.forEach(member => {
+        if (member.type === 'k' || seenTypes.has(member.type)) return;
+        seenTypes.add(member.type);
+        mirroredTypes.push({ type: member.type, role: formationRole(member.type) });
+      });
+      planned.push(...mirroredTypes);
+    }
+    const allSlots = definition.randomSlots ? seededShuffle(enemyZone, random) : definition.slots;
+    const availableSlots = allSlots.filter(slot => slot.x !== crown.x || slot.y !== crown.y);
+    if (planned.length > availableSlots.length) throw new RangeError(`Formation ${formation} has capacity ${availableSlots.length}, requested ${planned.length}.`);
+    const roleCounts = planned.reduce((counts, entry) => {
+      counts[entry.role] = (counts[entry.role] || 0) + 1;
+      return counts;
+    }, {});
+    const forwardSlots = availableSlots
+      .filter(slot => slot.y === 3 || slot.y === 4)
+      .sort((left, right) => right.y - left.y || left.x - right.x)
+      .slice(0, roleCounts.forward || 0);
+    if (forwardSlots.length !== (roleCounts.forward || 0)) throw new RangeError(`Race requires ${roleCounts.forward || 0} open forward slots in formation ${formation}.`);
+    const reservedForward = new Set(forwardSlots.map(slot => `${slot.x},${slot.y}`));
+    const roleSlots = { forward: forwardSlots };
+    if (formation === 'phalanx') {
+      roleSlots.pawnWall = availableSlots.filter(slot => (slot.y === 2 || slot.y === 3) && !reservedForward.has(`${slot.x},${slot.y}`));
+      roleSlots.rear = availableSlots.filter(slot => slot.y === 0 || slot.y === 1);
+      if ((roleCounts.pawnWall || 0) > roleSlots.pawnWall.length) throw new RangeError(`Phalanx pawn wall has capacity ${roleSlots.pawnWall.length}, requested ${roleCounts.pawnWall || 0}.`);
+      if ((roleCounts.rear || 0) > roleSlots.rear.length) throw new RangeError(`Phalanx rear has capacity ${roleSlots.rear.length}, requested ${roleCounts.rear || 0}.`);
+    } else {
+      roleSlots.formation = availableSlots.filter(slot => !reservedForward.has(`${slot.x},${slot.y}`));
+      if ((roleCounts.formation || 0) > roleSlots.formation.length) throw new RangeError(`Formation ${formation} has capacity ${roleSlots.formation.length}, requested ${roleCounts.formation || 0}.`);
+    }
+    let veteranType = null;
+    if (mods.includes('veteran')) {
+      const candidates = [...new Set(planned.map(entry => entry.type))].sort();
+      if (!candidates.length) throw new Error('Veteran mod requires at least one non-crown enemy.');
+      veteranType = candidates[Math.floor(random() * candidates.length)];
+    }
+    const roleIndexes = {};
+    return [crown, ...planned.map(entry => {
+      const roleIndex = roleIndexes[entry.role] || 0;
+      const slot = roleSlots[entry.role]?.[roleIndex];
+      roleIndexes[entry.role] = roleIndex + 1;
+      if (!slot) throw new RangeError(`Formation ${formation} cannot place role ${entry.role}.`);
+      return { type: entry.type, x: slot.x, y: slot.y, veteran: entry.type === veteranType };
+    })];
+  }
+
+  function assertContract(contract, playerRoster) {
+    if (!contract || typeof contract !== 'object' || Array.isArray(contract)
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(contract))) throw new TypeError('Contract must be a plain object.');
+    const required = ['id', 'depth', 'elite', 'final', 'boss', 'mods', 'trait', 'formation', 'aiProfile', 'layoutSeed', 'enemyLayout', 'reward'];
+    for (const field of required) if (!Object.hasOwn(contract, field)) throw new RangeError(`Contract field ${field} is required.`);
+    const extra = Object.keys(contract).filter(field => !required.includes(field));
+    if (extra.length) throw new RangeError(`Unsupported contract field: ${extra[0]}.`);
+    if (typeof contract.id !== 'string' || !contract.id) throw new TypeError('Contract id must be a non-empty string.');
+    if (!Number.isInteger(contract.depth) || contract.depth < 1 || contract.depth > 8) throw new RangeError('Contract depth must be 1..8.');
+    if (typeof contract.elite !== 'boolean' || typeof contract.final !== 'boolean') throw new TypeError('Contract elite/final must be boolean.');
+    if (contract.boss !== null && !Object.hasOwn(BOSS_DEFS, contract.boss)) throw new RangeError(`Unknown boss id: ${String(contract.boss)}.`);
+    if (contract.final !== (contract.boss !== null)) throw new RangeError('Final contracts must identify a boss, and non-final contracts must not.');
+    if (!Array.isArray(contract.mods) || contract.mods.some(id => typeof id !== 'string' || !MOD_IDS.has(id))) throw new RangeError('Contract mods contain an unknown id.');
+    if (contract.mods.length > 4) throw new RangeError('Contract mods may contain at most four entries.');
+    if (new Set(contract.mods).size !== contract.mods.length) throw new RangeError('Contract mods must be unique.');
+    if (contract.trait !== null && (typeof contract.trait !== 'string' || !TRAIT_IDS.has(contract.trait))) throw new RangeError(`Unknown trait id: ${String(contract.trait)}.`);
+    if (typeof contract.formation !== 'string' || !FORMATION_IDS.has(contract.formation)) throw new RangeError(`Unknown formation id: ${String(contract.formation)}.`);
+    if (typeof contract.aiProfile !== 'string' || !AI_PROFILE_IDS.has(contract.aiProfile)) throw new RangeError(`Unknown AI profile: ${String(contract.aiProfile)}.`);
+    if (contract.boss !== null) {
+      const definition = BOSS_DEFS[contract.boss];
+      if (!contract.elite || contract.depth !== 8 || contract.formation !== definition.formation || contract.aiProfile !== definition.aiProfile
+        || contract.trait !== definition.trait || contract.mods.length !== definition.mods.length
+        || contract.mods.some((id, index) => id !== definition.mods[index])) {
+        throw new RangeError(`Boss contract ${contract.boss} does not match its definition.`);
+      }
+    }
+    if (!Number.isInteger(contract.layoutSeed) || contract.layoutSeed < 1 || contract.layoutSeed > 0xFFFFFFFF) throw new RangeError('Contract layoutSeed must be a non-zero uint32.');
+    if (!Array.isArray(contract.enemyLayout) || !contract.enemyLayout.length) throw new RangeError('Contract enemyLayout must not be empty.');
+    const occupied = new Set();
+    let crowns = 0;
+    contract.enemyLayout.forEach((piece, index) => {
+      if (!piece || typeof piece !== 'object' || Array.isArray(piece)
+        || ![Object.prototype, null].includes(Object.getPrototypeOf(piece))) throw new TypeError(`enemyLayout[${index}] must be a plain object.`);
+      const fields = ['type', 'x', 'y', 'veteran'];
+      if (fields.some(field => !Object.hasOwn(piece, field)) || Object.keys(piece).some(field => !fields.includes(field))) throw new RangeError(`enemyLayout[${index}] has an invalid schema.`);
+      if (!Object.hasOwn(PIECE_VALUES, piece.type)) throw new RangeError(`enemyLayout[${index}] has invalid type.`);
+      if (!Number.isInteger(piece.x) || piece.x < 0 || piece.x > 7 || !Number.isInteger(piece.y) || piece.y < 0 || piece.y > 4) throw new RangeError(`enemyLayout[${index}] is outside the enemy zone.`);
+      if (typeof piece.veteran !== 'boolean') throw new TypeError(`enemyLayout[${index}].veteran must be boolean.`);
+      const square = `${piece.x},${piece.y}`;
+      if (occupied.has(square)) throw new RangeError(`enemyLayout overlaps at ${square}.`);
+      occupied.add(square);
+      if (piece.type === 'k') crowns += 1;
+    });
+    if (crowns !== 1) throw new RangeError('Contract enemyLayout must contain exactly one crown.');
+    const expectedReward = contract.final ? 0 : contract.elite ? 2 : 1;
+    if (contract.reward !== expectedReward) throw new RangeError(`Contract reward must be ${expectedReward} for this contract type.`);
+    const canonicalLayout = materializeEnemyLayout(contract, playerRoster);
+    const layoutMatches = canonicalLayout.length === contract.enemyLayout.length
+      && canonicalLayout.every((piece, index) => {
+        const actual = contract.enemyLayout[index];
+        return piece.type === actual.type && piece.x === actual.x && piece.y === actual.y && piece.veteran === actual.veteran;
+      });
+    if (!layoutMatches) throw new RangeError('Contract enemyLayout does not match its canonical materialization.');
+    return contract;
+  }
+
+  function createContract(fields, playerRoster) {
+    const contract = { ...fields };
+    contract.enemyLayout = materializeEnemyLayout(contract, playerRoster);
+    return assertContract(contract, playerRoster);
   }
 
   function makeContract(depth, elite = false, final = false) {
+    const layoutSeed = Math.floor(runRandom() * 0xFFFFFFFF) + 1;
     if (final) {
       const bossId = choose(Object.keys(BOSS_DEFS));
-      return {
+      const boss = BOSS_DEFS[bossId];
+      return createContract({
         id: `boss-${bossId}-${run.rngState}`,
         depth,
         elite: true,
         final: true,
         boss: bossId,
-        mods: [...BOSS_DEFS[bossId].mods],
-        trait: BOSS_DEFS[bossId].trait,
+        mods: [...boss.mods],
+        trait: boss.trait,
+        formation: boss.formation,
+        aiProfile: boss.aiProfile,
+        layoutSeed,
         reward: 0,
-        previewSeed: run.rngState
-      };
+      }, run.roster);
     }
-    const modPool = ['swarm', 'cavalry', 'walls', 'diagonals', 'queen', 'armor', 'race', 'shortClock'];
+    const modPool = [...MOD_IDS];
     const count = elite ? (depth >= 4 ? 3 : 2) : 1;
     const mods = shuffled(modPool).slice(0, count);
     if (!elite && depth <= 2 && mods.includes('shortClock')) mods[0] = 'swarm';
-    return {
+    return createContract({
       id: `${elite ? 'elite' : 'plain'}-${depth}-${run.rngState}`,
       depth,
       elite,
       final: false,
+      boss: null,
       mods,
       trait: elite ? choose(eligibleTraitIds()) : null,
-      formation: choose(Object.keys(FORMATIONS)),
+      formation: choose([...FORMATION_IDS]),
+      aiProfile: choose([...AI_PROFILE_IDS]),
+      layoutSeed,
       reward: elite ? 2 : 1,
-      previewSeed: run.rngState
-    };
+    }, run.roster);
   }
 
   function activeTraitId() {
@@ -653,6 +853,24 @@
     if (!Array.isArray(candidate.roster) || !candidate.roster.length) return false;
     if (!candidate.relics || typeof candidate.relics !== 'object') return false;
     if (!Number.isFinite(candidate.seed) || !Number.isFinite(candidate.battle)) return false;
+    try {
+      if (!candidate.battleStartMeta || !Array.isArray(candidate.battleStartMeta.roster)) {
+        throw new RangeError('Saved run requires its frozen battle roster.');
+      }
+      const battleRoster = candidate.battleStartMeta.roster;
+      assertContract(candidate.currentContract, battleRoster);
+      if (candidate.battleState) {
+        assertContract(candidate.battleState.contract, battleRoster);
+        if (!AI_PROFILE_IDS.has(candidate.battleState.aiProfile)) throw new RangeError('Saved battle has an unknown AI profile.');
+      }
+      if (candidate.battleStart) {
+        assertContract(candidate.battleStart.contract, battleRoster);
+        if (!AI_PROFILE_IDS.has(candidate.battleStart.aiProfile)) throw new RangeError('Saved battle start has an unknown AI profile.');
+      }
+      if (candidate.pendingContracts) candidate.pendingContracts.forEach(contract => assertContract(contract, candidate.roster));
+    } catch (_) {
+      return false;
+    }
     return true;
   }
 
@@ -687,6 +905,7 @@
         dashUsed: Number(piece.dashUsed || 0),
         stunUntil: Number(piece.stunUntil || 0),
         enemyLockUntil: Number(piece.enemyLockUntil || 0),
+        veteran: Boolean(piece.veteran),
         startY: piece.startY
       })),
       turnsLeft: game.turnsLeft,
@@ -702,6 +921,7 @@
       bonusActions: game.bonusActions,
       moveCount: game.moveCount,
       aiSkill: game.aiSkill,
+      aiProfile: game.aiProfile,
       battleCharges: deepClone(game.battleCharges),
       battleShieldLost: Boolean(game.battleShieldLost),
       battleMaxCombo: Number(game.battleMaxCombo || 0),
@@ -906,6 +1126,7 @@
       dashUsed: Number(extra.dashUsed || 0),
       stunUntil: Number(extra.stunUntil || 0),
       enemyLockUntil: Number(extra.enemyLockUntil || 0),
+      veteran: Boolean(extra.veteran),
       startY: Number.isFinite(extra.startY) ? extra.startY : y,
       anim: null,
       spawnAt: now() + Math.random() * 120
@@ -953,95 +1174,22 @@
     return { pieces, occupied };
   }
 
-  function addEnemyPiece(list, occupied, type, preferredRows = [1, 2, 3, 4]) {
-    const candidates = shuffled(openSquares(occupied, preferredRows));
-    if (!candidates.length) return null;
-    const spot = candidates[0];
-    occupied.add(`${spot.x},${spot.y}`);
-    const piece = makePiece('b', type, spot.x, spot.y, { startY: spot.y });
-    list.push(piece);
-    return piece;
-  }
-
-  function formationSquares(formationId, type, occupied, crownX) {
-    const open = rows => openSquares(occupied, rows);
-    switch (formationId) {
-      case 'phalanx':
-        return type === 'p' ? open([2, 3]) : open([0, 1]);
-      case 'pincer': {
-        const flank = open([1, 2, 3]).filter(spot => spot.x <= 1 || spot.x >= 6);
-        return flank.length ? flank : open([1, 2, 3]);
-      }
-      case 'fortress': {
-        const near = open([0, 1, 2]).filter(spot => Math.abs(spot.x - crownX) <= 1 && spot.y <= 1);
-        return near.length ? near : open([0, 1, 2]);
-      }
-      case 'vanguard': {
-        const forward = open([3, 4]);
-        return forward.length ? forward : open([2, 3, 4]);
-      }
-      case 'lance': {
-        const diag = open([1, 2, 3, 4]).filter(spot => Math.abs(spot.x - crownX) === spot.y);
-        return diag.length ? diag : open([1, 2, 3]);
-      }
-      default:
-        return open([1, 2, 3, 4]);
-    }
-  }
-
-  function addFormationPiece(list, occupied, type, formationId, crownX) {
-    const candidates = shuffled(formationSquares(formationId, type, occupied, crownX));
-    const fallback = candidates.length ? candidates : shuffled(openSquares(occupied, [1, 2, 3, 4]));
-    if (!fallback.length) return null;
-    const spot = fallback[0];
-    occupied.add(`${spot.x},${spot.y}`);
-    const piece = makePiece('b', type, spot.x, spot.y, { startY: spot.y });
-    list.push(piece);
-    return piece;
-  }
-
-  function generateEnemyFormation(contract) {
-    const placed = placeRoster(run.roster);
+  function generateEnemyFormation(contract, playerRoster) {
+    assertContract(contract, playerRoster);
+    const placed = placeRoster(playerRoster);
     const pieces = placed.pieces;
     const occupied = placed.occupied;
-    const crownCandidates = shuffled([2, 3, 4, 5]);
-    let crownX = crownCandidates.find(x => !occupied.has(`${x},0`));
-    if (!Number.isFinite(crownX)) crownX = 4;
-    occupied.add(`${crownX},0`);
-    pieces.push(makePiece('b', 'k', crownX, 0));
-
-    const depth = run.battle;
-    const eliteExtra = contract.elite ? (depth <= 3 ? 1 : 2) : 0;
-    const baseCount = contract.final ? 7 : 3 + Math.min(5, depth) + eliteExtra;
-    const pool = depth <= 2
-      ? ['p', 'p', 'p', 'n', 'b', 'r']
-      : depth <= 4
-        ? ['p', 'p', 'n', 'b', 'r', 'q']
-        : ['p', 'n', 'b', 'r', 'q'];
-
-    const formation = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : FORMATIONS.scatter;
-    for (let i = 0; i < baseCount; i++) {
-      let type = formation.mix ? formation.mix[i % formation.mix.length] : choose(pool);
-      if (depth <= 2 && type === 'q') type = 'b';
-      addFormationPiece(pieces, occupied, type, formation.id, crownX);
-    }
-    if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) addEnemyPiece(pieces, occupied, 'p', [2, 3, 4]);
-    if (hasMod(contract, 'cavalry')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'n', [1, 2, 3]);
-    if (hasMod(contract, 'walls')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'r', [1, 2]);
-    if (hasMod(contract, 'diagonals')) for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'b', [1, 2, 3]);
-    if (hasMod(contract, 'queen')) addEnemyPiece(pieces, occupied, 'q', [1, 2]);
-    if (hasMod(contract, 'race')) {
-      for (let i = 0; i < 3; i++) addEnemyPiece(pieces, occupied, 'p', [4, 3]);
-    }
-    if (contract.boss === 'twinQueens') addEnemyPiece(pieces, occupied, 'q', [1, 2]);
-    if (contract.boss === 'ironBastion') for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'p', [2]);
-    if (contract.boss === 'pawnstorm') for (let i = 0; i < 2; i++) addEnemyPiece(pieces, occupied, 'p', [3, 4]);
+    contract.enemyLayout.forEach(layout => {
+      const square = `${layout.x},${layout.y}`;
+      if (occupied.has(square)) throw new RangeError(`Enemy layout overlaps roster at ${square}.`);
+      occupied.add(square);
+      pieces.push(makePiece('b', layout.type, layout.x, layout.y, { startY: layout.y, veteran: layout.veteran }));
+    });
     return pieces;
   }
 
-  function buildBattleFromContract(contract) {
-    run.currentContract = contract;
-    const pieces = generateEnemyFormation(contract);
+  function buildBattleFromContract(contract, playerRoster) {
+    const pieces = generateEnemyFormation(contract, playerRoster);
     const bossDef = contract.boss ? BOSS_DEFS[contract.boss] : null;
     const hp = bossDef ? bossDef.hp : clamp(1 + (contract.elite ? 1 : 0) + (hasMod(contract, 'armor') ? 1 : 0), 1, 3);
     const turns = clamp(
@@ -1054,7 +1202,8 @@
       enemyHP: hp,
       enemyHPMax: hp,
       turns,
-      aiSkill: clamp(0.18 + run.battle * 0.07 + (contract.elite ? 0.08 : 0), 0.18, 0.8)
+      aiSkill: clamp(0.18 + contract.depth * 0.07 + (contract.elite ? 0.08 : 0), 0.18, 0.8),
+      aiProfile: contract.aiProfile
     };
   }
 
@@ -1081,6 +1230,8 @@
     game.bonusActions = 0;
     game.moveCount = 0;
     game.aiSkill = data.aiSkill;
+    if (!AI_PROFILE_IDS.has(data.aiProfile)) throw new RangeError(`Unknown AI profile: ${String(data.aiProfile)}.`);
+    game.aiProfile = data.aiProfile;
     game.enemyIntent = null;
     game.currentAnimation = null;
     game.screenShake = 0;
@@ -1112,10 +1263,11 @@
   function startNewRun(seed = makeSeed(), daily = false) {
     audio.start();
     run = newRunState(seed, daily);
-    run.currentContract = {
-      id: 'opening', depth: 1, elite: false, final: false,
-      mods: [], reward: 1, previewSeed: run.rngState
-    };
+    run.currentContract = createContract({
+      id: 'opening', depth: 1, elite: false, final: false, boss: null,
+      mods: [], trait: null, formation: 'scatter', aiProfile: 'defensive',
+      layoutSeed: (seed >>> 0) || 1, reward: 1
+    }, run.roster);
     save.runs += 1;
     persistSave();
     startRunBattle(false);
@@ -1129,6 +1281,8 @@
     let data;
     if (fromResume && run.battleState) {
       const state = run.battleState;
+      if (!run.battleStartMeta || !Array.isArray(run.battleStartMeta.roster)) throw new Error('Resuming a battle requires its frozen roster.');
+      assertContract(state.contract, run.battleStartMeta.roster);
       data = {
         pieces: state.pieces.map(piece => makePiece(piece.color, piece.type, piece.x, piece.y, {
           id: piece.id,
@@ -1139,12 +1293,14 @@
           dashUsed: piece.dashUsed,
           stunUntil: piece.stunUntil,
           enemyLockUntil: piece.enemyLockUntil,
+          veteran: piece.veteran,
           startY: piece.startY
         })),
         turns: state.turnsLeft,
         enemyHP: state.enemyHP,
         enemyHPMax: state.enemyHPMax,
-        aiSkill: state.aiSkill
+        aiSkill: state.aiSkill,
+        aiProfile: state.aiProfile
       };
       resetRuntimeForBattle(data);
       game.score = state.score;
@@ -1164,9 +1320,9 @@
       game.enemyTurns = Number(state.enemyTurns || 0);
       game.enemyCycles = Number(state.enemyCycles || 0);
       run.shield = state.shield;
-      run.currentContract = state.contract || run.currentContract;
+      run.currentContract = deepClone(state.contract);
     } else {
-      data = buildBattleFromContract(run.currentContract);
+      data = buildBattleFromContract(run.currentContract, run.roster);
       resetRuntimeForBattle(data);
       game.hype = clamp(Number(run.energyCarry || 0), 0, 50);
       run.energyCarry = 0;
@@ -1227,7 +1383,8 @@
     game.mode = 'run';
     if (run.battleState) startRunBattle(true);
     else {
-      const data = buildBattleFromContract(run.currentContract || makeContract(run.battle, false, false));
+      if (!run.currentContract) throw new Error('Run battle requires a current contract.');
+      const data = buildBattleFromContract(run.currentContract, run.roster);
       resetRuntimeForBattle(data);
       enterBattleScreen();
     }
@@ -1268,7 +1425,7 @@
       makePiece('b', 'p', 4, 1),
       makePiece('b', 'k', 7, 0)
     ];
-    resetRuntimeForBattle({ pieces, turns: 8, enemyHP: 1, enemyHPMax: 1, aiSkill: 0 });
+    resetRuntimeForBattle({ pieces, turns: 8, enemyHP: 1, enemyHPMax: 1, aiSkill: 0, aiProfile: 'defensive' });
     game.trainingPromoted = false;
     game.trainingCrownBroken = false;
     game.trainingShield = 3;
@@ -1567,16 +1724,26 @@
   function chooseEnemyMove() {
     const options = allMoves('b');
     if (!options.length) return null;
+    if (!AI_PROFILE_IDS.has(game.aiProfile)) throw new RangeError(`Unknown AI profile: ${String(game.aiProfile)}.`);
+    const kingCapture = options.find(({ move }) => {
+      if (!move.captureId) return false;
+      const target = game.pieces.find(piece => piece.id === move.captureId);
+      return target?.color === 'w' && target.type === 'k';
+    });
+    if (kingCapture) return kingCapture;
     const whiteKing = kingOf('w');
     const blackKing = kingOf('b');
     const mistFactor = [1, 0.5, 0.25][activeSpoilLevel('mist')] || 1;
     const berserkCrown = activeTraitId() === 'berserk';
+    const profile = AI_PROFILES[game.aiProfile];
+    const profileWeights = profile.weights;
     const scored = options.map(option => {
       const { piece, move } = option;
       const target = move.captureId ? game.pieces.find(item => item.id === move.captureId) : null;
       let score = runRandom() * 100;
-      if (target) score += target.type === 'k' ? 50000 : PIECE_VALUES[target.type] * (4 + game.aiSkill * 4) * mistFactor;
-      if (move.danger) score -= PIECE_VALUES[piece.type] * (0.8 + game.aiSkill * 1.8);
+      if (target) score += target.type === 'k' ? 50000 : PIECE_VALUES[target.type] * (4 + game.aiSkill * 4) * mistFactor * profileWeights.capture;
+      if (move.danger) score -= PIECE_VALUES[piece.type] * (0.8 + game.aiSkill * 1.8) * profileWeights.danger;
+      if (piece.veteran) score += 260;
       if (berserkCrown && piece.type === 'k') {
         score += 700;
         if (move.danger) score += PIECE_VALUES.k * (0.8 + game.aiSkill * 1.8);
@@ -1589,13 +1756,18 @@
       if (whiteKing) {
         const before = Math.abs(piece.x - whiteKing.x) + Math.abs(piece.y - whiteKing.y);
         const after = Math.abs(move.x - whiteKing.x) + Math.abs(move.y - whiteKing.y);
-        score += (before - after) * (34 + game.aiSkill * 82);
+        score += (before - after) * (34 + game.aiSkill * 82) * profileWeights.pursuit;
         const attacksKing = withTemporaryMove(piece, move, () => isSquareAttacked(whiteKing.x, whiteKing.y, 'b'));
         if (attacksKing) score += 550 + game.aiSkill * 1150;
       }
       if (blackKing && isSquareAttacked(blackKing.x, blackKing.y, 'w')) {
         const clearsThreat = withTemporaryMove(piece, move, () => !isSquareAttacked(blackKing.x, blackKing.y, 'w'));
-        if (clearsThreat) score += 1400;
+        if (clearsThreat) score += profileWeights.clearThreat;
+      }
+      if (blackKing && piece.id !== blackKing.id) {
+        const beforeGuard = Math.abs(piece.x - blackKing.x) + Math.abs(piece.y - blackKing.y);
+        const afterGuard = Math.abs(move.x - blackKing.x) + Math.abs(move.y - blackKing.y);
+        score += (beforeGuard - afterGuard) * profileWeights.guard;
       }
       if (piece.type === 'p' && move.y === 7) score += 2400;
       return { ...option, score };
@@ -1934,6 +2106,11 @@
     }
 
     if (captured && actor === 'player') handlePlayerCapture(piece, captured, context);
+
+    if (captured && actor === 'enemy' && captured.color === 'w' && captured.type !== 'k' && hasMod(run?.currentContract, 'executioner')) {
+      game.combo = 0;
+      showBanner('banner.executioner');
+    }
 
     if (captured && actor === 'enemy' && captured.color === 'w' && captured.type !== 'k') {
       const thornsLevel = activeSpoilLevel('thorns');
@@ -2663,67 +2840,22 @@
     openModal(contractModal);
   }
 
-  function previewRandomFactory(seed) {
-    const holder = { rngState: seed || 1 };
-    return () => rngNext(holder);
-  }
+  const PREVIEW_GLYPHS = { k: '♚', p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
 
-  const FORMATION_PREVIEW = {
-    phalanx: [12, 13, 14, 15, 16, 17, 6, 7, 10, 11],
-    pincer: [6, 11, 12, 17, 18, 23, 0, 5],
-    fortress: [2, 4, 8, 9, 10, 1, 5],
-    vanguard: [18, 19, 20, 21, 22, 23, 12, 17],
-    lance: [8, 10, 13, 17, 18, 20]
-  };
-  const PREVIEW_GLYPHS = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
-
-  function contractPreviewCells(contract) {
-    const cells = Array(24).fill('');
-    const random = previewRandomFactory(hashString(contract.id));
-    const occupied = new Set();
-    const place = (glyph, preferred = null) => {
-      let index = preferred;
-      if (!Number.isInteger(index) || occupied.has(index)) {
-        const open = cells.map((_, i) => i).filter(i => !occupied.has(i));
-        index = open[Math.floor(random() * open.length)];
-      }
-      if (!Number.isInteger(index)) return;
-      occupied.add(index);
-      cells[index] = glyph;
-    };
-    place('♚', 3);
-    const depth = contract.depth || 1;
-    const base = 3 + Math.min(5, depth) + (contract.elite ? (depth <= 3 ? 1 : 2) : 0);
-    const formationDef = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : null;
-    const preferredList = formationDef ? FORMATION_PREVIEW[formationDef.id] || null : null;
-    const pool = ['♟', '♟', '♞', '♝', '♜'];
-    let prefCursor = 0;
-    for (let i = 0; i < base; i++) {
-      let glyph;
-      if (formationDef?.mix) {
-        let type = formationDef.mix[i % formationDef.mix.length];
-        if (depth <= 2 && type === 'q') type = 'b';
-        glyph = PREVIEW_GLYPHS[type];
-      } else {
-        glyph = pool[Math.floor(random() * pool.length)];
-      }
-      let index = null;
-      if (preferredList) {
-        while (prefCursor < preferredList.length && occupied.has(preferredList[prefCursor])) prefCursor += 1;
-        index = prefCursor < preferredList.length ? preferredList[prefCursor] : null;
-      }
-      place(glyph, index);
-    }
-    if (hasMod(contract, 'swarm')) for (let i = 0; i < 3; i++) place('♟');
-    if (hasMod(contract, 'cavalry')) for (let i = 0; i < 2; i++) place('♞');
-    if (hasMod(contract, 'walls')) for (let i = 0; i < 2; i++) place('♜');
-    if (hasMod(contract, 'diagonals')) for (let i = 0; i < 2; i++) place('♝');
-    if (hasMod(contract, 'queen')) place('♛');
-    return cells.map(glyph => `<span class="${glyph ? 'enemy' : ''}">${glyph}</span>`).join('');
+  function contractPreviewCells(contract, playerRoster) {
+    assertContract(contract, playerRoster);
+    const bySquare = new Map(contract.enemyLayout.map(piece => [`${piece.x},${piece.y}`, piece]));
+    return enemyZone.map(({ x, y }) => {
+      const piece = bySquare.get(`${x},${y}`);
+      if (!piece) return `<span data-x="${x}" data-y="${y}"></span>`;
+      return `<span class="enemy${piece.veteran ? ' veteran' : ''}" data-x="${x}" data-y="${y}" data-type="${piece.type}" data-veteran="${piece.veteran}">${PREVIEW_GLYPHS[piece.type]}</span>`;
+    }).join('');
   }
 
   function renderContractChoices(choices) {
     if (!Array.isArray(choices) || !choices.length) return;
+    if (!run || !Array.isArray(run.roster)) throw new Error('Contract previews require the current run roster.');
+    choices.forEach(contract => assertContract(contract, run.roster));
     const grid = $('#contract-grid');
     $('#contract-title').textContent = t(choices.length === 1 ? 'contract.final' : 'contract.next');
     grid.innerHTML = choices.map((contract, index) => {
@@ -2736,10 +2868,10 @@
       const traitRow = typeof contract.trait === 'string' && TRAIT_IDS.has(contract.trait)
         ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
         : '';
-      const formationDef = contract.formation && FORMATIONS[contract.formation] ? FORMATIONS[contract.formation] : null;
-      const formationRow = formationDef
-        ? `<span class="contract-formation"><b>⚔ ${t(formationDef.nameKey)}</b><small>${t(formationDef.lineKey)}</small></span>`
-        : '';
+      const formationDef = FORMATIONS[contract.formation];
+      const formationRow = `<span class="contract-formation"><b>⚔ ${t(formationDef.nameKey)}</b><small>${t(formationDef.lineKey)}</small></span>`;
+      const profileDef = AI_PROFILES[contract.aiProfile];
+      const profileRow = `<span class="contract-profile"><b>◎ ${t(profileDef.nameKey)}</b><small>${t(profileDef.lineKey)}</small></span>`;
       let spoilLine = '';
       if (typeof contract.trait === 'string' && TRAIT_IDS.has(contract.trait)) {
         const name = t(TRAITS[contract.trait].nameKey);
@@ -2761,7 +2893,8 @@
         ${bossHead}
         ${traitRow}
         ${formationRow}
-        <span class="board-preview">${contractPreviewCells(contract)}</span>
+        ${profileRow}
+        <span class="board-preview">${contractPreviewCells(contract, run.roster)}</span>
         <span class="contract-mods">${mods}</span>
         ${rewardLines}
       </button>`;
@@ -3420,6 +3553,19 @@
 
     drawPieceGlyph(piece, glyphSize, isWhite, isCrown);
 
+    if (!isWhite && piece.veteran) {
+      ctx.strokeStyle = 'rgba(255,215,105,.92)';
+      ctx.lineWidth = Math.max(2, tile * .035);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.08, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd769';
+      ctx.font = `900 ${Math.max(10, tile * .18)}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', radius * .72, -radius * .72);
+    }
+
     if (piece.type === 'p') {
       const dir = piece.color === 'w' ? -1 : 1;
       const chevronY = dir < 0 ? -radius * .78 : radius * .78;
@@ -3678,13 +3824,16 @@
   function installTestHooks() {
     const configurationFields = Object.freeze([
       'trait', 'spoils', 'pieces', 'enemyHP', 'enemyHPMax', 'turnsLeft', 'moveCount',
-      'enemyTurns', 'enemyCycles', 'battleCharges', 'rngState', 'shield'
+      'enemyTurns', 'enemyCycles', 'battleCharges', 'rngState', 'shield', 'mods', 'aiProfile'
+    ]);
+    const contractInputFields = Object.freeze([
+      'id', 'depth', 'elite', 'final', 'boss', 'mods', 'trait', 'formation', 'aiProfile', 'layoutSeed', 'reward'
     ]);
     const battleChargeIds = new Set([
       'momentum', 'interceptor', 'captureTempo', 'knightSpur', 'phantomEscape',
       'thornsRevenge', 'possessionPromotion', 'possessionCrown'
     ]);
-    const pieceFields = new Set(['id', 'uid', 'origin', 'color', 'type', 'x', 'y', 'alive', 'hasMoved', 'dashUsed', 'stunUntil', 'enemyLockUntil', 'startY']);
+    const pieceFields = new Set(['id', 'uid', 'origin', 'color', 'type', 'x', 'y', 'alive', 'hasMoved', 'dashUsed', 'stunUntil', 'enemyLockUntil', 'startY', 'veteran']);
     const isPlainRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value)
       && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
     const assertExactFields = (value, allowed, label) => {
@@ -3732,6 +3881,7 @@
         if (piece.origin !== undefined && !Object.prototype.hasOwnProperty.call(PIECE_VALUES, piece.origin)) throw new RangeError(`${label}.origin is invalid.`);
         if (piece.alive !== undefined && typeof piece.alive !== 'boolean') throw new TypeError(`${label}.alive must be boolean.`);
         if (piece.hasMoved !== undefined && typeof piece.hasMoved !== 'boolean') throw new TypeError(`${label}.hasMoved must be boolean.`);
+        if (piece.veteran !== undefined && typeof piece.veteran !== 'boolean') throw new TypeError(`${label}.veteran must be boolean.`);
         for (const field of ['dashUsed', 'stunUntil', 'enemyLockUntil']) {
           if (piece[field] !== undefined) assertInteger(piece[field], 0, Number.MAX_SAFE_INTEGER, `${label}.${field}`);
         }
@@ -3796,6 +3946,7 @@
         score: game.score,
         combo: game.combo,
         hype: game.hype,
+        aiProfile: game.aiProfile,
         overdriveMoves: game.overdriveMoves,
         bonusActions: game.bonusActions,
         shield: getShield(),
@@ -3819,6 +3970,7 @@
           dashUsed: Number(piece.dashUsed || 0),
           stunUntil: Number(piece.stunUntil || 0),
           enemyLockUntil: Number(piece.enemyLockUntil || 0),
+          veteran: Boolean(piece.veteran),
           startY: piece.startY
         })),
         intent: deepClone(game.enemyIntent),
@@ -3827,6 +3979,20 @@
       locale: () => locale,
       preference: () => localePreference,
       traits: () => [...TRAIT_IDS],
+      formations: () => [...FORMATION_IDS],
+      mods: () => [...MOD_IDS],
+      aiProfiles: () => [...AI_PROFILE_IDS],
+      materializeContract: input => {
+        if (!run || !Array.isArray(run.roster)) throw new Error('An active run roster is required.');
+        assertExactFields(input, new Set(contractInputFields), 'contract');
+        for (const field of contractInputFields) {
+          if (!Object.hasOwn(input, field)) throw new RangeError(`contract.${field} is required.`);
+        }
+        return deepClone(createContract(
+          { ...input, mods: Array.isArray(input.mods) ? [...input.mods] : input.mods },
+          run.roster
+        ));
+      },
       startRun: (seed = 123456) => { clearActiveRun(); startNewRun(Number(seed) || 1, false); },
       startDaily: () => { clearActiveRun(); startNewRun(dailySeed(), true); },
       startTraining,
@@ -3846,6 +4012,13 @@
       },
       promote: choosePromotion,
       overdrive: () => { game.hype = 100; activateOverdrive(); },
+      setCombo: value => {
+        assertInteger(value, 0, Number.MAX_SAFE_INTEGER, 'combo');
+        game.combo = value;
+        game.battleMaxCombo = Math.max(game.battleMaxCombo, value);
+        updateHUD(true);
+        return true;
+      },
       recommend: () => {
         const pick = getRecommendedMove(false);
         return pick ? { pieceId: pick.piece.id, uid: pick.piece.uid, ...deepClone(pick.move) } : null;
@@ -3871,7 +4044,10 @@
       setTrait: id => {
         if (!run || !run.currentContract) throw new Error('An active run battle is required.');
         if (id !== null && (typeof id !== 'string' || !TRAIT_IDS.has(id))) throw new RangeError(`Unknown trait id: ${String(id)}.`);
-        run.currentContract.trait = id;
+        if (!run.battleStartMeta || !Array.isArray(run.battleStartMeta.roster)) throw new Error('Changing a battle trait requires its frozen roster.');
+        const nextContract = { ...run.currentContract, trait: id };
+        assertContract(nextContract, run.battleStartMeta.roster);
+        run.currentContract = nextContract;
         recomputeIntentAndSyncTrait();
         return true;
       },
@@ -3896,6 +4072,8 @@
         const spoils = validateSpoils(config.spoils);
         const pieces = validatePieces(config.pieces);
         const battleCharges = validateBattleCharges(config.battleCharges);
+        if (!Array.isArray(config.mods) || config.mods.some(id => typeof id !== 'string' || !MOD_IDS.has(id))) throw new RangeError('config.mods contains an unknown id.');
+        if (typeof config.aiProfile !== 'string' || !AI_PROFILE_IDS.has(config.aiProfile)) throw new RangeError(`Unknown AI profile: ${String(config.aiProfile)}.`);
         assertInteger(config.enemyHPMax, 1, 20, 'enemyHPMax');
         assertInteger(config.enemyHP, 1, config.enemyHPMax, 'enemyHP');
         assertInteger(config.turnsLeft, 1, 99, 'turnsLeft');
@@ -3905,14 +4083,26 @@
         assertInteger(config.rngState, 1, 0xFFFFFFFF, 'rngState');
         assertInteger(config.shield, 1, 20, 'shield');
 
+        const nextRoster = pieces
+          .filter(piece => piece.color === 'w' && piece.alive !== false)
+          .map(piece => ({
+            uid: piece.uid === undefined || piece.uid === null ? piece.id : piece.uid,
+            type: piece.type,
+            origin: piece.origin || piece.type
+          }));
+        const { enemyLayout: _currentLayout, ...currentContractFields } = run.currentContract;
+        const nextContract = createContract({
+          ...currentContractFields,
+          trait: config.trait,
+          mods: [...config.mods],
+          aiProfile: config.aiProfile
+        }, nextRoster);
         const runtimePieces = pieces.map(piece => makePiece(piece.color, piece.type, piece.x, piece.y, piece));
         clearTimeout(game.transitionTimer);
         closeModal();
-        run.currentContract = { ...run.currentContract, trait: config.trait };
+        run.currentContract = nextContract;
         run.spoils = spoils;
-        run.roster = runtimePieces
-          .filter(piece => piece.color === 'w' && piece.uid)
-          .map(piece => ({ uid: piece.uid, type: piece.type, origin: piece.origin || piece.type }));
+        run.roster = nextRoster;
         run.rngState = config.rngState >>> 0;
         run.score = 0;
         run.captures = 0;
@@ -3925,7 +4115,8 @@
           turns: config.turnsLeft,
           enemyHP: config.enemyHP,
           enemyHPMax: config.enemyHPMax,
-          aiSkill: 0.5
+          aiSkill: 0.5,
+          aiProfile: config.aiProfile
         });
         game.moveCount = config.moveCount;
         game.enemyTurns = config.enemyTurns;
@@ -3960,25 +4151,10 @@
         executeEnemyIntent(false);
         return true;
       },
-      showTraitContracts: contracts => {
+      showContracts: contracts => {
         if (!run) throw new Error('An active run is required.');
         if (!Array.isArray(contracts) || !contracts.length) throw new RangeError('contracts must be a non-empty array.');
-        const choices = contracts.map((entry, index) => {
-          assertExactFields(entry, new Set(['trait', 'elite']), `contracts[${index}]`);
-          if (typeof entry.trait !== 'string' || !TRAIT_IDS.has(entry.trait)) throw new RangeError(`Unknown trait id: ${String(entry.trait)}.`);
-          if (typeof entry.elite !== 'boolean') throw new TypeError(`contracts[${index}].elite must be boolean.`);
-          return {
-            id: `qa-trait-${index}`,
-            depth: 2,
-            elite: entry.elite,
-            final: false,
-            mods: [],
-            trait: entry.trait,
-            formation: 'scatter',
-            reward: entry.elite ? 2 : 1,
-            previewSeed: index + 1
-          };
-        });
+        const choices = contracts.map(entry => deepClone(assertContract(entry, run.roster)));
         run.pendingContracts = choices;
         run.stage = 'contract';
         renderContractChoices(choices);

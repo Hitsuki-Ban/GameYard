@@ -100,7 +100,22 @@ const config = overrides => ({
   battleCharges: {},
   rngState: 12345,
   shield: 3,
+  mods: [],
+  aiProfile: 'defensive',
   ...overrides
+});
+const contractFixture = (trait, elite = false, index = 0) => ({
+  id: `qa-trait-${index}`,
+  depth: 2,
+  elite,
+  final: false,
+  boss: null,
+  mods: [],
+  trait,
+  formation: 'scatter',
+  aiProfile: 'defensive',
+  layoutSeed: index + 1,
+  reward: elite ? 2 : 1
 });
 const qa = (method, ...args) => page.evaluate(([name, values]) => window.__CB_TEST__[name](...values), [method, args]);
 const state = () => qa('state');
@@ -136,7 +151,7 @@ async function testStrictConfiguration() {
     await assert.rejects(() => qa('applyRelic', poisoned), /Unknown relic/);
     await assert.rejects(() => qa('selectReward', poisoned), /Unknown relic/);
   }
-  await qa('showTraitContracts', [{ trait: 'gravity', elite: false }]);
+  await qa('showContracts', [await qa('materializeContract', contractFixture('gravity'))]);
   await assert.rejects(() => qa('selectContract', 'constructor'), /integer/);
   await assert.rejects(() => qa('selectContract', -1), /out of range/);
   await assert.rejects(() => qa('selectContract', 1), /out of range/);
@@ -619,10 +634,10 @@ async function testRetryAndLocales() {
     let spoilChip = page.locator('#spoils-rail .spoil-chip').filter({ hasText: traitName });
     assert.match(await spoilChip.innerText(), /Lv1/);
     assert.ok((await spoilChip.getAttribute('title')).length > 5);
-    await qa('showTraitContracts', [{ trait: traitId, elite: false }]);
+    await qa('showContracts', [await qa('materializeContract', contractFixture(traitId, false))]);
     assert.match(await page.locator('.contract-card .reward-line.gold').innerText(), /Lv2/);
     await qa('setSpoil', traitId, 2);
-    await qa('showTraitContracts', [{ trait: traitId, elite: true }]);
+    await qa('showContracts', [await qa('materializeContract', contractFixture(traitId, true))]);
     assert.match(await page.locator('.contract-card .reward-line.gold').innerText(), new RegExp(mastered));
     spoilChip = page.locator('#spoils-rail .spoil-chip').filter({ hasText: traitName });
     assert.match(await spoilChip.innerText(), /Lv2/);

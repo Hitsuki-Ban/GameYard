@@ -29,6 +29,12 @@ The interface supports English, Simplified Chinese, and Japanese. On first launc
 - Press `H` for a suggested move and `Esc` to pause. Piece movement uses pointer or touch input.
 - Promote pawns into knights, bishops, rooks, or queens. Promotions persist for the current run.
 
+### Enemy contracts
+
+Each contract combines one of six formation templates, up to four of twelve enemy modifiers, and one AI profile: Aggressive, Defensive, or Crown Guard. The four newest modifiers start a pawn as a queen (Promoted), give one gold-marked piece type move priority (Veteran), copy every non-king piece type in your roster (Mirror), or break your combo when Black captures (Executioner).
+
+The route card's 8×5 preview and the real battle consume the same canonical `enemyLayout`; the preview is the deployment, not an estimate.
+
 ### Run locally
 
 Serve the repository root over HTTP, then open `http://localhost:8080/`:
@@ -48,11 +54,14 @@ pnpm install
 pnpm exec playwright install chromium
 pnpm check
 pnpm check:traits
+pnpm check:enemies
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
 
 `pnpm check:traits` runs targeted checks for all 15 crown traits plus 100 seeds per trait through the first three player hands.
+
+`pnpm check:enemies` verifies all six formations, twelve modifiers, three AI profiles, and exact preview-to-battle layout parity.
 
 `--runs`, `--policy` (`greedy` or `random`), and `--seed-base` are required. The simulator drives the real browser game through its QA interface and writes deterministic JSON plus Markdown reports to `reports/`. Repeating the same command produces identical report contents; the current date appears only in the default filenames.
 
@@ -93,6 +102,12 @@ CROWN//BREAKER 是一款基于国际象棋走法的浏览器短局棋盘肉鸽�
 - `H` 显示推荐行动，`Esc` 暂停；棋子移动使用鼠标或触控。
 - 兵可升变为马、象、车或后，升变结果在本次 Run 中保留。
 
+### 敌方合约
+
+每份合约组合 6 种阵型模板之一、最多 4 个（共 12 个）敌阵词缀，以及强攻、坚守、护冠 3 种 AI 策略之一。4 个新词缀分别让黑兵开局晋升为后（晋升军）、让一种金标敌棋优先行动（老兵）、复制玩家棋组中的每种非王棋（镜像），或让黑方吃子时斩断玩家连击（行刑者）。
+
+路线卡的 8×5 预览与实盘读取同一份 canonical `enemyLayout`；预览就是实际布阵，不是估算图。
+
 ### 本地运行
 
 在仓库根目录启动 HTTP 服务，再访问 `http://localhost:8080/`：
@@ -112,11 +127,14 @@ pnpm install
 pnpm exec playwright install chromium
 pnpm check
 pnpm check:traits
+pnpm check:enemies
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
 
 `pnpm check:traits` 会逐项检查全部 15 种王冠特性，并为每种特性运行 100 个种子的前三次玩家行动。
+
+`pnpm check:enemies` 会复验 6 种阵型、12 个词缀、3 种 AI 策略，以及路线预览与实盘布局完全一致。
 
 `--runs`、`--policy`（`greedy` 或 `random`）和 `--seed-base` 均为必填。模拟器通过 QA 接口驱动真实浏览器游戏，并在 `reports/` 输出确定性的 JSON 与 Markdown 报告；同一命令重复执行时报告内容完全一致，当前日期只会进入默认文件名。
 
@@ -157,6 +175,12 @@ CROWN//BREAKER は、チェスの駒の動きを土台にしたブラウザ向�
 - `H` で推奨手を表示し、`Esc` で一時停止します。駒の移動にはポインターまたはタッチ操作を使います。
 - ポーンはナイト、ビショップ、ルーク、クイーンに昇格でき、その結果は現在の Run 中に引き継がれます。
 
+### 敵側コントラクト
+
+各コントラクトは、6 種の陣形テンプレートから 1 つ、全 12 種から最大 4 つの敵陣モディファイア、そして猛攻・堅守・王冠護衛の 3 AI プロファイルから 1 つを組み合わせます。新しい 4 種は、黒ポーンをクイーンとして開始（昇格済み）、金印の駒種を優先行動（古参）、編成内のキング以外の各駒種を黒側に複製（鏡像）、黒側の駒取りでコンボを切断（処刑人）します。
+
+ルートカードの 8×5 プレビューと実戦は、同一の canonical `enemyLayout` を使用します。プレビューは概算ではなく、実際の配置そのものです。
+
 ### ローカル実行
 
 リポジトリのルートで HTTP サーバーを起動し、`http://localhost:8080/` を開きます。
@@ -176,11 +200,14 @@ pnpm install
 pnpm exec playwright install chromium
 pnpm check
 pnpm check:traits
+pnpm check:enemies
 pnpm sim -- --runs 100 --policy greedy --seed-base 12000
 pnpm build:standalone dist/crown-breaker.html
 ```
 
 `pnpm check:traits` は全 15 種のクラウン特性を個別検証し、各特性 100 シードの最初のプレイヤー 3 手を実行します。
+
+`pnpm check:enemies` は 6 種の陣形、12 種のモディファイア、3 種の AI プロファイル、およびプレビューと実戦配置の完全一致を検証します。
 
 `--runs`、`--policy`（`greedy` または `random`）、`--seed-base` はすべて必須です。シミュレーターは QA インターフェースを通して実ブラウザー上のゲームを操作し、`reports/` に決定的な JSON と Markdown のレポートを出力します。同じコマンドのレポート内容は一致し、現在の日付は既定のファイル名だけに入ります。
 

@@ -126,6 +126,15 @@ function summarize(results) {
     elite: { encounters: 0, battleWins: 0, runSelections: 0, runWins: 0 }
   };
   const traitData = {};
+  const formationData = {};
+  const modData = {};
+  const aiProfileData = {};
+
+  const recordEncounter = (target, id, won) => {
+    target[id] ||= { encounters: 0, battleWins: 0 };
+    target[id].encounters += 1;
+    if (won) target[id].battleWins += 1;
+  };
 
   for (const result of results) {
     if (result.failureCode) failureCodes[result.failureCode] += 1;
@@ -142,10 +151,11 @@ function summarize(results) {
         if (battle.outcome === 'win') routeData[kind].battleWins += 1;
       }
       if (battle.trait) {
-        traitData[battle.trait] ||= { encounters: 0, battleWins: 0 };
-        traitData[battle.trait].encounters += 1;
-        if (battle.outcome === 'win') traitData[battle.trait].battleWins += 1;
+        recordEncounter(traitData, battle.trait, battle.outcome === 'win');
       }
+      recordEncounter(formationData, battle.formation, battle.outcome === 'win');
+      recordEncounter(aiProfileData, battle.aiProfile, battle.outcome === 'win');
+      for (const mod of battle.mods) recordEncounter(modData, mod, battle.outcome === 'win');
     }
   }
 
@@ -154,10 +164,9 @@ function summarize(results) {
     battleWinRate: ratio(data.battleWins, data.encounters),
     runWinRate: ratio(data.runWins, data.runSelections)
   }]));
-  const traits = Object.fromEntries(Object.entries(traitData).sort(([a], [b]) => compareAsciiIds(a, b)).map(([trait, data]) => [trait, {
-    ...data,
-    winRate: ratio(data.battleWins, data.encounters)
-  }]));
+  const encounterSummary = data => Object.fromEntries(Object.entries(data)
+    .sort(([a], [b]) => compareAsciiIds(a, b))
+    .map(([id, entry]) => [id, { ...entry, winRate: ratio(entry.battleWins, entry.encounters) }]));
 
   return {
     runs: results.length,
@@ -180,7 +189,10 @@ function summarize(results) {
       mean: mean(scores)
     },
     routes,
-    traits
+    traits: encounterSummary(traitData),
+    formations: encounterSummary(formationData),
+    mods: encounterSummary(modData),
+    aiProfiles: encounterSummary(aiProfileData)
   };
 }
 
@@ -222,6 +234,24 @@ function markdownReport(report) {
     '| Trait | Encounters | Battle wins | Win rate |',
     '| --- | ---: | ---: | ---: |',
     ...Object.entries(summary.traits).map(([trait, data]) => `| ${trait} | ${data.encounters} | ${data.battleWins} | ${(data.winRate * 100).toFixed(2)}% |`),
+    '',
+    '## Formations',
+    '',
+    '| Formation | Encounters | Battle wins | Win rate |',
+    '| --- | ---: | ---: | ---: |',
+    ...Object.entries(summary.formations).map(([formation, data]) => `| ${formation} | ${data.encounters} | ${data.battleWins} | ${(data.winRate * 100).toFixed(2)}% |`),
+    '',
+    '## Mods',
+    '',
+    '| Mod | Encounters | Battle wins | Win rate |',
+    '| --- | ---: | ---: | ---: |',
+    ...Object.entries(summary.mods).map(([mod, data]) => `| ${mod} | ${data.encounters} | ${data.battleWins} | ${(data.winRate * 100).toFixed(2)}% |`),
+    '',
+    '## AI profiles',
+    '',
+    '| AI profile | Encounters | Battle wins | Win rate |',
+    '| --- | ---: | ---: | ---: |',
+    ...Object.entries(summary.aiProfiles).map(([profile, data]) => `| ${profile} | ${data.encounters} | ${data.battleWins} | ${(data.winRate * 100).toFixed(2)}% |`),
     '',
     '## Runs',
     '',
@@ -335,6 +365,9 @@ async function driveRun(page, index, seed, policy) {
         depth,
         elite: Boolean(current.elite),
         trait: current.trait || null,
+        formation: current.formation,
+        mods: [...current.mods],
+        aiProfile: current.aiProfile,
         routeSelected: selectedRouteDepths.has(depth),
         outcome: 'pending'
       });
@@ -440,6 +473,9 @@ async function driveRun(page, index, seed, policy) {
     maxCombo: Math.max(0, Math.floor(Number(state.run?.maxCombo || 0))),
     route,
     traits: [...new Set(battles.map(battle => battle.trait).filter(Boolean))],
+    formations: [...new Set(battles.map(battle => battle.formation))],
+    mods: [...new Set(battles.flatMap(battle => battle.mods))],
+    aiProfiles: [...new Set(battles.map(battle => battle.aiProfile))],
     battles
   };
 }
@@ -486,6 +522,9 @@ async function runSimulation(config) {
               maxCombo: Math.max(0, Math.floor(Number(state?.run?.maxCombo || 0))),
               route: { normal: 0, elite: 0 },
               traits: [],
+              formations: [],
+              mods: [],
+              aiProfiles: [],
               battles: [],
               error: error.message
             };
@@ -514,7 +553,7 @@ async function main() {
     throw new Error(`Simulation infrastructure failed for ${infrastructureFailures.length} run(s):\n${details}`);
   }
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     config,
     summary: summarize(results),
     runs: results
