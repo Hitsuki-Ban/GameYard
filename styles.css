@@ -249,6 +249,10 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .boss-pips { display: flex; gap: 6px; margin-left: auto; }
 .boss-pips i { width: 25px; height: 8px; border: 1px solid var(--pink); transform: skewX(-18deg); background: rgba(255,79,200,.08); }
 .boss-pips i.on { background: var(--pink); box-shadow: 0 0 13px rgba(255,79,200,.55); }
+.trait-chip { display: grid; gap: 2px; padding: 8px 7px 9px; border-top: 1px solid rgba(255,215,105,.28); background: rgba(255,215,105,.05); }
+.trait-chip b { color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.trait-chip small { color: var(--muted); font-size: 10px; line-height: 1.4; }
+#hud-turns.low { color: var(--red); animation: pulse .7s infinite; }
 
 .roster-rail {
   position: absolute;
@@ -278,7 +282,8 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .roster-piece.dead { opacity: .22; filter: grayscale(1); }
 .roster-piece::after { content: attr(data-mark); position: absolute; right: 2px; bottom: 0; color: var(--gold); font: 800 8px ui-sans-serif, sans-serif; }
 
-.combo-readout { position: absolute; left: calc(84px + var(--safe-left)); bottom: calc(22px + var(--safe-bottom)); display: flex; align-items: baseline; gap: 3px; color: var(--gold); text-shadow: 0 5px 20px #000; }
+.combo-readout { position: absolute; left: calc(84px + var(--safe-left)); bottom: calc(22px + var(--safe-bottom)); display: flex; align-items: baseline; gap: 3px; color: var(--gold); text-shadow: 0 5px 20px #000; opacity: 0; transform: translateY(6px); transition: opacity .18s ease, transform .18s ease; }
+.combo-readout.show { opacity: 1; transform: none; }
 .combo-readout .combo-label { margin-right: 5px; align-self: center; color: rgba(255,215,105,.6); font-size: 9px; font-style: normal; font-weight: 900; letter-spacing: .16em; }
 .combo-readout span { font-size: 18px; font-weight: 1000; }
 .combo-readout strong { font-size: 42px; font-style: italic; letter-spacing: -.08em; }
@@ -335,6 +340,7 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .choice-head { display: flex; align-items: center; justify-content: center; gap: 13px; margin: 0 0 22px; font-size: 24px; font-weight: 1000; letter-spacing: .08em; }
 .choice-head .choice-glyph { color: var(--gold); font: 42px Georgia, serif; }
 .choice-head i { width: 50px; height: 2px; background: linear-gradient(90deg, var(--cyan), var(--gold)); }
+.choice-sub { margin: -16px 0 18px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: .05em; }
 .promotion-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
 .promotion-choice {
   position: relative;
@@ -407,6 +413,9 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .contract-crowns { display: flex; gap: 5px; color: var(--pink); font: 28px Georgia, serif; }
 .contract-name { display: block; margin: 12px 0 2px; text-align: center; color: var(--pink); font-size: 22px; font-weight: 1000; font-style: italic; letter-spacing: .08em; }
 .contract-boss-line { display: block; text-align: center; color: var(--muted); font-size: 11px; }
+.contract-trait { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; padding: 6px 9px; border: 1px solid rgba(255,215,105,.4); background: rgba(255,215,105,.06); text-align: left; }
+.contract-trait b { flex: 0 0 auto; color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: .06em; }
+.contract-trait small { color: var(--muted); font-size: 10px; }
 .board-preview { display: grid; grid-template-columns: repeat(6, 1fr); width: min(340px, 90%); aspect-ratio: 1.45; margin: 14px auto; border: 1px solid rgba(255,255,255,.13); }
 .board-preview span { display: grid; place-items: center; font: clamp(17px, 2.2vw, 29px) Georgia, serif; background: rgba(255,255,255,.025); }
 .board-preview span:nth-child(12n + 2), .board-preview span:nth-child(12n + 4), .board-preview span:nth-child(12n + 6), .board-preview span:nth-child(12n + 7), .board-preview span:nth-child(12n + 9), .board-preview span:nth-child(12n + 11) { background: rgba(255,255,255,.07); }

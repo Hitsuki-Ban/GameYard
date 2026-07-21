@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.0.0';
+  const VERSION = '3.1.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -152,10 +152,18 @@
     }
   }
 
+  const TRAITS = {
+    guarded: { id: 'guarded', nameKey: 'trait.guarded.name', lineKey: 'trait.guarded.line', glyph: '♜' },
+    phantom: { id: 'phantom', nameKey: 'trait.phantom.name', lineKey: 'trait.phantom.line', glyph: '♚' },
+    chains: { id: 'chains', nameKey: 'trait.chains.name', lineKey: 'trait.chains.line', glyph: '♛' },
+    hex: { id: 'hex', nameKey: 'trait.hex.name', lineKey: 'trait.hex.line', glyph: '⚡' },
+    summoner: { id: 'summoner', nameKey: 'trait.summoner.name', lineKey: 'trait.summoner.line', glyph: '♟' }
+  };
+
   const BOSS_DEFS = {
-    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'] },
-    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'] },
-    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'] }
+    twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex' },
+    ironBastion: { nameKey: 'boss.ironBastion.name', lineKey: 'boss.ironBastion.line', hp: 3, extraTurns: 2, mods: ['walls', 'armor'], trait: 'guarded' },
+    pawnstorm: { nameKey: 'boss.pawnstorm.name', lineKey: 'boss.pawnstorm.line', hp: 2, extraTurns: -1, mods: ['race', 'swarm', 'cavalry'], trait: 'summoner' }
   };
 
   const CONTRACT_MODS = {
@@ -528,6 +536,7 @@
         final: true,
         boss: bossId,
         mods: [...BOSS_DEFS[bossId].mods],
+        trait: BOSS_DEFS[bossId].trait,
         reward: 0,
         previewSeed: run.rngState
       };
@@ -542,9 +551,16 @@
       elite,
       final: false,
       mods,
+      trait: elite ? choose(Object.keys(TRAITS)) : null,
       reward: elite ? 2 : 1,
       previewSeed: run.rngState
     };
+  }
+
+  function activeTraitId() {
+    if (game.mode !== 'run' || !run) return null;
+    const trait = run.currentContract?.trait;
+    return trait && TRAITS[trait] ? trait : null;
   }
 
   function buildContractChoices() {
@@ -611,6 +627,8 @@
       battleCharges: deepClone(game.battleCharges),
       battleShieldLost: Boolean(game.battleShieldLost),
       battleMaxCombo: Number(game.battleMaxCombo || 0),
+      crownVeil: Number(game.crownVeil || 0),
+      enemyTurns: Number(game.enemyTurns || 0),
       enemyIntent: game.enemyIntent ? deepClone(game.enemyIntent) : null,
       shield: run.shield,
       contract: deepClone(run.currentContract)
@@ -952,6 +970,8 @@
     game.battleCharges = {};
     game.battleShieldLost = false;
     game.battleMaxCombo = 0;
+    game.crownVeil = 0;
+    game.enemyTurns = 0;
     particles.length = 0;
     floatingTexts.length = 0;
   }
@@ -1013,6 +1033,8 @@
       game.battleCharges = state.battleCharges || {};
       game.battleShieldLost = Boolean(state.battleShieldLost);
       game.battleMaxCombo = Number(state.battleMaxCombo || 0);
+      game.crownVeil = Number(state.crownVeil || 0);
+      game.enemyTurns = Number(state.enemyTurns || 0);
       run.shield = state.shield;
       run.currentContract = state.contract || run.currentContract;
     } else {
@@ -1033,6 +1055,8 @@
     }
     updateHUD(true);
     showBanner(fromResume ? 'banner.continue' : run.battle === 1 ? 'banner.opening' : 'banner.battle', run.battle === 1 || fromResume ? undefined : { number: run.battle });
+    const introTrait = activeTraitId();
+    if (introTrait && !fromResume) showTutorial(TRAITS[introTrait].lineKey, 3400);
     if (!fromResume) {
       run.stage = 'battle';
       run.battleState = snapshotBattle();
@@ -1239,11 +1263,14 @@
       const dirs = [];
       if (piece.type === 'r' || piece.type === 'q') dirs.push([1, 0], [-1, 0], [0, 1], [0, -1]);
       if (piece.type === 'b' || piece.type === 'q') dirs.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
+      const maxSteps = piece.color === 'w' && activeTraitId() === 'chains' ? 3 : 64;
       dirs.forEach(([dx, dy]) => {
         let x = piece.x + dx;
         let y = piece.y + dy;
-        while (inBounds(x, y)) {
+        let steps = 0;
+        while (inBounds(x, y) && steps < maxSteps) {
           if (!add(x, y)) break;
+          steps += 1;
           x += dx;
           y += dy;
         }
@@ -1277,12 +1304,26 @@
     return result;
   }
 
+  function crownCaptureBlocked(piece, move) {
+    if (piece.color !== 'w' || !move.captureId) return false;
+    const target = game.pieces.find(item => item.id === move.captureId);
+    if (!target || target.type !== 'k' || target.color !== 'b') return false;
+    if (game.crownVeil > 0) return true;
+    if (activeTraitId() === 'guarded') {
+      return game.pieces.some(item => item.alive && item.color === 'b' && item.id !== target.id
+        && Math.abs(item.x - target.x) <= 1 && Math.abs(item.y - target.y) <= 1);
+    }
+    return false;
+  }
+
   function getLegalMoves(piece) {
     const opponent = piece.color === 'w' ? 'b' : 'w';
-    return getPseudoMoves(piece).map(move => ({
-      ...move,
-      danger: withTemporaryMove(piece, move, () => isSquareAttacked(move.x, move.y, opponent))
-    }));
+    return getPseudoMoves(piece)
+      .filter(move => !crownCaptureBlocked(piece, move))
+      .map(move => ({
+        ...move,
+        danger: withTemporaryMove(piece, move, () => isSquareAttacked(move.x, move.y, opponent))
+      }));
   }
 
   function allMoves(color) {
@@ -1443,6 +1484,7 @@
     const captured = move.captureId ? game.pieces.find(target => target.id === move.captureId) : null;
     const credit = consumeActionCredit();
     if (!credit) game.turnsLeft -= 1;
+    if (game.crownVeil > 0) game.crownVeil -= 1;
     if (!captured) {
       const momentumLevel = activeRelicLevel('momentum');
       const momentumUsed = Number(game.battleCharges.momentum || 0);
@@ -1528,8 +1570,9 @@
 
   function addHype(amount) {
     if (game.overdriveMoves > 0) return;
+    const gain = activeTraitId() === 'hex' && amount > 0 ? amount * 0.5 : amount;
     const before = game.hype;
-    game.hype = clamp(game.hype + amount, 0, 100);
+    game.hype = clamp(game.hype + gain, 0, 100);
     if (before < 100 && game.hype >= 100) {
       audio.sfx('ready');
       showBanner('banner.energyReady');
@@ -1753,6 +1796,7 @@
       startMoveAnimation(actor, move, captured, 'enemy', () => {
         const outcome = resolveMove(actor, captured, 'enemy', { fromX, fromY, move, credit: null });
         if (outcome === 'terminal') return;
+        afterEnemyAction();
         beginPlayerTurn(true);
       });
     }, delay);
@@ -1931,8 +1975,45 @@
     crown.alive = true;
     crown.anim = null;
     crown.spawnAt = now();
+    game.crownVeil = 1;
     const point = tileCenter(crown.x, crown.y);
     addImpact(point.x, point.y, 'enemy', 30);
+    addFloatingText(point.x, point.y - view.board.tile * 0.7, t('crown.veil'), 'cyan');
+  }
+
+  function phantomShiftCrown() {
+    const crown = kingOf('b');
+    if (!crown) return;
+    const candidates = [];
+    for (let y = 0; y <= 2; y++) {
+      for (let x = 0; x < 8; x++) if (!pieceAt(x, y)) candidates.push({ x, y });
+    }
+    if (!candidates.length) return;
+    const from = tileCenter(crown.x, crown.y);
+    addImpact(from.x, from.y, 'enemy', 9);
+    const spot = candidates[Math.floor(runRandom() * candidates.length)];
+    crown.x = spot.x;
+    crown.y = spot.y;
+    crown.anim = null;
+    crown.spawnAt = now();
+    const point = tileCenter(spot.x, spot.y);
+    addImpact(point.x, point.y, 'enemy', 13);
+  }
+
+  function afterEnemyAction() {
+    game.enemyTurns = Number(game.enemyTurns || 0) + 1;
+    const trait = activeTraitId();
+    if (trait === 'summoner' && game.enemyTurns % 3 === 0) {
+      const occupied = new Set(game.pieces.filter(piece => piece.alive).map(piece => `${piece.x},${piece.y}`));
+      const open = shuffled(openSquares(occupied, [1, 2]));
+      if (open.length) {
+        const spot = open[0];
+        game.pieces.push(makePiece('b', 'p', spot.x, spot.y));
+        const point = tileCenter(spot.x, spot.y);
+        addImpact(point.x, point.y, 'enemy', 11);
+      }
+    }
+    if (trait === 'phantom') phantomShiftCrown();
   }
 
   function spawnPhaseReinforcements() {
@@ -2239,6 +2320,9 @@
       const typeKey = contract.final ? 'contract.type.final' : contract.elite ? 'contract.type.elite' : 'contract.type.normal';
       const mods = contract.mods.map(id => `<span class="mod"><b>${t(CONTRACT_MODS[id].nameKey)}</b><small>${t(CONTRACT_MODS[id].lineKey)}</small></span>`).join('');
       const bossHead = bossDef ? `<strong class="contract-name">${t(bossDef.nameKey)}</strong><span class="contract-boss-line">${t(bossDef.lineKey)}</span>` : '';
+      const traitRow = contract.trait && TRAITS[contract.trait]
+        ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
+        : '';
       const rewardLines = contract.final ? '' : `<span class="contract-rewards">
         <span class="reward-line gold">◆ ${t('contract.reward.picks', { count: Math.max(1, Number(contract.reward || 1)) })}</span>
         ${contract.elite ? '' : `<span class="reward-line cyan">♔ ${t('contract.reward.repair')}</span>`}
@@ -2248,6 +2332,7 @@
       return `<button class="contract-card ${contract.elite ? 'elite' : ''} ${contract.final ? 'final' : ''}" type="button" data-index="${index}" aria-label="${t('aria.contract', { type, mods: modLines })}">
         <span class="contract-top"><span class="contract-type ${contract.final ? 'final' : contract.elite ? 'elite' : ''}">${t(typeKey)}</span><span class="contract-crowns">${crowns}</span></span>
         ${bossHead}
+        ${traitRow}
         <span class="board-preview">${contractPreviewCells(contract)}</span>
         <span class="contract-mods">${mods}</span>
         ${rewardLines}
@@ -2346,7 +2431,19 @@
     renderRunTrack();
     renderRoster();
     $('#hud-score').textContent = formatScore(game.score);
-    $('#hud-turns').textContent = Math.max(0, game.turnsLeft);
+    const turnsEl = $('#hud-turns');
+    turnsEl.textContent = Math.max(0, game.turnsLeft);
+    turnsEl.classList.toggle('low', game.active && game.turnsLeft <= 3);
+    const traitId = activeTraitId();
+    const traitChip = $('#trait-chip');
+    if (traitId) {
+      traitChip.hidden = false;
+      traitChip.innerHTML = `<b>${TRAITS[traitId].glyph} ${t(TRAITS[traitId].nameKey)}</b><small>${t(TRAITS[traitId].lineKey)}</small>`;
+      traitChip.title = t('hud.traitTitle');
+    } else {
+      traitChip.hidden = true;
+    }
+    $('#combo-readout').classList.toggle('show', game.combo > 0);
     const shield = getShield();
     const max = game.mode === 'run' ? maxShieldForRun() : 3;
     $('#hud-shield').textContent = `${'◆'.repeat(Math.max(0, shield))}${'◇'.repeat(Math.max(0, max - shield))}`;
@@ -2868,6 +2965,16 @@
       ctx.restore();
     }
 
+    if (isCrown && game.crownVeil > 0) {
+      ctx.strokeStyle = `rgba(240,250,255,${.6 + pulse * .3})`;
+      ctx.lineWidth = Math.max(2, tile * .04);
+      ctx.setLineDash([tile * .13, tile * .07]);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     drawPieceGlyph(piece, glyphSize, isWhite, isCrown);
 
     if (piece.type === 'p') {
@@ -3128,6 +3235,9 @@
         overdriveMoves: game.overdriveMoves,
         bonusActions: game.bonusActions,
         shield: getShield(),
+        crownVeil: Number(game.crownVeil || 0),
+        enemyTurns: Number(game.enemyTurns || 0),
+        trait: activeTraitId(),
         pieces: deepClone(game.pieces),
         intent: deepClone(game.enemyIntent),
         run: run ? deepClone(run) : null
@@ -3170,6 +3280,12 @@
       retry: restoreBattleStart,
       forceFail: (reason = 'qa') => failBattle(reason),
       applyRelic: id => { if (run && RELIC_BY_ID[id]) applyRelic(id); },
+      setTrait: id => {
+        if (!run || !run.currentContract || (id !== null && !TRAITS[id])) return false;
+        run.currentContract.trait = id;
+        updateHUD(true);
+        return true;
+      },
       selectReward: chooseReward,
       selectContract: chooseContract,
       forceCrownBreak: () => {
