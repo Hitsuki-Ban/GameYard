@@ -31,7 +31,7 @@
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
 
-  const VERSION = '3.1.0';
+  const VERSION = '3.2.0';
   const SAVE_KEY = 'crownBreaker.save.v2';
   const RUN_KEY = 'crownBreaker.run.v2';
   const SETTINGS_KEY = 'crownBreaker.settings.v2';
@@ -159,6 +159,12 @@
     hex: { id: 'hex', nameKey: 'trait.hex.name', lineKey: 'trait.hex.line', glyph: '⚡' },
     summoner: { id: 'summoner', nameKey: 'trait.summoner.name', lineKey: 'trait.summoner.line', glyph: '♟' }
   };
+
+  const ACTS = [
+    { from: 1, nameKey: 'act.outer.name', lineKey: 'act.outer.line' },
+    { from: 4, nameKey: 'act.gallery.name', lineKey: 'act.gallery.line' },
+    { from: 7, nameKey: 'act.throne.name', lineKey: 'act.throne.line' }
+  ];
 
   const BOSS_DEFS = {
     twinQueens: { nameKey: 'boss.twinQueens.name', lineKey: 'boss.twinQueens.line', hp: 2, extraTurns: 0, mods: ['queen', 'diagonals'], trait: 'hex' },
@@ -501,7 +507,8 @@
       rngState: seed >>> 0,
       daily,
       battle: 1,
-      totalBattles: 6,
+      totalBattles: 8,
+      spoils: {},
       score: 0,
       captures: 0,
       promotions: 0,
@@ -563,12 +570,39 @@
     return trait && TRAITS[trait] ? trait : null;
   }
 
+  function activeSpoilLevel(id) {
+    if (game.mode !== 'run' || !run || !run.spoils) return 0;
+    return clamp(Number(run.spoils[id] || 0), 0, 2);
+  }
+
+  function spoilEffectLine(id, level = 1) {
+    const value = clamp(Number(level) || 1, 1, 2);
+    switch (id) {
+      case 'guarded': return t(value === 1 ? 'spoil.guarded.one' : 'spoil.guarded.two');
+      case 'phantom': return t('spoil.phantom', { count: value });
+      case 'chains': return t('spoil.chains', { count: value >= 2 ? 2 : 3 });
+      case 'hex': return t('spoil.hex', { percent: value * 50 });
+      case 'summoner': return t('spoil.summoner', { count: value >= 2 ? 2 : 3 });
+      default: throw new RangeError(`Unknown spoil id: ${String(id)}`);
+    }
+  }
+
   function buildContractChoices() {
     if (!run || run.battle >= run.totalBattles) return [makeContract(run.totalBattles, true, true)];
     const nextDepth = run.battle + 1;
     if (nextDepth === run.totalBattles) return [makeContract(nextDepth, true, true)];
+    const [traitA, traitB] = shuffled(Object.keys(TRAITS));
+    if (nextDepth === 5) {
+      const gateA = makeContract(nextDepth, true, false);
+      gateA.trait = traitA;
+      const gateB = makeContract(nextDepth, true, false);
+      gateB.trait = traitB;
+      return [gateA, gateB];
+    }
     const safe = makeContract(nextDepth, false, false);
+    safe.trait = traitA;
     const elite = makeContract(nextDepth, true, false);
+    elite.trait = traitB;
     return runRandom() < 0.5 ? [safe, elite] : [elite, safe];
   }
 
@@ -1055,8 +1089,18 @@
     }
     updateHUD(true);
     showBanner(fromResume ? 'banner.continue' : run.battle === 1 ? 'banner.opening' : 'banner.battle', run.battle === 1 || fromResume ? undefined : { number: run.battle });
-    const introTrait = activeTraitId();
-    if (introTrait && !fromResume) showTutorial(TRAITS[introTrait].lineKey, 3400);
+    if (!fromResume) {
+      const act = ACTS.find(entry => entry.from === run.battle);
+      const introTrait = activeTraitId();
+      if (act) {
+        showTutorial(act.lineKey, 2800);
+        if (introTrait) window.setTimeout(() => {
+          if (game.active) showTutorial(TRAITS[introTrait].lineKey, 3200);
+        }, 3000);
+      } else if (introTrait) {
+        showTutorial(TRAITS[introTrait].lineKey, 3400);
+      }
+    }
     if (!fromResume) {
       run.stage = 'battle';
       run.battleState = snapshotBattle();
@@ -1263,7 +1307,12 @@
       const dirs = [];
       if (piece.type === 'r' || piece.type === 'q') dirs.push([1, 0], [-1, 0], [0, 1], [0, -1]);
       if (piece.type === 'b' || piece.type === 'q') dirs.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
-      const maxSteps = piece.color === 'w' && activeTraitId() === 'chains' ? 3 : 64;
+      let maxSteps = 64;
+      if (piece.color === 'w' && activeTraitId() === 'chains') maxSteps = 3;
+      if (piece.color === 'b') {
+        const chainsLevel = activeSpoilLevel('chains');
+        if (chainsLevel) maxSteps = chainsLevel >= 2 ? 2 : 3;
+      }
       dirs.forEach(([dx, dy]) => {
         let x = piece.x + dx;
         let y = piece.y + dy;
@@ -1316,10 +1365,24 @@
     return false;
   }
 
+  function spoilGuardBlocked(piece, move) {
+    if (piece.color !== 'b' || !move.captureId) return false;
+    const level = activeSpoilLevel('guarded');
+    if (!level) return false;
+    const target = game.pieces.find(item => item.id === move.captureId);
+    if (!target || target.color !== 'w') return false;
+    const king = kingOf('w');
+    if (!king) return false;
+    const hasAdjacentAlly = game.pieces.some(item => item.alive && item.color === 'w' && item.id !== king.id
+      && Math.abs(item.x - king.x) <= 1 && Math.abs(item.y - king.y) <= 1);
+    if (target.type === 'k') return level >= 2 && hasAdjacentAlly;
+    return Math.abs(target.x - king.x) <= 1 && Math.abs(target.y - king.y) <= 1;
+  }
+
   function getLegalMoves(piece) {
     const opponent = piece.color === 'w' ? 'b' : 'w';
     return getPseudoMoves(piece)
-      .filter(move => !crownCaptureBlocked(piece, move))
+      .filter(move => !crownCaptureBlocked(piece, move) && !spoilGuardBlocked(piece, move))
       .map(move => ({
         ...move,
         danger: withTemporaryMove(piece, move, () => isSquareAttacked(move.x, move.y, opponent))
@@ -1570,7 +1633,11 @@
 
   function addHype(amount) {
     if (game.overdriveMoves > 0) return;
-    const gain = activeTraitId() === 'hex' && amount > 0 ? amount * 0.5 : amount;
+    let gain = amount;
+    if (amount > 0) {
+      gain *= 1 + 0.5 * activeSpoilLevel('hex');
+      if (activeTraitId() === 'hex') gain *= 0.5;
+    }
     const before = game.hype;
     game.hype = clamp(game.hype + gain, 0, 100);
     if (before < 100 && game.hype >= 100) {
@@ -1746,6 +1813,10 @@
       failBattle('turns_exhausted');
       return;
     }
+    const recruitLevel = activeSpoilLevel('summoner');
+    if (recruitLevel && game.moveCount > 0 && game.moveCount % (recruitLevel >= 2 ? 2 : 3) === 0) {
+      spawnAllyPawn();
+    }
     updateHUD();
     if (game.bonusActions > 0 || game.overdriveMoves > 0) {
       showBanner('banner.extraMove');
@@ -1776,17 +1847,26 @@
         beginPlayerTurn(true);
         return;
       }
-      const legal = getPseudoMoves(actor).find(move => move.x === intent.x && move.y === intent.y);
+      const legal = getLegalMoves(actor).find(move => move.x === intent.x && move.y === intent.y);
       if (!legal) {
         const point = tileCenter(actor.x, actor.y);
         addImpact(point.x, point.y, 'enemy', 8);
         beginPlayerTurn(true);
         return;
       }
-      const occupant = pieceAt(intent.x, intent.y, actor.id);
+      let occupant = pieceAt(intent.x, intent.y, actor.id);
       if (occupant && occupant.color === 'b') {
         beginPlayerTurn(true);
         return;
+      }
+      if (occupant && occupant.color === 'w' && occupant.type === 'k') {
+        const escapeLevel = activeSpoilLevel('phantom');
+        const escapesUsed = Number(game.battleCharges.phantomEscape || 0);
+        if (escapeLevel > escapesUsed && teleportWhiteKing(occupant)) {
+          game.battleCharges.phantomEscape = escapesUsed + 1;
+          showBanner('banner.kingEscape');
+          occupant = pieceAt(intent.x, intent.y, actor.id);
+        }
       }
       const move = { x: intent.x, y: intent.y, captureId: occupant?.id || null };
       const captured = occupant || null;
@@ -1981,6 +2061,39 @@
     addFloatingText(point.x, point.y - view.board.tile * 0.7, t('crown.veil'), 'cyan');
   }
 
+  function teleportWhiteKing(king) {
+    const candidates = [];
+    for (let y = 5; y <= 7; y++) {
+      for (let x = 0; x < 8; x++) if (!pieceAt(x, y, king.id)) candidates.push({ x, y });
+    }
+    if (!candidates.length) return false;
+    const safe = candidates.filter(spot => !isSquareAttacked(spot.x, spot.y, 'b'));
+    const pool = safe.length ? safe : candidates;
+    const spot = pool[Math.floor(runRandom() * pool.length)];
+    const from = tileCenter(king.x, king.y);
+    addImpact(from.x, from.y, 'player', 12);
+    king.x = spot.x;
+    king.y = spot.y;
+    king.anim = null;
+    king.spawnAt = now();
+    const point = tileCenter(spot.x, spot.y);
+    addImpact(point.x, point.y, 'player', 16);
+    return true;
+  }
+
+  function spawnAllyPawn() {
+    const whiteCount = game.pieces.filter(piece => piece.alive && piece.color === 'w').length;
+    if (whiteCount >= 14) return;
+    const occupied = new Set(game.pieces.filter(piece => piece.alive).map(piece => `${piece.x},${piece.y}`));
+    const open = shuffled(openSquares(occupied, [5, 6]));
+    if (!open.length) return;
+    const spot = open[0];
+    game.pieces.push(makePiece('w', 'p', spot.x, spot.y, { startY: spot.y }));
+    const point = tileCenter(spot.x, spot.y);
+    addImpact(point.x, point.y, 'player', 12);
+    audio.sfx('select');
+  }
+
   function phantomShiftCrown() {
     const crown = kingOf('b');
     if (!crown) return;
@@ -2169,6 +2282,16 @@
     game.enemyIntent = null;
     run.promotionState = null;
     const bonuses = computeBattleBonuses();
+    const stolenTrait = run.currentContract?.trait;
+    if (stolenTrait && TRAITS[stolenTrait]) {
+      if (!run.spoils) run.spoils = {};
+      const before = clamp(Number(run.spoils[stolenTrait] || 0), 0, 2);
+      const after = clamp(before + (run.currentContract.elite ? 2 : 1), 0, 2);
+      if (after > before) {
+        run.spoils[stolenTrait] = after;
+        bonuses.push({ key: 'tally.spoil', params: { name: t(TRAITS[stolenTrait].nameKey), score: 400 }, score: 400 });
+      }
+    }
     game.score += bonuses.reduce((sum, bonus) => sum + bonus.score, 0);
     run.score = game.score;
     run.captures = game.captures;
@@ -2181,7 +2304,7 @@
       window.setTimeout(() => runTallySequence(bonuses, finishRun), settings.reducedMotion ? 120 : 450);
       return;
     }
-    run.rewardPicksRemaining = Math.max(1, Number(run.currentContract?.reward || 1));
+    run.rewardPicksRemaining = 1;
     run.pendingRewards = generateRewardDraft();
     run.stage = 'reward';
     persistRun('reward');
@@ -2323,8 +2446,12 @@
       const traitRow = contract.trait && TRAITS[contract.trait]
         ? `<span class="contract-trait"><b>${TRAITS[contract.trait].glyph} ${t(TRAITS[contract.trait].nameKey)}</b><small>${t(TRAITS[contract.trait].lineKey)}</small></span>`
         : '';
+      const spoilLine = contract.trait && TRAITS[contract.trait]
+        ? `<span class="reward-line gold">♚ ${t('contract.reward.spoil', { name: t(TRAITS[contract.trait].nameKey), level: contract.elite ? 2 : 1 })}</span>`
+        : '';
       const rewardLines = contract.final ? '' : `<span class="contract-rewards">
-        <span class="reward-line gold">◆ ${t('contract.reward.picks', { count: Math.max(1, Number(contract.reward || 1)) })}</span>
+        ${spoilLine}
+        <span class="reward-line">◆ ${t('contract.reward.picks', { count: 1 })}</span>
         ${contract.elite ? '' : `<span class="reward-line cyan">♔ ${t('contract.reward.repair')}</span>`}
       </span>`;
       const type = t(contract.final ? 'aria.contract.final' : contract.elite ? 'aria.contract.elite' : 'aria.contract.normal');
@@ -2359,9 +2486,9 @@
   }
 
   function calculateRunRank(score) {
-    if (score >= 56000) return 'S';
-    if (score >= 40000) return 'A';
-    if (score >= 26000) return 'B';
+    if (score >= 75000) return 'S';
+    if (score >= 54000) return 'A';
+    if (score >= 34000) return 'B';
     return 'C';
   }
 
@@ -2408,6 +2535,7 @@
       const classes = ['run-node'];
       if (number < run.battle) classes.push('done');
       if (number === run.battle) classes.push('current');
+      if (number === 5) classes.push('gate');
       if (number === run.totalBattles) classes.push('boss');
       return `<i class="${classes.join(' ')}"></i>`;
     }).join('');
@@ -2442,6 +2570,19 @@
       traitChip.title = t('hud.traitTitle');
     } else {
       traitChip.hidden = true;
+    }
+    const spoilsRail = $('#spoils-rail');
+    const spoilEntries = game.mode === 'run' && run?.spoils
+      ? Object.entries(run.spoils).filter(([id, level]) => TRAITS[id] && level > 0)
+      : [];
+    if (spoilEntries.length) {
+      spoilsRail.hidden = false;
+      spoilsRail.title = t('hud.spoilsTitle');
+      spoilsRail.innerHTML = spoilEntries.map(([id, level]) =>
+        `<span class="spoil-chip" title="${spoilEffectLine(id, level)}"><b>${TRAITS[id].glyph}</b>${t(TRAITS[id].nameKey)}<i>Lv${clamp(level, 1, 2)}</i></span>`
+      ).join('');
+    } else {
+      spoilsRail.hidden = true;
     }
     $('#combo-readout').classList.toggle('show', game.combo > 0);
     const shield = getShield();
@@ -3283,6 +3424,13 @@
       setTrait: id => {
         if (!run || !run.currentContract || (id !== null && !TRAITS[id])) return false;
         run.currentContract.trait = id;
+        updateHUD(true);
+        return true;
+      },
+      setSpoil: (id, level = 1) => {
+        if (!run || !TRAITS[id]) return false;
+        if (!run.spoils) run.spoils = {};
+        run.spoils[id] = clamp(Number(level) || 0, 0, 2);
         updateHUD(true);
         return true;
       },

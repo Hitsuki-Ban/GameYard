@@ -1,4 +1,4 @@
-const CACHE = 'crown-breaker-v3.1.0';
+const CACHE = 'crown-breaker-v3.2.0';
 const FILES = [
   './',
   './index.html',

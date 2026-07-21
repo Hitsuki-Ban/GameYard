@@ -212,6 +212,7 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .run-node { width: 15px; height: 15px; border: 1px solid rgba(255,255,255,.25); transform: rotate(45deg); background: rgba(255,255,255,.025); }
 .run-node.done { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 12px rgba(84,246,255,.55); }
 .run-node.current { border-color: var(--gold); background: rgba(255,215,105,.23); box-shadow: 0 0 16px rgba(255,215,105,.48); animation: pulse .8s infinite; }
+.run-node.gate { border-color: var(--gold); border-width: 2px; }
 .run-node.boss { border-color: var(--pink); border-width: 2px; }
 .run-node.training { border-radius: 50%; transform: none; }
 .score-chip {
@@ -253,6 +254,10 @@ h1 b { position: absolute; right: 3%; top: 36%; color: var(--gold); font-size: .
 .trait-chip b { color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
 .trait-chip small { color: var(--muted); font-size: 10px; line-height: 1.4; }
 #hud-turns.low { color: var(--red); animation: pulse .7s infinite; }
+.spoils-rail { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px; border-top: 1px solid rgba(84,246,255,.22); background: rgba(84,246,255,.04); }
+.spoil-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border: 1px solid rgba(84,246,255,.35); color: var(--ink); background: rgba(84,246,255,.06); font-size: 10px; font-weight: 850; letter-spacing: .04em; }
+.spoil-chip b { color: var(--cyan); font-family: Georgia, serif; font-size: 13px; font-weight: 400; }
+.spoil-chip i { color: var(--gold); font-style: normal; font-size: 9px; }
 
 .roster-rail {
   position: absolute;
