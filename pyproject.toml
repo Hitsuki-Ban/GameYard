@@ -1,0 +1,11 @@
+[project]
+name = "tumbledrum-tools"
+version = "1.1.0"
+description = "Reproducible build and browser-test tooling for TUMBLEDRUM."
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "playwright==1.61.0",
+]
