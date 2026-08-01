@@ -140,13 +140,13 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 6. Issue #5 的发布门已收口：root 与 repository-style prefix 均能直达；三视口 × 三语言 viewport 基线、暂停后的真实 gameplay 基线、可观察结果的 pointer/keyboard、只读有界诊断通过；50 次进入/退出与周期性重载仅保留当前 frame，Host port 与 runtime listener 回到基线，且无失败请求或 console/page error。
 
-### M2 — TUMBLEDRUM（adapter 完成，发布验收进行中）
+### M2 — TUMBLEDRUM（完成）
 
 前置已完成：`provenance/tumbledrum/` 记录了绑定固定 revision/tree、GameYard 仓库、GitHub Pages 与 Cloudflare 的项目专用分发方向，并逐类审计源代码、程序化视听内容、截图、构建元数据及未随包分发的第三方边界。Assembler 会在任何 stage/build ID 检查之前 fail closed；该记录不是 standalone 仓库的通用许可证。
 
 固定上游历史与原始行为证据已完成：非 squash subtree 精确指向 `ba6fc680626ac59db793175122600369d48f9834`，上游 checksum 保留在 provenance 历史中。当前唯一生产源码通过 test-only 同源 Host harness 继续执行 smoke/integration/regression/full-run，锁定 120 Hz 固定步长、13 关、Campaign/Endless 结果和 desktop/portrait/landscape 输入路径。
 
-Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。下一步 Issue #9 收口三语言、三视口视觉基线、游戏切换与退出 frame 清理。
+Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。Issue #9 的发布门覆盖三语言 × 三视口完整游戏基线、真实 pointer/touch/keyboard、三路音频与 reduced-motion/screen-shake 的可观察结果，并通过 50 次 Pulse/TUMBLEDRUM 交替进入、周期性重载与退出验证 frame、port 和 runtime listener 回到基线。
 
 ### M3 — CrownBreaker
 

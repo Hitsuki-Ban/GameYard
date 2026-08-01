@@ -2,12 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 const PULSE_FRAME_URL = "/games/pulse-link-overdrive/index.html";
+const TUMBLEDRUM_FRAME_URL = "/games/tumbledrum/index.html";
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
 const locales = [
-  { id: "en", start: "Start game" },
-  { id: "ja", start: "ゲームを始める" },
-  { id: "zh-Hans", start: "开始游戏" },
+  { id: "en", start: "Start game", tumbledrumStatus: "TUMBLEDRUM title screen" },
+  { id: "ja", start: "ゲームを始める", tumbledrumStatus: "TUMBLEDRUMのタイトル画面" },
+  { id: "zh-Hans", start: "开始游戏", tumbledrumStatus: "TUMBLEDRUM 标题画面" },
 ] as const;
 
 const viewports = [
@@ -77,7 +78,18 @@ async function openPulse(page: Page, startLabel = "Start game") {
   return { frameElement, pulse };
 }
 
-async function closePulse(page: Page) {
+async function openTumbledrum(page: Page, status = "TUMBLEDRUM title screen") {
+  await page.getByRole("link", { name: /TUMBLEDRUM/ }).click();
+  const frameElement = page.locator(".runtime-frame iframe");
+  const tumbledrum = page.frameLocator(".runtime-frame iframe");
+  await expect(frameElement).toHaveCount(1);
+  await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
+  await expect(tumbledrum.locator("#game")).toBeVisible();
+  await expect(tumbledrum.locator("#status")).toContainText(status);
+  return { frameElement, tumbledrum };
+}
+
+async function closeRuntime(page: Page) {
   await page.locator(".runtime-toolbar__actions button:last-child").click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   await expect(page).toHaveURL(/\/GameYard\/$/);
@@ -133,7 +145,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
       await canvas.evaluate((element) => {
         element.style.removeProperty("visibility");
       });
-      await closePulse(page);
+      await closeRuntime(page);
     }
   }
 
@@ -193,11 +205,101 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await expect(page.getByRole("button", { name: "Open Lab" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Close ×" }).click();
-  await closePulse(page);
+  await closeRuntime(page);
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("50 enter-exit cycles with periodic reloads leave one clean browsing context", async ({
+test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings", async ({
+  browser,
+  page,
+}) => {
+  test.slow();
+  const signals = collectRuntimeSignals(page);
+  await page.addInitScript(() => {
+    if (!window.location.pathname.includes("/games/tumbledrum/")) return;
+    let seed = 0x7a11d4;
+    Math.random = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 0x1_0000_0000;
+    };
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(0));
+  });
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const locale of locales) {
+      await page.goto("./");
+      await page.locator("select").selectOption(locale.id);
+      const { tumbledrum } = await openTumbledrum(page, locale.tumbledrumStatus);
+      await page.evaluate(() => document.fonts.ready);
+      await tumbledrum.locator("body").evaluate(() => document.fonts.ready);
+      await page
+        .locator(".stage--runtime")
+        .evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await expectInsideViewport(page, ".runtime-toolbar");
+      await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-${locale.id}.png`, {
+        animations: "disabled",
+        mask: [page.locator(".site-footer span:last-child")],
+        maskColor: "#070a12",
+      });
+      await closeRuntime(page);
+    }
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+  await page.locator("select").selectOption("en");
+  const { tumbledrum } = await openTumbledrum(page);
+  const canvas = tumbledrum.locator("#game");
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).not.toBeNull();
+  await canvas.click({ position: { x: canvasBox!.width * 0.5, y: canvasBox!.height * 0.8 } });
+  await expect(tumbledrum.locator("#status")).toContainText("Campaign stage 1 of 13");
+  await canvas.focus();
+  await canvas.press("Escape");
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
+
+  await page.getByRole("slider", { name: /Master/ }).fill("0.42");
+  await page.getByRole("slider", { name: /Music/ }).fill("0.37");
+  await page.getByRole("slider", { name: /SFX/ }).fill("0.58");
+  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await page.getByRole("checkbox", { name: "Screen shake" }).uncheck();
+  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await expect(page.locator(".diagnostics__events")).toContainText(
+    "master=0.42, music=0.37, sfx=0.58, reduced=true, shake=false",
+  );
+  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeRuntime(page);
+
+  const mobileContext = await browser.newContext({
+    baseURL: new URL("./", page.url()).href,
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const mobilePage = await mobileContext.newPage();
+  const mobileSignals = collectRuntimeSignals(mobilePage);
+  await mobilePage.goto("./");
+  await mobilePage.locator("select").selectOption("en");
+  const mobileRuntime = await openTumbledrum(mobilePage);
+  const mobileCanvas = await mobileRuntime.tumbledrum.locator("#game").boundingBox();
+  expect(mobileCanvas).not.toBeNull();
+  await mobilePage.touchscreen.tap(
+    mobileCanvas!.x + mobileCanvas!.width * 0.5,
+    mobileCanvas!.y + mobileCanvas!.height * 0.8,
+  );
+  await expect(mobileRuntime.tumbledrum.locator("#status")).toContainText("Campaign stage 1 of 13");
+  await closeRuntime(mobilePage);
+  await mobileContext.close();
+
+  expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
+  expect(mobileSignals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
+});
+
+test("50 alternating enter-exit cycles with periodic reloads leave one clean browsing context", async ({
   page,
 }) => {
   test.slow();
@@ -283,22 +385,30 @@ test("50 enter-exit cycles with periodic reloads leave one clean browsing contex
   const baselineResources = await releaseResources(page);
 
   for (let cycle = 1; cycle <= 50; cycle += 1) {
-    const { pulse } = await openPulse(page);
-    expect(page.frames().filter((frame) => frame.url().includes(PULSE_FRAME_URL))).toHaveLength(1);
+    const pulseCycle = cycle % 2 === 1;
+    const frameUrl = pulseCycle ? PULSE_FRAME_URL : TUMBLEDRUM_FRAME_URL;
+    const runtime = pulseCycle
+      ? { pulse: (await openPulse(page)).pulse, tumbledrum: null }
+      : { pulse: null, tumbledrum: (await openTumbledrum(page)).tumbledrum };
+    expect(page.frames().filter((frame) => frame.url().includes(frameUrl))).toHaveLength(1);
     expect((await releaseResources(page)).openHostPorts).toBe(baselineResources.openHostPorts + 1);
 
     if (cycle % 5 === 0) {
-      const previousGuest = page.frames().find((frame) => frame.url().includes(PULSE_FRAME_URL));
+      const previousGuest = page.frames().find((frame) => frame.url().includes(frameUrl));
       expect(previousGuest).toBeDefined();
       await page.getByRole("button", { name: "Reload" }).click();
-      await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
+      if (pulseCycle) {
+        await expect(runtime.pulse!.getByRole("button", { name: "Start game" })).toBeVisible();
+      } else {
+        await expect(runtime.tumbledrum!.locator("#status")).toContainText(
+          "TUMBLEDRUM title screen",
+        );
+      }
       await expect.poll(() => page.frames().includes(previousGuest!)).toBe(false);
-      expect(page.frames().filter((frame) => frame.url().includes(PULSE_FRAME_URL))).toHaveLength(
-        1,
-      );
+      expect(page.frames().filter((frame) => frame.url().includes(frameUrl))).toHaveLength(1);
     }
 
-    await closePulse(page);
+    await closeRuntime(page);
     expect(page.frames()).toHaveLength(1);
     await expect.poll(() => releaseResources(page)).toEqual(baselineResources);
   }

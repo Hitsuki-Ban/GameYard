@@ -5,7 +5,7 @@ Release target: `1.1.0`
 ## Automated gates
 
 ```powershell
-vp run release:pulse
+vp run release:tumbledrum
 ```
 
 - [x] Logic baseline is exactly 36 assertions and 293 locks.
