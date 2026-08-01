@@ -1,0 +1,16 @@
+{
+  "name": "@gameyard/pulse-link-overdrive",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "uv run python -m http.server 4191 --bind 127.0.0.1",
+    "build": "uv run python tools/build_standalone.py",
+    "check": "vp check",
+    "test": "vp exec playwright test --config playwright.baseline.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
