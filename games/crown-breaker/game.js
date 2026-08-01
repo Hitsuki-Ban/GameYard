@@ -1,5 +1,20 @@
-(() => {
-  'use strict';
+import { ManagedRuntime } from './src/managed-runtime.js';
+
+export function createCrownBreakerGame({ context, bridge }) {
+  if (!context || !bridge) throw new TypeError('CrownBreaker requires an initialized Host context and bridge.');
+  const runtime = new ManagedRuntime(window);
+  const diagnosticEvents = [];
+  let lifecycle = 'booting';
+  let disposed = false;
+  let hostInputEnabled = false;
+  let hostPauseModalShown = false;
+
+  function record(level, code, message) {
+    const event = { timestampMs: Date.now(), level, code, message };
+    diagnosticEvents.push(event);
+    if (diagnosticEvents.length > 32) diagnosticEvents.shift();
+    bridge.emitDiagnostic(event);
+  }
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -32,19 +47,14 @@
   const infoContent = $('#info-content');
 
   const VERSION = '3.7.1';
-  const SAVE_KEY = 'crownBreaker.save.v2';
-  const RUN_KEY = 'crownBreaker.run.v3';
-  const SETTINGS_KEY = 'crownBreaker.settings.v2';
+  const SAVE_KEY = 'gameyard.game.crown-breaker.save.v1';
+  const RUN_KEY = 'gameyard.game.crown-breaker.run.v1';
+  const PREFERENCES_KEY = 'gameyard.game.crown-breaker.preferences.v1';
+  const STORAGE_SCHEMA_VERSION = 1;
 
-  const defaultSettings = {
-    volume: 0.56,
-    music: true,
-    sfx: true,
-    shake: true,
+  const defaultPreferences = {
     flashes: true,
-    hints: true,
-    reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    languagePreference: 'system'
+    hints: true
   };
 
   const defaultSave = {
@@ -65,32 +75,88 @@
   };
   const TUTORIAL_FLAGS = new Set(Object.keys(defaultSave.tutorial));
 
-  function loadJSON(key, fallback) {
+  function parseEnvelope(key, raw) {
+    if (raw === null) return null;
+    let parsed;
     try {
-      const raw = localStorage.getItem(key);
-      if (!raw) return deepClone(fallback);
-      const parsed = JSON.parse(raw);
-      return { ...deepClone(fallback), ...parsed };
+      parsed = JSON.parse(raw);
     } catch (error) {
-      console.warn('Local data could not be read.', error);
-      return deepClone(fallback);
+      throw new TypeError(`${key} is not valid JSON: ${error.message}`);
     }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new TypeError(`${key} must contain an object envelope.`);
+    }
+    const keys = Object.keys(parsed).sort();
+    if (keys.length !== 2 || keys[0] !== 'data' || keys[1] !== 'schemaVersion') {
+      throw new TypeError(`${key} must contain exactly data and schemaVersion.`);
+    }
+    if (parsed.schemaVersion !== STORAGE_SCHEMA_VERSION) {
+      throw new RangeError(`Unsupported ${key} schema: ${String(parsed.schemaVersion)}.`);
+    }
+    return parsed.data;
   }
 
-  let settings = loadJSON(SETTINGS_KEY, defaultSettings);
-  I18N.assertPreference(settings.languagePreference);
-  let localePreference = settings.languagePreference;
-  let locale = I18N.resolveLocale(localePreference);
-  let save = loadJSON(SAVE_KEY, defaultSave);
-  save.tutorial = { ...defaultSave.tutorial, ...(save.tutorial || {}) };
-  if (!Array.isArray(save.discoveredRelics)) save.discoveredRelics = [];
+  function parsePreferences(raw) {
+    if (raw === null) return deepClone(defaultPreferences);
+    const value = parseEnvelope(PREFERENCES_KEY, raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('CrownBreaker preferences data must be an object.');
+    const keys = Object.keys(value).sort();
+    if (keys.length !== 2 || keys[0] !== 'flashes' || keys[1] !== 'hints') {
+      throw new TypeError('CrownBreaker preferences must contain exactly flashes and hints.');
+    }
+    if (typeof value.flashes !== 'boolean' || typeof value.hints !== 'boolean') {
+      throw new TypeError('CrownBreaker preferences fields must be booleans.');
+    }
+    return value;
+  }
 
-  function persistSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (_) { /* unavailable */ }
+  function parseSave(raw) {
+    if (raw === null) return deepClone(defaultSave);
+    const value = parseEnvelope(SAVE_KEY, raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('CrownBreaker save data must be an object.');
+    const expectedKeys = Object.keys(defaultSave).sort();
+    const actualKeys = Object.keys(value).sort();
+    if (actualKeys.length !== expectedKeys.length || actualKeys.some((key, index) => key !== expectedKeys[index])) {
+      throw new TypeError(`CrownBreaker save must contain exactly: ${expectedKeys.join(', ')}.`);
+    }
+    for (const key of ['bestScore', 'bestDaily', 'runs', 'clears', 'totalCaptures', 'totalPromotions']) {
+      if (!Number.isSafeInteger(value[key]) || value[key] < 0) throw new TypeError(`CrownBreaker save ${key} must be a non-negative safe integer.`);
+    }
+    if (!Array.isArray(value.discoveredRelics) || value.discoveredRelics.some(id => typeof id !== 'string')) {
+      throw new TypeError('CrownBreaker discoveredRelics must be a string array.');
+    }
+    const tutorialKeys = Object.keys(defaultSave.tutorial).sort();
+    if (!value.tutorial || typeof value.tutorial !== 'object' || Array.isArray(value.tutorial)) throw new TypeError('CrownBreaker tutorial state must be an object.');
+    const actualTutorialKeys = Object.keys(value.tutorial).sort();
+    if (actualTutorialKeys.length !== tutorialKeys.length || actualTutorialKeys.some((key, index) => key !== tutorialKeys[index]) || tutorialKeys.some(key => typeof value.tutorial[key] !== 'boolean')) {
+      throw new TypeError(`CrownBreaker tutorial state must contain exactly: ${tutorialKeys.join(', ')}.`);
+    }
+    return value;
+  }
+
+  const preferences = parsePreferences(localStorage.getItem(PREFERENCES_KEY));
+  let settings = {
+    volume: context.settings.audio.master,
+    music: context.settings.audio.music,
+    sfx: context.settings.audio.sfx,
+    shake: context.settings.motion.screenShake,
+    flashes: preferences.flashes,
+    hints: preferences.hints,
+    reducedMotion: context.settings.motion.reduced
+  };
+  let localePreference = context.locale.preference;
+  let locale = context.locale.resolved === 'zh-Hans' ? 'zh-CN' : context.locale.resolved;
+  let save = parseSave(localStorage.getItem(SAVE_KEY));
+
+  function persistPreferences() {
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify({
+      schemaVersion: STORAGE_SCHEMA_VERSION,
+      data: { flashes: settings.flashes, hints: settings.hints }
+    }));
   }
 
   function persistSave() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) { /* unavailable */ }
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ schemaVersion: STORAGE_SCHEMA_VERSION, data: save }));
   }
 
   function t(key, params) {
@@ -458,11 +524,14 @@
       this.nextStepAt = 0;
       this.step = 0;
       this.bpm = 158;
+      this.activeSources = new Set();
+      this.disposed = false;
     }
 
     ensure() {
+      if (this.disposed) return;
       if (this.ctx) {
-        if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+        if (this.ctx.state === 'suspended' && !runtime.paused) this.ctx.resume().catch(() => {});
         return;
       }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -482,8 +551,8 @@
       if (!this.ctx) return;
       const t = this.ctx.currentTime;
       this.master.gain.setTargetAtTime(settings.volume, t, 0.02);
-      this.musicGain.gain.setTargetAtTime(settings.music ? 0.27 : 0.0001, t, 0.04);
-      this.sfxGain.gain.setTargetAtTime(settings.sfx ? 0.72 : 0.0001, t, 0.02);
+      this.musicGain.gain.setTargetAtTime(settings.music * 0.27, t, 0.04);
+      this.sfxGain.gain.setTargetAtTime(settings.sfx * 0.72, t, 0.02);
     }
 
     makeNoiseBuffer() {
@@ -498,12 +567,12 @@
       if (!this.ctx || this.started) return;
       this.started = true;
       this.nextStepAt = this.ctx.currentTime + 0.05;
-      this.timer = window.setInterval(() => this.schedule(), 50);
+      this.timer = runtime.setInterval(() => this.schedule(), 50);
     }
 
     schedule() {
       if (!this.ctx) return;
-      if (!settings.music) {
+      if (settings.volume <= 0 || settings.music <= 0) {
         this.nextStepAt = this.ctx.currentTime + 0.05;
         return;
       }
@@ -527,6 +596,7 @@
       env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       osc.connect(env);
       env.connect(destination);
+      this.trackSource(osc, [env]);
       osc.start(start);
       osc.stop(start + duration + 0.03);
     }
@@ -544,6 +614,7 @@
       source.connect(filter);
       filter.connect(env);
       env.connect(destination);
+      this.trackSource(source, [filter, env]);
       source.start(start);
       source.stop(start + duration + 0.02);
     }
@@ -564,7 +635,7 @@
 
     sfx(name, opts = {}) {
       this.ensure();
-      if (!this.ctx || !settings.sfx) return;
+      if (!this.ctx || settings.volume <= 0 || settings.sfx <= 0) return;
       const t = this.ctx.currentTime + 0.005;
       const pitch = Math.max(0.5, Number(opts.pitch) || 1);
       switch (name) {
@@ -617,6 +688,49 @@
         default:
           break;
       }
+    }
+
+    trackSource(source, nodes) {
+      this.activeSources.add(source);
+      source.addEventListener('ended', () => {
+        this.activeSources.delete(source);
+        try { source.disconnect(); } catch (_) { /* already disconnected */ }
+        for (const node of nodes) {
+          try { node.disconnect(); } catch (_) { /* already disconnected */ }
+        }
+      }, { once: true });
+    }
+
+    async pause() {
+      if (this.ctx && this.ctx.state === 'running') await this.ctx.suspend();
+    }
+
+    async resume() {
+      if (this.disposed) return;
+      if (this.ctx && this.ctx.state === 'suspended') await this.ctx.resume();
+      if (this.ctx) this.nextStepAt = this.ctx.currentTime + 0.05;
+    }
+
+    async dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      if (this.timer !== null) runtime.clearInterval(this.timer);
+      this.timer = null;
+      for (const source of this.activeSources) {
+        try { source.stop(); } catch (_) { /* source already ended */ }
+        try { source.disconnect(); } catch (_) { /* already disconnected */ }
+      }
+      this.activeSources.clear();
+      for (const node of [this.musicGain, this.sfxGain, this.master]) {
+        try { node?.disconnect(); } catch (_) { /* already disconnected */ }
+      }
+      if (this.ctx && this.ctx.state !== 'closed') await this.ctx.close();
+      this.ctx = null;
+      this.master = null;
+      this.musicGain = null;
+      this.sfxGain = null;
+      this.noiseBuffer = null;
+      this.started = false;
     }
   }
 
@@ -674,6 +788,46 @@
     trainingCrownBroken: false,
     failureReason: null
   };
+
+  function setInputEnabled(enabled) {
+    hostInputEnabled = enabled === true;
+    runtime.setInputEnabled(hostInputEnabled);
+    if (!hostInputEnabled) releaseAllInput();
+  }
+
+  function releaseAllInput() {
+    game.hover = null;
+    game.hintMove = null;
+    game.lastInputAt = now();
+  }
+
+  function diagnosticSnapshot() {
+    return {
+      lifecycle,
+      settingsRevision: context.settings.revision,
+      inputEnabled: hostInputEnabled && !runtime.paused && !disposed,
+      events: [...diagnosticEvents]
+    };
+  }
+
+  async function dispose() {
+    if (disposed) return;
+    lifecycle = 'disposing';
+    bridge.emitLifecycleState('disposing');
+    disposed = true;
+    if (hasPersistableRun()) persistRun();
+    releaseAllInput();
+    const resources = runtime.snapshot();
+    runtime.dispose();
+    await audio.dispose();
+    lifecycle = 'disposed';
+    bridge.emitLifecycleState('disposed');
+    record(
+      'info',
+      'lifecycle.disposed',
+      `Disposed CrownBreaker resources: timers=${resources.timers}, frames=${resources.frames}, listeners=${resources.listeners}.`
+    );
+  }
 
   const particles = [];
   const floatingTexts = [];
@@ -1170,18 +1324,18 @@
   }
 
   function loadActiveRun() {
-    try {
-      const raw = localStorage.getItem(RUN_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return validateRun(parsed) ? parsed : null;
-    } catch (_) {
-      return null;
-    }
+    const parsed = parseEnvelope(RUN_KEY, localStorage.getItem(RUN_KEY));
+    if (parsed === null) return null;
+    if (!validateRun(parsed)) throw new TypeError('CrownBreaker run data failed schema validation.');
+    return parsed;
   }
 
   function clearActiveRun() {
-    try { localStorage.removeItem(RUN_KEY); } catch (_) { /* unavailable */ }
+    localStorage.removeItem(RUN_KEY);
+  }
+
+  function writeActiveRun(value) {
+    localStorage.setItem(RUN_KEY, JSON.stringify({ schemaVersion: STORAGE_SCHEMA_VERSION, data: value }));
   }
 
   function snapshotBattle() {
@@ -1235,7 +1389,15 @@
     run.score = game.score;
     run.maxCombo = Math.max(run.maxCombo, game.maxCombo);
     if (stage === 'battle' && game.active) run.battleState = snapshotBattle();
-    try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (_) { /* unavailable */ }
+    writeActiveRun(run);
+  }
+
+  function hasPersistableRun() {
+    return Boolean(
+      run
+      && game.mode === 'run'
+      && (game.active || ['promotion', 'reward', 'contract'].includes(run.stage))
+    );
   }
 
   function resize() {
@@ -1347,25 +1509,8 @@
       html = `
         <p class="eyebrow">${t('settings.kicker')}</p>
         <h2>${t('settings.title')}</h2>
-        <div class="setting-row">
-          <div><label for="set-volume">${t('settings.volume')}</label><small>${t('settings.volumeLine')}</small></div>
-          <input id="set-volume" type="range" min="0" max="1" step="0.01" value="${settings.volume}">
-        </div>
-        ${settingSwitch('set-music', t('settings.music'), t('settings.toggleLine'), settings.music)}
-        ${settingSwitch('set-sfx', t('settings.sfx'), t('settings.toggleLine'), settings.sfx)}
-        ${settingSwitch('set-shake', t('settings.shake'), t('settings.shakeLine'), settings.shake)}
         ${settingSwitch('set-flashes', t('settings.flashes'), t('settings.flashesLine'), settings.flashes)}
-        ${settingSwitch('set-hints', t('settings.hints'), t('settings.hintsLine'), settings.hints)}
-        ${settingSwitch('set-motion', t('settings.motion'), t('settings.motionLine'), settings.reducedMotion)}
-        <div class="setting-row">
-          <div><label for="languagePreference">${t('language.label')}</label><small>${t('settings.languageLine')}</small></div>
-          <select id="languagePreference" class="language-select">
-            <option value="system">${t('language.system')}</option>
-            <option value="zh-CN">${t('language.zh-CN')}</option>
-            <option value="ja">${t('language.ja')}</option>
-            <option value="en">${t('language.en')}</option>
-          </select>
-        </div>`;
+        ${settingSwitch('set-hints', t('settings.hints'), t('settings.hintsLine'), settings.hints)}`;
     }
     infoContent.innerHTML = html;
   }
@@ -1379,28 +1524,13 @@
   }
 
   function bindSettingsControls() {
-    const volume = $('#set-volume');
-    if (!volume) return;
-    volume.addEventListener('input', event => {
-      settings.volume = Number(event.target.value);
-      audio.applySettings();
-      persistSettings();
-    });
-    [
-      ['#set-music', 'music'], ['#set-sfx', 'sfx'], ['#set-shake', 'shake'],
-      ['#set-flashes', 'flashes'], ['#set-hints', 'hints'], ['#set-motion', 'reducedMotion']
-    ].forEach(([selector, key]) => {
+    [['#set-flashes', 'flashes'], ['#set-hints', 'hints']].forEach(([selector, key]) => {
       const input = $(selector);
-      input.addEventListener('change', event => {
+      runtime.listen(input, 'change', event => {
         settings[key] = event.target.checked;
-        if (key === 'reducedMotion') syncMotionPresentation();
-        audio.applySettings();
-        persistSettings();
-      });
+        persistPreferences();
+      }, undefined, true);
     });
-    const language = $('#languagePreference');
-    language.value = localePreference;
-    language.addEventListener('change', event => setLanguagePreference(event.target.value));
   }
 
   function makePiece(color, type, x, y, extra = {}) {
@@ -1506,7 +1636,7 @@
   }
 
   function resetRuntimeForBattle(data) {
-    clearTimeout(game.transitionTimer);
+    runtime.clearTimeout(game.transitionTimer);
     game.active = true;
     game.paused = false;
     game.phase = 'player';
@@ -1768,7 +1898,7 @@
 
   function quitToTitle() {
     audio.sfx('ui');
-    clearTimeout(game.transitionTimer);
+    runtime.clearTimeout(game.transitionTimer);
     if (run && game.mode === 'run' && game.active) persistRun('battle');
     closeModal();
     game.active = false;
@@ -1778,26 +1908,45 @@
 
   function pauseGame() {
     if (!game.active || ['result', 'reward', 'contract', 'promotion'].includes(game.phase)) return;
-    if (game.paused) {
-      resumeGame();
-      return;
-    }
-    game.paused = true;
-    game.pausedAt = now();
-    if (run && game.mode === 'run') persistRun('battle');
-    audio.sfx('ui');
-    openModal(pauseModal);
+    bridge.requestLifecycleChange(game.paused ? 'resume' : 'pause');
   }
 
   function resumeGame() {
     if (!game.paused) return;
+    bridge.requestLifecycleChange('resume');
+  }
+
+  async function hostPause() {
+    if (lifecycle === 'disposed' || lifecycle === 'disposing' || lifecycle === 'paused') return;
+    game.paused = true;
+    game.pausedAt = now();
+    if (hasPersistableRun()) persistRun();
+    hostPauseModalShown = game.active
+      && !modalLayer.classList.contains('active')
+      && game.phase !== 'promotion';
+    if (hostPauseModalShown) openModal(pauseModal);
+    releaseAllInput();
+    runtime.pause();
+    await audio.pause();
+    lifecycle = 'paused';
+    bridge.emitLifecycleState('paused');
+    record('info', 'lifecycle.paused', 'CrownBreaker runtime paused.');
+  }
+
+  async function hostResume() {
+    if (lifecycle === 'disposed' || lifecycle === 'disposing' || lifecycle === 'active') return;
     const pausedDuration = now() - game.pausedAt;
     if (game.currentAnimation) game.currentAnimation.start += pausedDuration;
     game.pieces.forEach(piece => { if (piece.anim) piece.anim.start += pausedDuration; });
     game.paused = false;
     game.lastFrame = now();
-    closeModal();
-    audio.sfx('ui');
+    if (hostPauseModalShown) closeModal();
+    hostPauseModalShown = false;
+    runtime.resume();
+    await audio.resume();
+    lifecycle = 'active';
+    bridge.emitLifecycleState('active');
+    record('info', 'lifecycle.active', 'CrownBreaker runtime active.');
   }
 
   function pieceAt(x, y, excludeId = null) {
@@ -2189,7 +2338,7 @@
     if (captured) captured.alive = false;
     game.currentAnimation = { pieceId: piece.id, start, duration, capturedId: captured?.id || null };
     audio.sfx('move');
-    window.setTimeout(() => {
+    runtime.setTimeout(() => {
       if (!game.active) return;
       const point = tileCenter(move.x, move.y);
       if (captured) {
@@ -2199,7 +2348,7 @@
         triggerHit(captured.type === 'k' ? 18 : 8, captured.type === 'k' ? 115 : 55);
       }
     }, duration * 0.68);
-    window.setTimeout(() => {
+    runtime.setTimeout(() => {
       piece.anim = null;
       game.currentAnimation = null;
       onDone();
@@ -2331,7 +2480,7 @@
         fromX: piece.x, fromY: oldY, toX: piece.x, toY: nextY,
         start: now(), duration: settings.reducedMotion ? 80 : 190, actor: 'player'
       };
-      window.setTimeout(() => { piece.anim = null; }, settings.reducedMotion ? 95 : 210);
+      runtime.setTimeout(() => { piece.anim = null; }, settings.reducedMotion ? 95 : 210);
       const point = tileCenter(piece.x, nextY);
       addImpact(point.x, point.y, 'promotion', 9);
     });
@@ -2491,7 +2640,7 @@
     }
     game.phase = 'enemy';
     const delay = settings.reducedMotion ? 80 : 260;
-    window.setTimeout(() => {
+    runtime.setTimeout(() => {
       if (!game.active || game.paused || game.phase !== 'enemy') return;
       const actor = game.pieces.find(piece => piece.id === intent.pieceId && piece.alive);
       if (!actor || actor.x !== intent.fromX || actor.y !== intent.fromY) {
@@ -2582,7 +2731,7 @@
         <span class="piece-big">${PIECE_GLYPHS.w[type]}</span>
         ${movementDiagram(type)}
       </button>`).join('');
-    $$('.promotion-choice', grid).forEach(button => button.addEventListener('click', () => choosePromotion(button.dataset.type)));
+    $$('.promotion-choice', grid).forEach(button => runtime.listen(button, 'click', () => choosePromotion(button.dataset.type), undefined, true));
   }
 
   function requestPromotion(piece, callback = null, after = callback ? 'crown' : 'move') {
@@ -2597,7 +2746,7 @@
       run.promotionState = { pieceUid: piece.uid || null, pieceId: piece.id, after };
       run.stage = 'promotion';
       run.battleState = snapshotBattle();
-      try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (_) { /* unavailable */ }
+      writeActiveRun(run);
     }
     if (!save.tutorial.promotion) {
       save.tutorial.promotion = true;
@@ -2721,14 +2870,14 @@
     showBanner(game.enemyHP <= 0 ? 'banner.cleared' : game.enemyHP === 1 ? 'banner.lastCrown' : 'banner.crownCracked');
     if (game.enemyHP <= 0) {
       game.phase = 'transition';
-      game.transitionTimer = window.setTimeout(() => {
+      game.transitionTimer = runtime.setTimeout(() => {
         if (game.mode === 'training') finishTraining();
         else completeBattle();
       }, settings.reducedMotion ? 280 : 950);
       return;
     }
     game.phase = 'transition';
-    game.transitionTimer = window.setTimeout(() => {
+    game.transitionTimer = runtime.setTimeout(() => {
       respawnEnemyCrown(crown);
       spawnPhaseReinforcements();
       const rampartLevel = activeSpoilLevel('rampart');
@@ -2907,10 +3056,10 @@
     updateHUD();
     if (getShield() <= 0) {
       game.phase = 'transition';
-      game.transitionTimer = window.setTimeout(() => failBattle('crown_broken'), settings.reducedMotion ? 180 : 650);
+      game.transitionTimer = runtime.setTimeout(() => failBattle('crown_broken'), settings.reducedMotion ? 180 : 650);
     } else {
       game.phase = 'transition';
-      game.transitionTimer = window.setTimeout(() => continueEnemySequence(isEcho), settings.reducedMotion ? 120 : 480);
+      game.transitionTimer = runtime.setTimeout(() => continueEnemySequence(isEcho), settings.reducedMotion ? 120 : 480);
     }
   }
 
@@ -2930,7 +3079,7 @@
       run.promotionState = null;
       run.battleState = deepClone(run.battleStart || run.battleState);
       run.stage = 'battle';
-      try { localStorage.setItem(RUN_KEY, JSON.stringify(run)); } catch (_) { /* unavailable */ }
+      writeActiveRun(run);
     }
     openModal(failModal);
   }
@@ -3009,7 +3158,7 @@
         li.textContent = t(bonus.key, bonus.params);
         lines.appendChild(li);
         audio.sfx('ui');
-        window.setTimeout(pushLine, stepDelay);
+        runtime.setTimeout(pushLine, stepDelay);
         return;
       }
       const total = document.createElement('li');
@@ -3017,12 +3166,12 @@
       total.textContent = t('tally.total', { score: formatScore(game.score) });
       lines.appendChild(total);
       audio.sfx('ready');
-      window.setTimeout(() => {
+      runtime.setTimeout(() => {
         overlay.classList.remove('show');
         done();
       }, settings.reducedMotion ? 240 : 950);
     };
-    window.setTimeout(pushLine, settings.reducedMotion ? 60 : 300);
+    runtime.setTimeout(pushLine, settings.reducedMotion ? 60 : 300);
   }
 
   function completeBattle() {
@@ -3051,14 +3200,14 @@
     run.shield = Math.min(maxShieldForRun(), getShield() + (elite ? 0 : 1));
     run.battleState = snapshotBattle();
     if (run.battle >= run.totalBattles) {
-      window.setTimeout(() => runTallySequence(bonuses, finishRun), settings.reducedMotion ? 120 : 450);
+      runtime.setTimeout(() => runTallySequence(bonuses, finishRun), settings.reducedMotion ? 120 : 450);
       return;
     }
     run.rewardPicksRemaining = 1;
     run.pendingRewards = generateRewardDraft();
     run.stage = 'reward';
     persistRun('reward');
-    window.setTimeout(() => {
+    runtime.setTimeout(() => {
       runTallySequence(bonuses, () => {
         renderRewardDraft(run.pendingRewards);
         openModal(rewardModal);
@@ -3116,7 +3265,7 @@
         <span class="upgrade-note">${level ? t('reward.upgrade', { level: level + 1 }) : t('reward.new')}</span>
       </button>`;
     }).join('');
-    $$('.reward-card', grid).forEach(button => button.addEventListener('click', () => chooseReward(button.dataset.id)));
+    $$('.reward-card', grid).forEach(button => runtime.listen(button, 'click', () => chooseReward(button.dataset.id), undefined, true));
   }
 
   function applyRelic(id) {
@@ -3218,7 +3367,7 @@
         ${rewardLines}
       </button>`;
     }).join('');
-    $$('.contract-card', grid).forEach(button => button.addEventListener('click', () => chooseContract(Number(button.dataset.index))));
+    $$('.contract-card', grid).forEach(button => runtime.listen(button, 'click', () => chooseContract(Number(button.dataset.index)), undefined, true));
   }
 
   function chooseContract(index) {
@@ -3370,7 +3519,7 @@
 
   function clearTutorialSequence() {
     const element = $('#tutorial-chip');
-    clearTimeout(tutorialTimer);
+    runtime.clearTimeout(tutorialTimer);
     tutorialTimer = null;
     tutorialQueue = [];
     currentTutorialMessage = null;
@@ -3396,7 +3545,7 @@
   }
 
   function advanceTutorialSequence() {
-    clearTimeout(tutorialTimer);
+    runtime.clearTimeout(tutorialTimer);
     const element = $('#tutorial-chip');
     const next = tutorialQueue.shift();
     if (!next) {
@@ -3415,10 +3564,10 @@
       save.tutorial[next.seenFlag] = true;
       persistSave();
     }
-    tutorialTimer = window.setTimeout(() => {
+    tutorialTimer = runtime.setTimeout(() => {
       element.classList.remove('show');
       currentTutorialMessage = null;
-      tutorialTimer = window.setTimeout(advanceTutorialSequence, settings.reducedMotion ? 20 : 140);
+      tutorialTimer = runtime.setTimeout(advanceTutorialSequence, settings.reducedMotion ? 20 : 140);
     }, next.duration);
   }
 
@@ -3469,13 +3618,13 @@
 
   function showBanner(key, params) {
     const element = $('#turn-banner');
-    clearTimeout(bannerTimer);
+    runtime.clearTimeout(bannerTimer);
     currentBannerMessage = { key, params };
     element.textContent = t(key, params);
     element.classList.remove('show');
     void element.offsetWidth;
     element.classList.add('show');
-    bannerTimer = window.setTimeout(() => {
+    bannerTimer = runtime.setTimeout(() => {
       element.classList.remove('show');
       element.textContent = '';
       currentBannerMessage = null;
@@ -3645,7 +3794,7 @@
       game.displayedScore = lerp(game.displayedScore, game.score, clamp(rawDt * 0.012, 0, 1));
       $('#hud-score').textContent = formatScore(game.displayedScore);
     }
-    requestAnimationFrame(render);
+    runtime.requestAnimationFrame(render);
   }
 
   function updateSimulation(dt) {
@@ -4155,17 +4304,8 @@
   }
 
   function applyLocale() {
-    locale = I18N.resolveLocale(localePreference);
     document.documentElement.lang = locale;
-    const manifestPaths = {
-      en: './manifest.webmanifest',
-      'zh-CN': './manifest.zh-CN.webmanifest',
-      ja: './manifest.ja.webmanifest'
-    };
-    const manifest = $('#app-manifest');
-    if (manifest) manifest.setAttribute('href', manifestPaths[locale]);
     applyStaticTranslations();
-    $('#title-language').value = localePreference;
     updateHUD(true);
 
     if (promotionModal.classList.contains('active')) renderPromotionChoices();
@@ -4184,49 +4324,78 @@
 
   function setLanguagePreference(preference) {
     I18N.assertPreference(preference);
-    settings.languagePreference = preference;
     localePreference = preference;
-    persistSettings();
+    locale = I18N.resolveLocale(preference);
     applyLocale();
   }
 
+  function applyHostLocale(nextLocale) {
+    context = { ...context, locale: nextLocale };
+    localePreference = nextLocale.preference;
+    locale = nextLocale.resolved === 'zh-Hans' ? 'zh-CN' : nextLocale.resolved;
+    applyLocale();
+    record('info', 'locale.applied', `Applied Host locale ${nextLocale.resolved}.`);
+  }
+
+  function applyHostSettings(nextSettings) {
+    context = { ...context, settings: nextSettings };
+    settings = {
+      ...settings,
+      volume: nextSettings.audio.master,
+      music: nextSettings.audio.music,
+      sfx: nextSettings.audio.sfx,
+      shake: nextSettings.motion.screenShake,
+      reducedMotion: nextSettings.motion.reduced
+    };
+    if (!settings.shake || settings.reducedMotion) game.screenShake = 0;
+    syncMotionPresentation();
+    audio.applySettings();
+    record(
+      'info',
+      'settings.applied',
+      `Applied Host settings revision ${nextSettings.revision}: master=${nextSettings.audio.master}, music=${nextSettings.audio.music}, sfx=${nextSettings.audio.sfx}, reduced=${nextSettings.motion.reduced}, shake=${nextSettings.motion.screenShake}.`
+    );
+  }
+
   function bindEvents() {
-    window.addEventListener('resize', resize, { passive: true });
-    canvas.addEventListener('pointerdown', event => {
+    runtime.listen(window, 'resize', resize, { passive: true });
+    runtime.listen(canvas, 'pointerdown', event => {
       audio.start();
       handleBoardPointer(event.clientX, event.clientY);
-    });
+    }, undefined, true);
 
-    $('#btn-continue').addEventListener('click', () => { audio.sfx('ui'); resumeSavedRun(); });
-    $('#btn-new').addEventListener('click', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
-    $('#btn-daily').addEventListener('click', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(dailySeed(), true); });
-    $('#btn-training').addEventListener('click', () => { audio.sfx('ui'); startTraining(); });
-    $('#btn-records').addEventListener('click', () => showInfo('records'));
-    $('#btn-rules').addEventListener('click', () => showInfo('rules'));
-    $('#btn-settings').addEventListener('click', () => showInfo('settings'));
-    $('#title-language').addEventListener('change', event => setLanguagePreference(event.target.value));
+    const input = (selector, handler) => runtime.listen($(selector), 'click', handler, undefined, true);
+    input('#btn-continue', () => { audio.sfx('ui'); resumeSavedRun(); });
+    input('#btn-new', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
+    input('#btn-daily', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(dailySeed(), true); });
+    input('#btn-training', () => { audio.sfx('ui'); startTraining(); });
+    input('#btn-records', () => showInfo('records'));
+    input('#btn-rules', () => showInfo('rules'));
+    input('#btn-settings', () => showInfo('settings'));
+    input('#btn-pause', pauseGame);
+    runtime.listen($('#btn-resume'), 'click', resumeGame);
+    input('#btn-restart', () => { audio.sfx('ui'); closeModal(); restoreBattleStart(); });
+    runtime.listen($('#btn-pause-settings'), 'click', () => showInfo('settings'));
+    input('#btn-quit', quitToTitle);
+    runtime.listen($('#btn-info-close'), 'click', closeInfoModal);
+    input('#btn-burst', activateOverdrive);
+    input('#btn-fail-retry', () => { audio.sfx('ui'); closeModal(); restoreBattleStart(); });
+    input('#btn-fail-new', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
+    input('#btn-fail-menu', quitToTitle);
+    input('#btn-result-new', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
+    input('#btn-result-menu', () => { clearActiveRun(); quitToTitle(); });
+    input('#btn-training-again', () => { audio.sfx('ui'); startTraining(); });
+    input('#btn-training-run', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
+    input('#btn-training-menu', quitToTitle);
 
-    $('#btn-pause').addEventListener('click', pauseGame);
-    $('#btn-resume').addEventListener('click', resumeGame);
-    $('#btn-restart').addEventListener('click', () => { audio.sfx('ui'); closeModal(); restoreBattleStart(); });
-    $('#btn-pause-settings').addEventListener('click', () => showInfo('settings'));
-    $('#btn-quit').addEventListener('click', quitToTitle);
-    $('#btn-info-close').addEventListener('click', closeInfoModal);
-    $('#btn-burst').addEventListener('click', activateOverdrive);
-
-    $('#btn-fail-retry').addEventListener('click', () => { audio.sfx('ui'); closeModal(); restoreBattleStart(); });
-    $('#btn-fail-new').addEventListener('click', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
-    $('#btn-fail-menu').addEventListener('click', quitToTitle);
-
-    $('#btn-result-new').addEventListener('click', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
-    $('#btn-result-menu').addEventListener('click', () => { clearActiveRun(); quitToTitle(); });
-
-    $('#btn-training-again').addEventListener('click', () => { audio.sfx('ui'); startTraining(); });
-    $('#btn-training-run').addEventListener('click', () => { audio.sfx('ui'); clearActiveRun(); startNewRun(); });
-    $('#btn-training-menu').addEventListener('click', quitToTitle);
-
-    window.addEventListener('keydown', event => {
+    runtime.listen(window, 'keydown', event => {
       const key = event.key.toLowerCase();
+      if (key === 'escape' && game.paused) {
+        event.preventDefault();
+        bridge.requestLifecycleChange('resume');
+        return;
+      }
+      if (!hostInputEnabled || runtime.paused) return;
       if (key === ' ' || event.code === 'Space') {
         if (currentScreen === 'playing') {
           event.preventDefault();
@@ -4249,19 +4418,9 @@
       }
     });
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        if (run && game.mode === 'run' && game.active) persistRun('battle');
-        if (game.active && !game.paused && !['promotion', 'reward', 'contract'].includes(game.phase)) pauseGame();
-      }
-    });
-
-    window.addEventListener('pagehide', () => {
-      if (run && game.mode === 'run' && game.active) persistRun('battle');
-    });
   }
 
-  function installTestHooks() {
+  function createTestHooks() {
     const configurationFields = Object.freeze([
       'trait', 'spoils', 'pieces', 'enemyHP', 'enemyHPMax', 'turnsLeft', 'moveCount',
       'enemyTurns', 'enemyCycles', 'battleCharges', 'rngState', 'shield', 'mods', 'aiProfile'
@@ -4387,7 +4546,7 @@
       throw new Error(`Could not derive a QA seed for boss ${bossId}.`);
     };
 
-    window.__CB_TEST__ = {
+    return {
       version: VERSION,
       state: () => ({
         screen: currentScreen,
@@ -4596,7 +4755,7 @@
           aiProfile: config.aiProfile
         }, nextRoster);
         const runtimePieces = pieces.map(piece => makePiece(piece.color, piece.type, piece.x, piece.y, piece));
-        clearTimeout(game.transitionTimer);
+        runtime.clearTimeout(game.transitionTimer);
         closeModal();
         run.currentContract = nextContract;
         run.spoils = spoils;
@@ -4691,12 +4850,20 @@
       finishBattle: () => {
         if (!run || !game.active) return false;
         game.enemyHP = 1;
-        return window.__CB_TEST__.forceCrownBreak();
+        const crown = kingOf('b');
+        const attacker = game.pieces.find(piece => piece.alive && piece.color === 'w' && piece.type !== 'k');
+        if (!crown || !attacker || game.phase !== 'player') return false;
+        attacker.x = crown.x;
+        attacker.y = crown.y;
+        crown.alive = false;
+        handleEnemyCrownHit(attacker, crown);
+        return true;
       },
       resetStorage: () => {
-        [SAVE_KEY, RUN_KEY, SETTINGS_KEY].forEach(key => localStorage.removeItem(key));
+        [SAVE_KEY, RUN_KEY, PREFERENCES_KEY].forEach(key => localStorage.removeItem(key));
         location.reload();
-      }
+      },
+      runtime: () => runtime.snapshot()
     };
   }
 
@@ -4705,16 +4872,25 @@
     resize();
     applyLocale();
     bindEvents();
-    const qaMode = globalThis.__CB_ENABLE_QA__ === true || new URLSearchParams(location.search).has('qa');
-    if (qaMode) installTestHooks();
+    if (__GAMEYARD_TESTKIT__) globalThis.__CB_TEST__ = createTestHooks();
     updateContinueButton();
     renderPromotionChoices();
     setScreen('title');
-    requestAnimationFrame(render);
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    }
+    runtime.requestAnimationFrame(render);
   }
 
   init();
-})();
+  return {
+    markReady() {
+      lifecycle = 'ready';
+    },
+    applyHostSettings,
+    applyHostLocale,
+    setInputEnabled,
+    releaseAllInput,
+    hostPause,
+    hostResume,
+    diagnosticSnapshot,
+    dispose
+  };
+}

@@ -4,7 +4,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { chromium } from 'playwright';
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(import.meta.dirname, '../../../.gameyard/testkit/games/crown-breaker');
 const rootReal = await realpath(root);
 const args = process.argv.slice(2);
 if (args[0] === '--') args.shift();
@@ -27,17 +27,9 @@ const mime = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png'
 };
-const webAssets = new Set([
-  'index.html', 'styles.css', 'i18n.js', 'game.js', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest',
-  'assets/acts/outer.svg', 'assets/acts/outer-particles.svg',
-  'assets/acts/gallery.svg', 'assets/acts/gallery-particles.svg',
-  'assets/acts/throne.svg', 'assets/acts/throne-particles.svg'
-]);
 let expectedHost = null;
 
 const server = createServer(async (request, response) => {
@@ -54,7 +46,6 @@ const server = createServer(async (request, response) => {
     }
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
     const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
-    if (!webAssets.has(relative)) throw new Error('Asset is not in the QA allowlist.');
     const file = resolve(root, relative);
     if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error('Path escapes project root.');
     const fileReal = await realpath(file);
@@ -77,12 +68,11 @@ await new Promise((resolveListen, reject) => {
 const address = server.address();
 if (!address || typeof address === 'string') throw new Error('Static server did not bind to a TCP port.');
 expectedHost = `127.0.0.1:${address.port}`;
-const url = `http://127.0.0.1:${address.port}/?qa`;
+const url = `http://127.0.0.1:${address.port}/`;
 
 const installFastTimers = () => {
   const nativeSetTimeout = window.setTimeout.bind(window);
   window.setTimeout = (callback, delay = 0, ...timerArgs) => nativeSetTimeout(callback, Math.min(Number(delay) || 0, 12), ...timerArgs);
-  localStorage.clear();
 };
 let browser = null;
 let context = null;
@@ -721,7 +711,7 @@ async function testEightBattleFormationRuns() {
 try {
   browser = await chromium.launch({ headless: true });
   context = await browser.newContext({ serviceWorkers: 'block' });
-  await context.addInitScript(installFastTimers);
+  await context.addInitScript(() => localStorage.clear());
   const expectedOrigin = new URL(url).origin;
   await context.route('**/*', async route => {
     const requestUrl = new URL(route.request().url());
@@ -745,7 +735,8 @@ try {
   state = () => qa('state');
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   try {
-    await page.waitForFunction(() => Boolean(window.__CB_TEST__), null, { timeout: 5000 });
+    await page.waitForFunction(() => window.__CB_HOST__?.ready === true && Boolean(window.__CB_TEST__), null, { timeout: 5000 });
+    await page.evaluate(installFastTimers);
   } catch (error) {
     assertClean('browser initialization');
     throw error;

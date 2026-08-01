@@ -13,12 +13,11 @@ describe("game catalog", () => {
     ]);
   });
 
-  it("marks Pulse and TUMBLEDRUM playable locally while CrownBreaker remains queued", () => {
-    for (const id of ["pulse-link-overdrive", "tumbledrum"] as const) {
+  it("marks all three curated games playable through the local runtime", () => {
+    for (const id of ["pulse-link-overdrive", "tumbledrum", "crown-breaker"] as const) {
       expect(getGameById(id)).toMatchObject({ status: "playable", runtime: "local" });
       expect(getGameById(id).liveUrl).toBeUndefined();
     }
-    expect(getGameById("crown-breaker").status).toBe("queued");
     expect(
       [...GAME_CATALOG].sort((a, b) => a.migrationOrder - b.migrationOrder).map((game) => game.id),
     ).toEqual(["pulse-link-overdrive", "tumbledrum", "crown-breaker"]);

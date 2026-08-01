@@ -282,7 +282,7 @@ if (favicon && icon192 && icon512 && sourceRecords.length === expectedAssets.len
   try {
     const catalogText = await readFile(resolve(root, 'assets/catalog.json'), 'utf8');
     const canonicalCatalog = `${JSON.stringify(expectedCatalog, null, 2)}\n`;
-    if (catalogText !== canonicalCatalog) fail('assets/catalog.json: catalog is stale or not in canonical stable format; run pnpm build:assets');
+    if (catalogText !== canonicalCatalog) fail('assets/catalog.json: catalog is stale or not in canonical stable format; run vp run crown-breaker#build:assets');
   } catch (error) {
     fail(`assets/catalog.json: cannot read (${error.message})`);
   }

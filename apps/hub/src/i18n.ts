@@ -31,8 +31,7 @@ const en = {
   "nav.diagnostics": "Diagnostics",
   "index.eyebrow": "GAMEYARD / 01—03",
   "index.title": "OPEN INDEX",
-  "index.instruction":
-    "Choose a work to enter the yard. Pulse Link and TUMBLEDRUM run here now; CrownBreaker remains queued.",
+  "index.instruction": "Choose a work to enter the yard. All three games run here now.",
   "catalog.heading": "Works in the yard",
   "catalog.order": "MIGRATION {{order}}/3",
   "catalog.languages": "EN · JA · ZH-HANS",
@@ -47,8 +46,7 @@ const en = {
     "This Hub does not load the upstream game. Integration begins only after its contract and migration gate are complete.",
   "stage.linksNote": "Links open the existing upstream project outside GameYard.",
   "stage.select": "Select a title from the index",
-  "stage.selectDetail":
-    "Pulse Link and TUMBLEDRUM run locally in the Hub; CrownBreaker remains visible as queued.",
+  "stage.selectDetail": "Pulse Link, TUMBLEDRUM, and CrownBreaker run locally in the Hub.",
   "runtime.state.loading": "Loading",
   "runtime.state.ready": "Ready",
   "runtime.state.active": "Active",
@@ -133,8 +131,7 @@ const ja: TranslationCatalog = {
   "nav.diagnostics": "診断",
   "index.eyebrow": "GAMEYARD / 01—03",
   "index.title": "OPEN INDEX",
-  "index.instruction":
-    "作品を選んで庭へ入ってください。Pulse Link と TUMBLEDRUM はここで遊べ、CrownBreaker は移行待ちです。",
+  "index.instruction": "作品を選んで庭へ入ってください。3作品すべてをここで遊べます。",
   "catalog.heading": "庭の作品",
   "catalog.order": "移行 {{order}}/3",
   "catalog.languages": "EN · JA · ZH-HANS",
@@ -149,8 +146,7 @@ const ja: TranslationCatalog = {
     "この Hub は上流ゲームを読み込みません。コントラクトと移行ゲートの完了後にのみ統合を始めます。",
   "stage.linksNote": "リンクは GameYard 外の既存上流プロジェクトを開きます。",
   "stage.select": "インデックスから作品を選択",
-  "stage.selectDetail":
-    "Pulse Link と TUMBLEDRUM は Hub 内で動作し、CrownBreaker は待機中として表示されます。",
+  "stage.selectDetail": "Pulse Link、TUMBLEDRUM、CrownBreaker は Hub 内で動作します。",
   "runtime.state.loading": "読み込み中",
   "runtime.state.ready": "準備完了",
   "runtime.state.active": "実行中",
@@ -230,8 +226,7 @@ const zhHans: TranslationCatalog = {
   "nav.diagnostics": "诊断",
   "index.eyebrow": "GAMEYARD / 01—03",
   "index.title": "OPEN INDEX",
-  "index.instruction":
-    "选择一件作品进入庭院。Pulse Link 与 TUMBLEDRUM 已可在此游玩，CrownBreaker 仍在等待迁移。",
+  "index.instruction": "选择一件作品进入庭院。三款游戏现在均可在此游玩。",
   "catalog.heading": "庭院作品",
   "catalog.order": "迁移 {{order}}/3",
   "catalog.languages": "EN · JA · ZH-HANS",
@@ -245,8 +240,7 @@ const zhHans: TranslationCatalog = {
   "stage.notice": "此 Hub 不会加载上游游戏。只有契约与迁移门槛完成后，集成才会开始。",
   "stage.linksNote": "链接将在 GameYard 之外打开现有的上游项目。",
   "stage.select": "从索引中选择一个标题",
-  "stage.selectDetail":
-    "Pulse Link 与 TUMBLEDRUM 已在 Hub 内本地运行，CrownBreaker 仍显示为排队中。",
+  "stage.selectDetail": "Pulse Link、TUMBLEDRUM 与 CrownBreaker 均在 Hub 内本地运行。",
   "runtime.state.loading": "加载中",
   "runtime.state.ready": "已就绪",
   "runtime.state.active": "运行中",

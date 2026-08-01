@@ -6,9 +6,7 @@
   <meta name="theme-color" content="#080612" />
   <meta name="description" content="CROWN//BREAKER: a short board roguelite built around promotion." data-i18n="meta.description" />
   <title data-i18n="meta.title">CROWN//BREAKER — Promotion Run</title>
-  <link id="app-manifest" rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon-192.png" type="image/png" />
-  <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -48,15 +46,6 @@
           <button id="btn-rules" class="text-btn" type="button" data-i18n="title.legend">Legend</button>
           <button id="btn-settings" class="text-btn" type="button" data-i18n="title.settings">Settings</button>
         </div>
-        <label class="title-language-control" for="title-language">
-          <span data-i18n="language.label">Language</span>
-          <select id="title-language" class="language-select">
-            <option value="system" data-i18n="language.system">System language</option>
-            <option value="zh-CN" data-i18n="language.zh-CN">中文</option>
-            <option value="ja" data-i18n="language.ja">日本語</option>
-            <option value="en" data-i18n="language.en">English</option>
-          </select>
-        </label>
         <p class="input-hint" data-i18n="title.inputHint">Click to move · Space: burst · H: hint · Esc: pause</p>
       </div>
       <div class="title-crown" aria-hidden="true">♛</div>
@@ -182,7 +171,6 @@
     </section>
 
   </main>
-  <script src="./i18n.js"></script>
-  <script src="./game.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

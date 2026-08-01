@@ -4,7 +4,7 @@
 
 一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-Hub、契约和原子构建边界已经初始化；三个游戏的固定上游历史都已进入仓库，PulseLinkOverdrive 与 TUMBLEDRUM 的 guest adapter 已进入生产 catalog。它们都由同一个 Hub runtime 启动、调节、暂停、重载和关闭；CrownBreaker 已锁定适配前的 standalone 行为基线，仍保持排队状态。
+Hub、契约和原子构建边界已经初始化；三个游戏的固定上游历史和 guest adapter 都已进入生产 catalog。PulseLinkOverdrive、TUMBLEDRUM 与 CrownBreaker 均由同一个 Hub runtime 启动、调节、暂停、重载和关闭。
 
 ## 架构结论
 
@@ -51,7 +51,7 @@ dist/games/catalog.json
 dist/build-info.json
 ```
 
-各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 为 `pulse-link-overdrive` 与 `tumbledrum`。
+各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 为 `pulse-link-overdrive`、`tumbledrum` 与 `crown-breaker`。
 
 最终 `games/` 命名空间只属于 assembler。Hub stage 不得写入任何 `games` 路径，production verifier 也拒绝 catalog 与已登记 game manifest 之外的 game 文件。
 
@@ -148,11 +148,11 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。Issue #9 的发布门覆盖三语言 × 三视口完整游戏基线，低高度横屏会让工具栏与完整 Canvas 同屏；真实 pointer/touch/keyboard、三路音频与 reduced-motion/screen-shake 具有可观察结果，并通过 50 次 Pulse/TUMBLEDRUM 交替进入、周期性重载与退出验证 frame、port 和 runtime listener 回到基线。
 
-### M3 — CrownBreaker
+### M3 — CrownBreaker（运行时适配完成）
 
-Issue #10 已按固定 revision 非 squash 导入完整历史，并用 static/i18n/assets、三幕、敌人、traits、生产 standalone 黑盒与 seed base 1000 的 100 局确定性模拟锁定适配前基线；生产 standalone 不含写 QA API 或 Service Worker 注册，但尚不进入 Hub artifact。
+Issue #10 已按固定 revision 非 squash 导入完整历史，并用 static/i18n/assets、三幕、敌人、traits、生产 standalone 黑盒与 seed base 1000 的 100 局确定性模拟锁定适配前基线。
 
-下一步保持 run/save schema 的游戏所有权；把源码中的 `?qa` 能力封装进 testkit；adapter 负责 INIT-only boot、公共 locale/audio/motion、audio scheduler pause 与确定性 dispose。完成门包括三游戏连续切换和三视口视觉基线。
+Issue #11 保持 run/save schema 的游戏所有权，将持久化迁入 `gameyard.game.crown-breaker.*`，并完成 INIT-only boot、Host 公共 locale/audio/motion、audio scheduler pause、输入释放和确定性 dispose。生产 artifact 不含 game Service Worker 或写 QA surface；`site.assembly.json` 与 runtime catalog 精确登记三款游戏。root E2E 只增加一条真实 Crown 路径，覆盖 INIT、三语、公共设置、pause/resume 和 dispose 后资源归零；三视口视觉与三游戏压力矩阵留给 Issue #12。
 
 ### M4 — 离线与上线
 

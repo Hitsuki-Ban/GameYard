@@ -25,6 +25,22 @@
         "games/tumbledrum/styles.css",
         "games/tumbledrum/vite.config.ts"
       ]
+    },
+    {
+      "id": "crown-breaker",
+      "stage": ".gameyard/stage/games/crown-breaker",
+      "productionInputs": [
+        "games/crown-breaker/assets/acts",
+        "games/crown-breaker/game.js",
+        "games/crown-breaker/icon-192.png",
+        "games/crown-breaker/i18n.js",
+        "games/crown-breaker/index.html",
+        "games/crown-breaker/package.json",
+        "games/crown-breaker/src",
+        "games/crown-breaker/styles.css",
+        "games/crown-breaker/tsconfig.json",
+        "games/crown-breaker/vite.config.ts"
+      ]
     }
   ]
 }

@@ -66,7 +66,7 @@ Set `color` on the host element for single-ink assets. Hard-coded color values d
 - Each SVG is limited to 64 KiB, 256 elements, and 32 KiB of path data before any renderer receives it.
 - The preview repeats the same namespace-aware allowlist in the browser and runs under a CSP with external same-origin scripts only.
 - The maskable core is rasterized at 400 × 400 and every visible pixel must remain within radius 40% of the canvas. The contact sheet overlays that real 80% circle on the unscaled source and shows a separate circular-mask preview.
-- `pnpm build:assets` uses ImageMagick with explicit memory, map, disk, area, dimension, time, process-timeout, and output-buffer limits. Missing ImageMagick fails the command; no alternate exporter is selected silently.
+- `vp run crown-breaker#build:assets` uses ImageMagick with explicit memory, map, disk, area, dimension, time, process-timeout, and output-buffer limits. Missing ImageMagick fails the command; no alternate exporter is selected silently.
 - The colored 192 / 512 PNG exports are the canonical installed-app and favicon surfaces. `icon.svg` remains a transparent, token-compliant monochrome derivative for adaptable consumers, not the default external browser icon.
 
 ## Delivery boundary
