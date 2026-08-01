@@ -24,7 +24,14 @@ function harness(failType?: HostCommand["type"], initiallyHidden = false) {
   let listener: ((event: GuestEvent) => void) | undefined;
   const dispose = vi.fn(async (commandId: string) => {
     commands.push({ type: "lifecycle.dispose", commandId });
-    return { type: "ack" as const, commandId, result: { ok: true as const } };
+    return {
+      type: "ack" as const,
+      commandId,
+      result:
+        failType === "lifecycle.dispose"
+          ? { ok: false as const, error: { code: "guest.rejected", message: "rejected" } }
+          : { ok: true as const },
+    };
   });
   const close = vi.fn();
   const bridge: HostBridge = {
@@ -140,7 +147,7 @@ describe("RuntimeController", () => {
     expect(controller.state.phase).toBe("paused");
   });
 
-  it("does not finish disposal until the dispose ACK resolves", async () => {
+  it("finishes only after a successful dispose ACK and exposes a failed ACK", async () => {
     const { controller, dispose } = harness();
     await controller.mount();
     let resolveDispose!: (value: Awaited<ReturnType<typeof dispose>>) => void;
@@ -161,6 +168,12 @@ describe("RuntimeController", () => {
     });
     await disposing;
     expect(controller.state.phase).toBe("disposed");
+
+    const failed = harness("lifecycle.dispose");
+    await failed.controller.mount();
+    await expect(failed.controller.dispose()).rejects.toThrow("rejected");
+    expect(failed.controller.state).toMatchObject({ phase: "failed", lifecycle: "failed" });
+    expect(failed.close).toHaveBeenCalledOnce();
   });
 
   it("ignores events after disposal unsubscribes the generation", async () => {

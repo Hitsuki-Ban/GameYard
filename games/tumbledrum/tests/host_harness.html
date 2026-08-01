@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>TUMBLEDRUM test Host</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body,
+      iframe {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        border: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="game-frame" name="game" title="TUMBLEDRUM"></iframe>
+    <script type="module">
+      const params = new URLSearchParams(location.search);
+      const gamePath = params.get("game");
+      const locale = params.get("locale");
+      if (!gamePath) throw new Error("The test Host requires one game query parameter.");
+      if (!["en", "ja", "zh-Hans"].includes(locale)) {
+        throw new Error("The test Host requires an exact supported locale.");
+      }
+
+      const frame = document.getElementById("game-frame");
+      const events = [];
+      let port;
+      let commandSequence = 0;
+      let context;
+
+      function command(type, fields = {}) {
+        if (!port) throw new Error("The test Host port is not connected.");
+        port.postMessage({ type, commandId: `test-${++commandSequence}`, ...fields });
+      }
+
+      function applySettings(change) {
+        const audio = { ...context.settings.audio, ...(change.audio || {}) };
+        const motion = { ...context.settings.motion, ...(change.motion || {}) };
+        context = {
+          ...context,
+          settings: { revision: context.settings.revision + 1, audio, motion },
+        };
+        command("settings.apply", { settings: context.settings });
+      }
+
+      function applyLocale(resolved) {
+        if (!["en", "ja", "zh-Hans"].includes(resolved))
+          throw new Error("Unsupported test locale.");
+        context = { ...context, locale: { preference: resolved, resolved } };
+        command("locale.apply", { locale: context.locale });
+      }
+
+      window.gameyardTestHost = {
+        get context() {
+          return structuredClone(context);
+        },
+        get events() {
+          return structuredClone(events);
+        },
+        applyLocale,
+        applySettings,
+        pause: () => command("lifecycle.pause"),
+        resume: () => command("lifecycle.resume"),
+        releaseAll: () => command("input.releaseAll"),
+        setInputEnabled: (enabled) => command("input.setEnabled", { enabled }),
+        dispose: () => command("lifecycle.dispose"),
+        snapshot: () => command("diagnostics.snapshot"),
+      };
+
+      addEventListener(
+        "message",
+        (event) => {
+          if (event.source !== frame.contentWindow || event.origin !== location.origin) return;
+          const message = event.data;
+          const keys = message && typeof message === "object" ? Object.keys(message).sort() : [];
+          if (
+            keys.join(",") !== "buildId,gameId,protocol,type" ||
+            message.type !== "gameyard:ready-for-init" ||
+            message.protocol !== 1 ||
+            message.gameId !== "tumbledrum" ||
+            !/^gameyard@[0-9a-f]{16}$/.test(message.buildId)
+          ) {
+            throw new Error("Guest sent an invalid ready-for-init message.");
+          }
+
+          const guest = frame.contentWindow;
+          const Game = guest.TD?.Game;
+          if (typeof Game !== "function") throw new Error("TUMBLEDRUM Game class is unavailable.");
+          guest.TD.Game = new Proxy(Game, {
+            construct(target, args, newTarget) {
+              const instance = Reflect.construct(target, args, newTarget);
+              guest.__TUMBLEDRUM__ = instance;
+              return instance;
+            },
+          });
+
+          context = {
+            protocol: 1,
+            buildId: message.buildId,
+            gameId: "tumbledrum",
+            instanceId: "tumbledrum-test-instance",
+            baseUrl: "./games/tumbledrum/",
+            locale: { preference: locale, resolved: locale },
+            settings: {
+              revision: 0,
+              audio: { master: 1, music: 1, sfx: 1 },
+              motion: { reduced: false, screenShake: true },
+            },
+            diagnostics: { mode: "read-only" },
+          };
+
+          const channel = new MessageChannel();
+          port = channel.port1;
+          port.addEventListener("message", (portEvent) => {
+            const guestEvent = portEvent.data;
+            events.push(guestEvent);
+            if (events.length > 128) events.shift();
+            if (guestEvent.type === "ready") {
+              command("input.setEnabled", { enabled: true });
+              command("lifecycle.resume");
+            } else if (guestEvent.type === "settings.changeRequest") {
+              applySettings(guestEvent.change);
+            } else if (guestEvent.type === "lifecycle.changeRequest") {
+              command(`lifecycle.${guestEvent.action}`);
+            }
+          });
+          port.start();
+          guest.postMessage({ type: "gameyard:init", context }, location.origin, [channel.port2]);
+        },
+        { once: true },
+      );
+
+      frame.src = new URL(gamePath, location.href).href;
+    </script>
+  </body>
+</html>

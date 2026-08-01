@@ -135,7 +135,17 @@ importers:
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)
 
   games/tumbledrum:
+    dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../../packages/game-contract
+      '@gameyard/guest-bridge':
+        specifier: workspace:*
+        version: link:../../packages/guest-bridge
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.2
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chromium smoke test for source and single-file builds."""
+"""Chromium smoke test for the built GameYard guest."""
 
 from __future__ import annotations
 
@@ -11,8 +11,11 @@ from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
 
+from host_test_support import GamePage
 
-def collect(page: Page, target: str, screenshot: Path | None) -> dict[str, Any]:
+
+def collect(raw_page: Page, target: str, screenshot: Path | None) -> dict[str, Any]:
+    page = GamePage(raw_page)
     console_errors: list[str] = []
     page_errors: list[str] = []
     page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
@@ -34,12 +37,13 @@ def collect(page: Page, target: str, screenshot: Path | None) -> dict[str, Any]:
     assert campaign["required"] > 0, campaign
 
     # Exercise input, pause, settings persistence surface, and the render loop.
+    page.locator("#game").focus()
     page.keyboard.press("ArrowRight")
     page.wait_for_timeout(220)
     page.keyboard.press("KeyP")
     page.wait_for_timeout(120)
     assert page.evaluate("window.__TUMBLEDRUM__.paused") is True
-    page.keyboard.press("KeyP")
+    page.host_evaluate("window.gameyardTestHost.resume()")
     page.wait_for_timeout(120)
     assert page.evaluate("window.__TUMBLEDRUM__.paused") is False
 

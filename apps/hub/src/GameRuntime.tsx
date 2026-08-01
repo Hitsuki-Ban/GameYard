@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry } from "./catalog";
 import type { DiagnosticEvent } from "./diagnostics";
-import { loadPulseRuntime, type PlayableRuntime } from "./runtime-catalog";
+import { loadGameRuntime, type PlayableRuntime } from "./runtime-catalog";
 import { RuntimeController, type RuntimeState } from "./runtime-controller";
 import {
   toHostSettings,
@@ -21,7 +21,7 @@ import {
 const HANDSHAKE_TIMEOUT_MS = 8_000;
 const COMMAND_TIMEOUT_MS = 4_000;
 
-export interface PulseRuntimeHandle {
+export interface GameRuntimeHandle {
   dispose(): Promise<void>;
   reload(): Promise<void>;
   requestDiagnostics(): Promise<GuestDiagnosticSnapshot | null>;
@@ -32,7 +32,7 @@ interface LoadedRuntime {
   readonly runtime: PlayableRuntime;
 }
 
-interface PulseRuntimeProps {
+interface GameRuntimeProps {
   readonly game: GameCatalogEntry;
   readonly settings: HubSettings;
   readonly systemLanguages: readonly string[];
@@ -52,14 +52,14 @@ function settingsPatch(change: SettingsChange): HubSettingsPatch {
   };
 }
 
-function createInstanceId(generation: number): string {
+function createInstanceId(gameId: GameCatalogEntry["id"], generation: number): string {
   if (typeof crypto.randomUUID !== "function") {
     throw new Error("crypto.randomUUID is required for runtime instance ids");
   }
-  return `pulse.g${generation}.${crypto.randomUUID()}`;
+  return `${gameId}.g${generation}.${crypto.randomUUID()}`;
 }
 
-export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(function PulseRuntime(
+export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(function GameRuntime(
   { game, settings, systemLanguages, onClose, onSettingsChange, onDiagnosticSnapshot, onEvent },
   ref,
 ) {
@@ -142,7 +142,7 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
       lifecycle: null,
     });
     let cancelled = false;
-    void loadPulseRuntime(window.fetch.bind(window), __GAMEYARD_BUILD__)
+    void loadGameRuntime(window.fetch.bind(window), __GAMEYARD_BUILD__, game.id)
       .then((loaded) => {
         if (!cancelled && generation === generationRef.current) {
           setLoadedRuntime({ generation, runtime: loaded });
@@ -154,14 +154,14 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
     return () => {
       cancelled = true;
     };
-  }, [generation, onDiagnosticSnapshot, recordFailure]);
+  }, [game.id, generation, onDiagnosticSnapshot, recordFailure]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!runtime || !iframe) return;
     let instanceId: string;
     try {
-      instanceId = createInstanceId(generation);
+      instanceId = createInstanceId(game.id, generation);
     } catch (error) {
       recordFailure(error);
       return;
@@ -212,7 +212,7 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
         onEventRef.current("runtime.active", { generation, instanceId });
       })
       .catch(() => undefined);
-  }, [generation, performFullscreenAction, recordFailure, runtime, updateState]);
+  }, [game.id, generation, performFullscreenAction, recordFailure, runtime, updateState]);
 
   useEffect(() => {
     const controller = controllerRef.current;
@@ -236,6 +236,16 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
+  useEffect(
+    () => () => {
+      generationRef.current = -1;
+      const controller = controllerRef.current;
+      controllerRef.current = null;
+      void controller?.dispose().catch(() => undefined);
+    },
+    [],
+  );
+
   const dispose = useCallback(async () => {
     const controller = controllerRef.current;
     if (!controller) {
@@ -250,6 +260,7 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
         generation: generationRef.current,
         message: error instanceof Error ? error.message : String(error),
       });
+      throw error;
     } finally {
       controllerRef.current = null;
       setLoadedRuntime(null);
@@ -284,7 +295,7 @@ export const PulseRuntime = forwardRef<PulseRuntimeHandle, PulseRuntimeProps>(fu
   return (
     <section
       ref={frameWrapRef}
-      className="stage stage--runtime stage--ultramarine"
+      className={`stage stage--runtime stage--${game.accent}`}
       aria-labelledby="selected-game-title"
     >
       <div className="runtime-toolbar">

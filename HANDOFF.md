@@ -1,37 +1,19 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-7-tumbledrum-baseline`
-- goal: Close Issue #7 by importing pinned TUMBLEDRUM history and locking its original standalone behavior before any runtime-adapter changes.
-- current artifact: `gameyard@51a369ce3ccd7e96`, one exact Pulse exhibit, 10 files; imported TUMBLEDRUM remains outside `site.assembly.json` and `dist`.
-- done-this-task:
-  - Published Issues #1–#16; merged and cleaned #2 through PR #17 and #3 through PR #18.
-  - Added the INIT-gated Pulse guest, Hub runtime catalog/controller, live locale/settings, ACKed lifecycle, fullscreen requests, bounded diagnostics, game-only storage, and terminal cleanup.
-  - Terminal runtime failures now close the bridge and remove the iframe; mount-time visibility is locked into activation; pause stops the Pulse frame loop.
-  - `vp run dev` starts a strict Pulse source server and waits for its matching dev manifest before the Hub opens its same-origin proxy; the existing Lab browser scenario covers both playable Pulse and dev tools.
-  - Replaced the standalone HTML smoke with the same 36 assertions / 293 locks runner before deleting the old page, SW, manifests, Python builder, and permanent debug surface.
-  - Assembled and verified Pulse + Hub as one content-derived artifact; real-browser load, pause/resume, live locale/settings, reload, and close paths work with one iframe.
-  - Added one repository-prefix release matrix for 3 viewports × 3 locales, real pointer/keyboard input, and bounded diagnostics, plus one 50-cycle enter/exit/reload lifecycle soak.
-  - Merged Issue #5 through PR #20 and cleaned its topic branch.
-  - Recorded TUMBLEDRUM's project-specific owner direction, pinned revision/tree/evidence hashes, every distributable asset class, and explicit third-party boundaries without claiming a general upstream license.
-  - Added a strict provenance parser and an assembler gate that validates project-specific records before stage/build checks; provenance participates in the content-derived build ID.
-  - Fixed the owner-review downgrade path: TUMBLEDRUM cannot replace its required LicenseRef/record with a generic license string or change its pinned repository/revision/tree.
-  - Merged Issue #6 through PR #21, synchronized `main@7eff3e8d0a6ebb9a5b072a1ad9906d0946d3dae5`, and deleted both topic branches.
-  - Imported TUMBLEDRUM as a non-squash subtree with exact upstream revision `ba6fc680626ac59db793175122600369d48f9834` as the second parent.
-  - Added a Vite+ workspace wrapper without altering the 36 checksum-covered upstream files; the original single-file builder and four browser programs remain the test authority.
-  - Added one broad GameYard baseline covering source/single-file, desktop/portrait/landscape, 13 stages, 120 Hz fixed step, Campaign victory, and Endless wave 12.
-  - Closed both Issue #7 review findings: clean environments install the independently pinned Python Playwright Chromium, and the broad browser pass observes the real RAF fixed-step loop plus mouse/touch Campaign entry instead of relying on source text.
-- verified:
-  - Final `vp run release:pulse` with the Issue #7 baseline in place: tooling 41/41; `vp check`; all workspace tests including TUMBLEDRUM; 36 Pulse assertions / 293 locks; production E2E 18/18; integrated dev/Lab E2E 1/1; repository-prefix release E2E 2/2; Cloudflare deploy dry-run.
-  - Ten screenshot baselines cover desktop, portrait, and landscape in English, Japanese, and Simplified Chinese plus paused gameplay; 50 lifecycle cycles return frames, Host ports, and runtime listeners to baseline with zero failed requests.
-  - Independent verifier PASS; owner reviewer PASS after the license-downgrade bypass was fixed, with no remaining P0–P3.
-  - `vp run tumbledrum#build`, `vp run tumbledrum#test`, and `vp run ready` pass; the independent Issue #7 verifier confirmed 37/37 upstream blobs, all 36 upstream checksum entries, six responsive source/single-file combinations, and exactly one production game with no TUMBLEDRUM path.
-  - Final Issue #7 owner review PASS with no remaining P0–P2 after browser-source and executable 120 Hz findings were fixed.
-- next:
-  - Commit/push the baseline wrapper, merge with `Closes #7`, synchronize `main`, and clean the topic branch.
-  - Start Issue #8 only from clean main; replace standalone ownership with strict boot/bridge, public locale/settings, lifecycle/audio/input mapping, and namespaced game storage.
-- gates:
-  - TUMBLEDRUM distribution remains limited to the recorded GameYard project scope; a missing, incomplete, blocked, or hash-mismatched record must stop artifact assembly.
-  - Do not reintroduce Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path.
-- authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; decisions -> `docs/adr/`; commands -> `docs/DEVELOPMENT.md`.
-- stale-first: rerun the single complete `vp run release:pulse` gate after source, dependency, artifact-config, or deployment changes.
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-8-tumbledrum-runtime` | HEAD `e31e718e32fadbc8bc7ec0bd9ae207269892a19b` + pending Issue #8 diff | clean: no
+- goal: Merge Issue #8, return to a clean synchronized main, then close Issue #9 with TUMBLEDRUM visual, lifecycle, and switching release evidence.
+- verified: `vp run ready`, `vp run e2e` (21/21), `vp run e2e:lab`, `vp run tumbledrum#test` -> PASS; artifact `gameyard@1b572f5739b37004`, 14 files, 2 games @ `e31e718` + Issue #8 diff
+- done-this-thread:
+  - TUMBLEDRUM now boots only after exact INIT and uses ACKed Host locale/settings/input/lifecycle/fullscreen/diagnostics commands.
+  - RAF, timers, listeners, input, audio, port, and iframe ownership have deterministic terminal cleanup.
+  - Hub uses one generic `GameRuntime` for Pulse and TUMBLEDRUM; dev waits for both strict manifests.
+  - TUMBLEDRUM owns one strict namespaced v1 save; old keys and standalone product paths are absent.
+  - One production build assembles and verifies exactly Pulse, TUMBLEDRUM, and Hub.
+- next: Finish Issue #8 independent review, commit/push/merge it, clean branches, then start Issue #9 from synchronized main.
+- gate: run-ready-first
+- risks:
+  - Issue #9 still owns TUMBLEDRUM three-locale screenshots, root/prefix release coverage, and repeated Pulse/TUMBLEDRUM switching cleanup.
+  - TUMBLEDRUM distribution remains limited by `provenance/tumbledrum/distribution-record.json`.
+- authority: constraints -> `AGENTS.md`; plan -> `docs/PROJECT_PLAN.md` and Issues #1/#8/#9; runtime decision -> `docs/adr/0005-tumbledrum-single-runtime.md`; commands -> `docs/DEVELOPMENT.md`.
+- stale-first: repo/HEAD/clean state expires at the Issue #8 commit; re-derive with `git status`, `git rev-parse HEAD`, and `gh issue view 8`.

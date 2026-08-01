@@ -11,7 +11,7 @@ import {
   type DiagnosticSnapshot,
 } from "./diagnostics";
 import { i18n } from "./i18n";
-import { PulseRuntime, type PulseRuntimeHandle } from "./PulseRuntime";
+import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
   SETTINGS_STORAGE_KEY,
@@ -236,8 +236,8 @@ interface StageProps {
   readonly route: HubRoute;
   readonly settings: HubSettings | null;
   readonly systemLanguages: readonly string[];
-  readonly pulseRef: React.RefObject<PulseRuntimeHandle | null>;
-  readonly onClosePulse: () => Promise<void>;
+  readonly runtimeRef: React.RefObject<GameRuntimeHandle | null>;
+  readonly onCloseRuntime: () => Promise<void>;
   readonly onSettingsChange: (patch: HubSettingsPatch) => void;
   readonly onGuestDiagnosticSnapshot: (snapshot: GuestDiagnosticSnapshot | null) => void;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
@@ -247,8 +247,8 @@ function Stage({
   route,
   settings,
   systemLanguages,
-  pulseRef,
-  onClosePulse,
+  runtimeRef,
+  onCloseRuntime,
   onSettingsChange,
   onGuestDiagnosticSnapshot,
   onEvent,
@@ -284,14 +284,15 @@ function Stage({
   }
 
   const game = route.game;
-  if (game.id === "pulse-link-overdrive" && settings !== null) {
+  if (game.runtime === "local" && settings !== null) {
     return (
-      <PulseRuntime
-        ref={pulseRef}
+      <GameRuntime
+        key={game.id}
+        ref={runtimeRef}
         game={game}
         settings={settings}
         systemLanguages={systemLanguages}
-        onClose={onClosePulse}
+        onClose={onCloseRuntime}
         onSettingsChange={onSettingsChange}
         onDiagnosticSnapshot={onGuestDiagnosticSnapshot}
         onEvent={onEvent}
@@ -535,7 +536,7 @@ export function App() {
   const [labOpen, setLabOpen] = useState(false);
   const [guestDiagnosticSnapshot, setGuestDiagnosticSnapshot] =
     useState<GuestDiagnosticSnapshot | null>(null);
-  const pulseRef = useRef<PulseRuntimeHandle>(null);
+  const runtimeRef = useRef<GameRuntimeHandle>(null);
   const routeRef = useRef(route);
   const [events, setEvents] = useState<readonly DiagnosticEvent[]>(() => [
     {
@@ -594,10 +595,10 @@ export function App() {
       const currentRoute = routeRef.current;
       if (
         currentRoute.kind === "game" &&
-        currentRoute.game.id === "pulse-link-overdrive" &&
-        pulseRef.current
+        currentRoute.game.runtime === "local" &&
+        runtimeRef.current
       ) {
-        void pulseRef.current
+        void runtimeRef.current
           .dispose()
           .then(() => {
             routeRef.current = nextRoute;
@@ -618,8 +619,8 @@ export function App() {
 
   const selectGame = async (gameId: GameId) => {
     if (route.kind === "game" && route.game.id === gameId) return;
-    if (route.kind === "game" && route.game.id === "pulse-link-overdrive") {
-      await pulseRef.current?.dispose();
+    if (route.kind === "game" && route.game.runtime === "local") {
+      await runtimeRef.current?.dispose();
       setGuestDiagnosticSnapshot(null);
     }
     window.history.pushState(null, "", gameSearch(gameId));
@@ -663,19 +664,24 @@ export function App() {
     });
   };
 
-  const closePulse = useCallback(async () => {
-    await pulseRef.current?.dispose();
+  const closeRuntime = useCallback(async () => {
+    const currentRoute = routeRef.current;
+    if (currentRoute.kind !== "game" || currentRoute.game.runtime !== "local") {
+      throw new Error("Cannot close a runtime without an active local game route");
+    }
+    const gameId = currentRoute.game.id;
+    await runtimeRef.current?.dispose();
     setGuestDiagnosticSnapshot(null);
     window.history.pushState(null, "", "./");
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
     setRoute(nextRoute);
-    recordEvent("route.close", { gameId: "pulse-link-overdrive" });
+    recordEvent("route.close", { gameId });
   }, [recordEvent]);
 
   const openDiagnostics = useCallback(() => {
     setDiagnosticsOpen(true);
-    const handle = pulseRef.current;
+    const handle = runtimeRef.current;
     if (!handle) return;
     void handle
       .requestDiagnostics()
@@ -711,9 +717,9 @@ export function App() {
             href="./"
             aria-label="GameYard home"
             onClick={(event) => {
-              if (route.kind !== "game" || route.game.id !== "pulse-link-overdrive") return;
+              if (route.kind !== "game" || route.game.runtime !== "local") return;
               event.preventDefault();
-              void closePulse().catch(() => undefined);
+              void closeRuntime().catch(() => undefined);
             }}
           >
             <span>GAME</span>
@@ -790,8 +796,8 @@ export function App() {
             route={route}
             settings={settings}
             systemLanguages={systemLanguages}
-            pulseRef={pulseRef}
-            onClosePulse={closePulse}
+            runtimeRef={runtimeRef}
+            onCloseRuntime={closeRuntime}
             onSettingsChange={updateSettings}
             onGuestDiagnosticSnapshot={setGuestDiagnosticSnapshot}
             onEvent={recordEvent}

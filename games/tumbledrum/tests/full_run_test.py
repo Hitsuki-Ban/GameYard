@@ -10,6 +10,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from host_test_support import GamePage
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -30,7 +32,7 @@ def main() -> None:
         if executable:
             launch_options["executable_path"] = executable
         browser = p.chromium.launch(**launch_options)
-        page = browser.new_page(viewport={"width": 900, "height": 1200})
+        page = GamePage(browser.new_page(viewport={"width": 900, "height": 1200}))
         page.on("pageerror", lambda error: page_errors.append(str(error)))
         page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
         page.goto(args.target, wait_until="load")

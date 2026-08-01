@@ -2,14 +2,20 @@
   "name": "@gameyard/tumbledrum",
   "version": "1.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "browser:install": "vp exec uv run playwright install chromium",
     "dev": "vp dev --host 127.0.0.1 --port 5175 --strictPort",
-    "build": "vp exec uv run python tools/build_single.py",
+    "build": "vp build",
     "check": "vp check",
     "test": "vp exec uv run python tests/gameyard_baseline.py"
   },
+  "dependencies": {
+    "@gameyard/game-contract": "workspace:*",
+    "@gameyard/guest-bridge": "workspace:*"
+  },
   "devDependencies": {
+    "@types/node": "catalog:",
     "vite-plus": "catalog:"
   }
 }

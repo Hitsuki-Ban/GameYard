@@ -11,6 +11,8 @@ from typing import Any
 
 from playwright.sync_api import Page, sync_playwright
 
+from host_test_support import GamePage
+
 
 def canvas_point(page: Page, x: float, y: float) -> tuple[float, float]:
     box = page.locator("#game").bounding_box()
@@ -44,7 +46,7 @@ def main() -> None:
         if executable:
             launch_options["executable_path"] = executable
         browser = p.chromium.launch(**launch_options)
-        page = browser.new_page(viewport={"width": 1000, "height": 1280}, device_scale_factor=1)
+        page = GamePage(browser.new_page(viewport={"width": 1000, "height": 1280}, device_scale_factor=1))
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
         page.goto(args.target, wait_until="load")
@@ -56,10 +58,10 @@ def main() -> None:
         page.wait_for_timeout(80)
         assert page.evaluate("window.__TUMBLEDRUM__.state") == "settings"
         original_motion = page.evaluate("window.__TUMBLEDRUM__.settings.motion")
-        click_canvas(page, 450, 760)
-        page.wait_for_timeout(60)
+        page.host_evaluate("window.gameyardTestHost.applySettings({motion:{reduced:true}})")
+        page.wait_for_function("window.__TUMBLEDRUM__.settings.motion === false")
         assert page.evaluate("window.__TUMBLEDRUM__.settings.motion") is (not original_motion)
-        click_canvas(page, 450, 760)
+        page.host_evaluate("window.gameyardTestHost.applySettings({motion:{reduced:false}})")
         click_canvas(page, 815, 82)
         page.wait_for_timeout(60)
         assert page.evaluate("window.__TUMBLEDRUM__.state") == "title"

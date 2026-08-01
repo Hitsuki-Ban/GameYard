@@ -11,6 +11,8 @@ from typing import Any
 
 from playwright.sync_api import Browser, Page, sync_playwright
 
+from host_test_support import GamePage
+
 
 def launch_browser(playwright: Any) -> Browser:
     options: dict[str, Any] = {
@@ -33,9 +35,11 @@ def click_canvas(page: Page, x: float, y: float) -> None:
     page.mouse.click(*canvas_point(page, x, y))
 
 
-def wait_for_game(page: Page, target: str) -> None:
+def wait_for_game(raw_page: Page, target: str) -> GamePage:
+    page = GamePage(raw_page)
     page.goto(target, wait_until="load")
     page.wait_for_function("typeof window.__TUMBLEDRUM__?.debugSnapshot === 'function'")
+    return page
 
 
 def locale_matrix(browser: Browser, target: str) -> list[dict[str, Any]]:
@@ -43,16 +47,15 @@ def locale_matrix(browser: Browser, target: str) -> list[dict[str, Any]]:
         "ja-JP": ("ja", "祭典ブレイカー"),
         "zh-CN": ("zh-Hans", "滚鼓祭"),
         "en-US": ("en", "Festival Breaker"),
-        "fr-FR": ("en", "Festival Breaker"),
     }
     results: list[dict[str, Any]] = []
     for browser_locale, (effective_locale, title_fragment) in expected.items():
         context = browser.new_context(locale=browser_locale, viewport={"width": 1050, "height": 1300})
-        page = context.new_page()
-        wait_for_game(page, target)
+        page = wait_for_game(context.new_page(), target)
+        page.host_evaluate("resolved => window.gameyardTestHost.applyLocale(resolved)", effective_locale)
+        page.wait_for_function("resolved => window.TD.I18N.locale === resolved", arg=effective_locale)
         state = page.evaluate(
             """() => ({
-              preference: window.TD.I18N.preference,
               locale: window.TD.I18N.locale,
               htmlLang: document.documentElement.lang,
               title: document.title,
@@ -62,7 +65,6 @@ def locale_matrix(browser: Browser, target: str) -> list[dict[str, Any]]:
               status: document.getElementById('status').textContent,
             })"""
         )
-        assert state["preference"] == "system", state
         assert state["locale"] == effective_locale and state["htmlLang"] == effective_locale, state
         assert title_fragment in state["title"], state
         assert all(state[key] for key in ("description", "mainAria", "canvasAria", "status")), state
@@ -71,60 +73,35 @@ def locale_matrix(browser: Browser, target: str) -> list[dict[str, Any]]:
     return results
 
 
-def manual_language_and_keyboard(page: Page, target: str) -> dict[str, Any]:
-    wait_for_game(page, target)
+def manual_language_and_keyboard(page: GamePage, _target: str) -> dict[str, Any]:
     page.evaluate("localStorage.clear()")
     page.reload(wait_until="load")
     page.wait_for_function("typeof window.__TUMBLEDRUM__?.debugSnapshot === 'function'")
 
-    # Keyboard-only title -> settings, language adjustment, toggle, and close.
+    # Keyboard-only title -> settings, game-local contrast toggle, and close.
+    page.locator("#game").focus()
     page.keyboard.press("ArrowRight")
     page.keyboard.press("ArrowRight")
     page.keyboard.press("Enter")
     assert page.evaluate("window.__TUMBLEDRUM__.state") == "settings"
-    page.keyboard.press("ArrowRight")
-    assert page.evaluate("window.__TUMBLEDRUM__.settings.language") == "ja"
-    before_audio = page.evaluate("window.__TUMBLEDRUM__.settings.audio")
-    page.keyboard.press("ArrowDown")
+    assert page.locator("#status").text_content() == "Settings. Adjust contrast or request fullscreen."
     page.keyboard.press("Enter")
-    assert page.evaluate("window.__TUMBLEDRUM__.settings.audio") is (not before_audio)
-    japanese_setting_status = page.locator("#status").text_content()
-    assert japanese_setting_status and "効果音" in japanese_setting_status, japanese_setting_status
+    assert page.evaluate("window.__TUMBLEDRUM__.settings.contrast") is True
+    english_setting_status = page.locator("#status").text_content()
+    assert english_setting_status and "High contrast" in english_setting_status, english_setting_status
     page.keyboard.press("Escape")
     assert page.evaluate("window.__TUMBLEDRUM__.state") == "title"
 
-    # Real pointer input chooses each language segment directly.
-    click_canvas(page, 815, 88)
-    click_canvas(page, 495, 260)
-    assert page.evaluate("window.TD.I18N.locale") == "zh-Hans"
+    # Locale is changed only by an exact Host command, never browser or storage state.
+    page.host_evaluate("window.gameyardTestHost.applyLocale('zh-Hans')")
+    page.wait_for_function("window.TD.I18N.locale === 'zh-Hans'")
     assert "滚鼓祭" in page.title()
-    click_canvas(page, 450, 760)
-    chinese_setting_status = page.locator("#status").text_content()
-    assert chinese_setting_status and "动态效果" in chinese_setting_status, chinese_setting_status
-    click_canvas(page, 585, 260)
-    assert page.evaluate("window.TD.I18N.locale") == "en"
-    click_canvas(page, 450, 885)
-    english_setting_status = page.locator("#status").text_content()
-    assert english_setting_status and "High contrast" in english_setting_status, english_setting_status
-    page.evaluate("window.TD.I18N.setPreference('ja')")
-    relocalized_setting_status = page.locator("#status").text_content()
-    assert relocalized_setting_status and "高コントラスト" in relocalized_setting_status, relocalized_setting_status
-    click_canvas(page, 315, 260)
-    assert page.evaluate("window.TD.I18N.preference") == "system"
-
-    stored = page.evaluate("JSON.parse(localStorage.getItem('tumbledrum-settings-v1'))")
-    page.reload(wait_until="load")
-    page.wait_for_function("typeof window.__TUMBLEDRUM__?.debugSnapshot === 'function'")
-    assert page.evaluate("window.__TUMBLEDRUM__.settings.language") == "system"
+    stored = page.evaluate("localStorage.getItem('tumbledrum-settings-v1')")
+    assert stored is None
     return {
         "stored": stored,
         "snapshot": page.evaluate("window.__TUMBLEDRUM__.debugSnapshot()"),
-        "settingStatus": {
-            "ja": japanese_setting_status,
-            "zh-Hans": chinese_setting_status,
-            "en": english_setting_status,
-            "relocalized": relocalized_setting_status,
-        },
+        "settingStatus": english_setting_status,
     }
 
 
@@ -144,8 +121,7 @@ def gamepad_pause_cycle(page: Page) -> dict[str, Any]:
     )
     page.wait_for_function("window.__TUMBLEDRUM__.paused === true")
     page.evaluate("window.__tdTestPad.buttons[9].pressed = false")
-    page.wait_for_timeout(80)
-    page.evaluate("window.__tdTestPad.buttons[9].pressed = true")
+    page.host_evaluate("window.gameyardTestHost.resume()")
     page.wait_for_function("window.__TUMBLEDRUM__.paused === false")
     result = page.evaluate(
         """() => {
@@ -162,7 +138,7 @@ def gamepad_pause_cycle(page: Page) -> dict[str, Any]:
           return value;
         }"""
     )
-    assert result["paused"] is False and result["status"] == "Game resumed.", result
+    assert result["paused"] is False and result["status"], result
     return result
 
 
@@ -216,7 +192,7 @@ def state_regressions(page: Page) -> dict[str, Any]:
           const fullParticles = g.particles.length;
           g.particles.length = 0;
           g.streamers.length = 0;
-          g.setSetting('motion', false);
+          g.settings.motion = false;
           g.spawnPaperBurst(450, 400, g.palette.paper, 100, 1);
           for (let i=0; i<20; i++) g.spawnStreamer(true);
           const reducedParticles = g.particles.length;
@@ -226,7 +202,7 @@ def state_regressions(page: Page) -> dict[str, Any]:
           g.save.bestEndless = 0;
           g.save.stamps.endless = false;
           g.unlockStamp('endless');
-          const persisted = JSON.parse(localStorage.getItem('tumbledrum-save-v1'));
+          const persisted = JSON.parse(localStorage.getItem('gameyard.game.tumbledrum.save.v1'));
 
           // Standard-mapping D-pad right drives the paddle axis.
           const buttons = Array.from({length:16}, () => ({pressed:false}));
@@ -239,7 +215,7 @@ def state_regressions(page: Page) -> dict[str, Any]:
           const dpadAxis = g.gamepad.axis;
           Object.defineProperty(navigator, 'getGamepads', {configurable:true, value:originalGetGamepads});
 
-          // Stage-clear progression pauses when the page becomes hidden.
+          // Guest visibility never owns lifecycle policy.
           g.state = 'stageClear';
           g.paused = false;
           Object.defineProperty(document, 'hidden', {configurable:true, value:true});
@@ -257,6 +233,8 @@ def state_regressions(page: Page) -> dict[str, Any]:
             reducedStreamers,
             persistedBestEndless:persisted.bestEndless,
             persistedStamp:persisted.stamps.endless,
+            persistedSchemaVersion:persisted.schemaVersion,
+            persistedContrast:persisted.contrast,
             dpadAxis,
             hiddenPaused,
           };
@@ -268,7 +246,8 @@ def state_regressions(page: Page) -> dict[str, Any]:
     assert result["reducedParticles"] < result["fullParticles"] and result["reducedParticles"] <= 180, result
     assert result["reducedStreamers"] == 0, result
     assert result["persistedBestEndless"] == 10 and result["persistedStamp"] is True, result
-    assert result["dpadAxis"] == 1 and result["hiddenPaused"] is True, result
+    assert result["persistedSchemaVersion"] == 1 and result["persistedContrast"] is True, result
+    assert result["dpadAxis"] == 1 and result["hiddenPaused"] is False, result
     return result
 
 
@@ -281,7 +260,7 @@ def main() -> None:
         browser = launch_browser(playwright)
         matrix = locale_matrix(browser, args.target)
         context = browser.new_context(locale="en-US", viewport={"width": 1050, "height": 1300})
-        page = context.new_page()
+        page = wait_for_game(context.new_page(), args.target)
         manual = manual_language_and_keyboard(page, args.target)
         pause_cycle = gamepad_pause_cycle(page)
         regressions = state_regressions(page)

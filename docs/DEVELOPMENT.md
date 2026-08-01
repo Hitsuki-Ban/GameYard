@@ -32,7 +32,7 @@ vp run tumbledrum#test
 
 缺失 `vp`、根 `packageManager`、必需 schema 或构建输入时直接停止；不要回退到其他 manager 或静态服务器。
 
-`vp run dev` 是唯一的交互式游戏开发入口：它并行启动 `127.0.0.1:5174` 上的 Pulse 源码服务器与 `127.0.0.1:5173` 上的 Hub。Hub 在严格的 Pulse dev manifest 就绪且 build ID 匹配后才开始监听，并将 `/games/pulse-link-overdrive/` 同源代理到 Guest；不存在 stage 清空窗口。Pulse 关闭自动 HMR，源码变化后使用 Hub 的“重新加载”按钮建立一条新的 INIT/MessageChannel 连接。单独打开 Pulse server 没有 Host INIT，不能作为 standalone 页面运行。
+`vp run dev` 是唯一的交互式游戏开发入口：它并行启动 `127.0.0.1:5174` 的 Pulse、`127.0.0.1:5175` 的 TUMBLEDRUM 与 `127.0.0.1:5173` 的 Hub。Hub 必须等两份严格 dev manifest 都就绪且 build ID 匹配后才监听，并将两个 `/games/<id>/` 路径同源代理到 Guest；不存在 stage 清空窗口或缺失游戏 fallback。游戏关闭自动 HMR，源码变化后使用 Hub 的“重新加载”按钮建立新的 INIT/MessageChannel 连接。单独打开 game server 没有 Host INIT，不能作为 standalone 页面运行。
 
 ## 验证梯度
 
@@ -46,11 +46,11 @@ vp run tumbledrum#test
 
 `vp run e2e:release` 在 `/GameYard/` repository prefix 下执行 Pulse 发布门：一条矩阵覆盖 desktop、portrait、landscape 与 en/ja/zh-Hans 的 9 张 viewport 视觉基线，并保留一张暂停后的真实 gameplay 基线，同时走 pointer 启动与触控键按下/释放、keyboard 暂停的可观察结果链并下载有界诊断 JSON；另一条连续执行 50 次进入/退出，每 5 次重载 Guest，统一拒绝残留 iframe、Host MessagePort、全局 runtime listener、失败请求和 console/page error。`vp run release:pulse` 将 ready、root E2E、Lab、prefix release gate 与 Cloudflare dry-run 串成 Issue #5 的完整关闭门。
 
-`vp run tumbledrum#build` 通过固定的 `uv` 环境重建 178,899-byte 单文件版；`vp run tumbledrum#test` 是 Issue #7 的 standalone baseline。它在构建前后验证 36 条上游 SHA-256，顺序执行原 smoke/integration/regression/full-run，并在源码与 `file://` 单文件上覆盖 desktop、portrait touch、landscape touch；每个视口通过真实 mouse/touch 启动 Campaign，并从实际 RAF loop 观察每次 simulation update 都是 1/120、每帧后 accumulator 小于一个固定步。所有程序固定使用 `playwright==1.61.0` 所属的 Chromium；外部 `CHROMIUM_EXECUTABLE` 覆盖或缺失的项目浏览器都会直接失败，不改用系统 Chrome。完整流程时间受上游未 seeded RNG 影响，不锁偶然秒数；固定源码、1/120 step、13 关、Campaign victory 与 Endless wave 12 才是稳定门。
+`vp run tumbledrum#build` 构建唯一 Vite guest stage；`vp run tumbledrum#test` 通过 test-only 同源 Host harness 对该 stage 执行 exact INIT/MessageChannel，再顺序运行 smoke/integration/regression/full-run。测试覆盖 desktop、portrait touch、landscape touch；每个视口通过真实 mouse/touch 启动 Campaign，并从实际 RAF loop 观察每次 simulation update 都是 1/120、每帧后 accumulator 小于一个固定步。所有程序固定使用 `playwright==1.61.0` 所属的 Chromium；外部 `CHROMIUM_EXECUTABLE` 覆盖或缺失的项目浏览器都会直接失败，不改用系统 Chrome。完整流程时间受未 seeded RNG 影响，不锁偶然秒数；1/120 step、13 关、Campaign victory 与 Endless wave 12 才是稳定门。测试 Host 与调试实例不会进入 production stage。
 
 生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、`provenance/`、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
-`vp run build` 始终执行 Pulse stage → Hub stage → site assembler → production verifier。Assembler 首先严格解析 `provenance/upstreams.json`，校验所有项目专用 `LicenseRef-*` 记录、授权文本哈希与公开分发状态，并要求生产 game manifest 的 repository/revision/license 与 upstream index 精确一致；缺失或不完整会在读取 stage 前失败。TUMBLEDRUM 的 repository/revision/tree/LicenseRef/record 路径还是不可降级的项目策略，不能把它改写为通用 license 字符串来绕过记录。随后 assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。新 artifact 安装成功后如旧 backup 清理失败，构建会报告残留 backup 的精确路径，但不会用可能已部分删除的旧 artifact 覆盖完整新产物。当前 catalog 精确登记 Pulse；已导入但尚未适配的 TUMBLEDRUM 不在 `site.assembly.json`，其源码、截图和 standalone build 不会进入 `dist`。
+`vp run build` 始终执行 Pulse stage → TUMBLEDRUM stage → Hub stage → site assembler → production verifier。Assembler 首先严格解析 `provenance/upstreams.json`，校验所有项目专用 `LicenseRef-*` 记录、授权文本哈希与公开分发状态，并要求生产 game manifest 的 repository/revision/license 与 upstream index 精确一致；缺失或不完整会在读取 stage 前失败。TUMBLEDRUM 的 repository/revision/tree/LicenseRef/record 路径不可降级。随后 assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。当前 catalog 精确登记 Pulse 与 TUMBLEDRUM，测试 Host、截图、standalone 文件和生成工具均不进入 `dist`。
 
 `vp run artifact:verify` 还会验证 `build-info.json`、`games/catalog.json`、每个 manifest、catalog 外 game 路径和完整文件集合，并检查产物不含 Lab/Tweakpane、game Service Worker 注册，以及 HTML、CSS、manifest/JSON 和明确 JavaScript URL 调用中的根绝对路径；`//cdn.example/...` 这类 scheme-relative URL 不视为 repository-root 路径。该检查已包含在根 build、preview、ready、production E2E 与 Wrangler dry-run 中，因此 direct preview 会拒绝与当前源码 build ID 不同的陈旧 `dist`。`vp run e2e:lab` 单独启动严格端口的开发服务器，验证动态 Lab CSS、参数写入/还原和关闭流程；它不复用 production preview。
 

@@ -70,6 +70,51 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   expect(runtimeErrors).toEqual([]);
 });
 
+test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
+  test.slow();
+  const runtimeErrors = collectRuntimeErrors(page);
+
+  await page.goto("./");
+  await page.getByLabel("Language").selectOption("en");
+  await page.getByRole("link", { name: /TUMBLEDRUM/ }).click();
+
+  await expect(page).toHaveURL(/\?game=tumbledrum$/);
+  const frameElement = page.locator(".runtime-frame iframe");
+  const game = page.frameLocator(".runtime-frame iframe");
+  await expect(frameElement).toHaveCount(1);
+  await expect(game.locator("#game")).toBeVisible();
+  await expect(game.locator("#status")).toContainText("TUMBLEDRUM title screen");
+
+  await page.locator("select").selectOption("ja");
+  await expect(game.locator("html")).toHaveAttribute("lang", "ja");
+  await expect(game.locator("#status")).toContainText("TUMBLEDRUMのタイトル画面");
+  await page.locator("select").selectOption("zh-Hans");
+  await expect(game.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  await expect(game.locator("#status")).toContainText("TUMBLEDRUM 标题画面");
+  await page.locator("select").selectOption("en");
+
+  await page.getByRole("slider", { name: /Master/ }).fill("0.42");
+  await page.getByRole("slider", { name: /Music/ }).fill("0.37");
+  await page.getByRole("slider", { name: /SFX/ }).fill("0.58");
+  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await expect(page.locator(".diagnostics__facts")).toContainText("game:tumbledrum");
+  await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
+  await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
+  await page.getByRole("button", { name: "Close ×" }).click();
+
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
+  await expect(game.locator("#status")).toHaveText("Game paused.");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(frameElement).toHaveCount(0);
+  expect(runtimeErrors).toEqual([]);
+});
+
 test("public language setting persists across reloads", async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page);
 
@@ -137,17 +182,22 @@ test("unknown and duplicate game routes are rejected visibly", async ({ page }) 
   expect(runtimeErrors).toEqual([]);
 });
 
-test("production metadata describes the assembled Pulse exhibit exactly", async ({ request }) => {
+test("production metadata describes both assembled exhibits exactly", async ({ request }) => {
   const buildInfoResponse = await request.get("./build-info.json");
   const catalogResponse = await request.get("./games/catalog.json");
-  const manifestResponse = await request.get("./games/pulse-link-overdrive/game.manifest.json");
+  const pulseManifestResponse = await request.get(
+    "./games/pulse-link-overdrive/game.manifest.json",
+  );
+  const tumbledrumManifestResponse = await request.get("./games/tumbledrum/game.manifest.json");
   expect(buildInfoResponse.ok()).toBe(true);
   expect(catalogResponse.ok()).toBe(true);
-  expect(manifestResponse.ok()).toBe(true);
+  expect(pulseManifestResponse.ok()).toBe(true);
+  expect(tumbledrumManifestResponse.ok()).toBe(true);
 
   const buildInfo = await buildInfoResponse.json();
   const catalog = await catalogResponse.json();
-  const manifest = await manifestResponse.json();
+  const pulseManifest = await pulseManifestResponse.json();
+  const tumbledrumManifest = await tumbledrumManifestResponse.json();
   expect(buildInfo).toMatchObject({ schemaVersion: 1 });
   expect(buildInfo.buildId).toMatch(/^gameyard@[a-f0-9]{16}$/);
   expect(buildInfo.files).toContain("build-info.json");
@@ -161,9 +211,14 @@ test("production metadata describes the assembled Pulse exhibit exactly", async 
         entry: "./pulse-link-overdrive/index.html",
         manifest: "./pulse-link-overdrive/game.manifest.json",
       },
+      {
+        id: "tumbledrum",
+        entry: "./tumbledrum/index.html",
+        manifest: "./tumbledrum/game.manifest.json",
+      },
     ],
   });
-  expect(manifest).toMatchObject({
+  expect(pulseManifest).toMatchObject({
     schemaVersion: 1,
     protocol: 1,
     id: "pulse-link-overdrive",
@@ -171,6 +226,16 @@ test("production metadata describes the assembled Pulse exhibit exactly", async 
     buildId: buildInfo.buildId,
     entry: "index.html",
   });
-  expect(manifest.files).toContain("index.html");
-  expect(manifest.files).toContain("game.manifest.json");
+  expect(tumbledrumManifest).toMatchObject({
+    schemaVersion: 1,
+    protocol: 1,
+    id: "tumbledrum",
+    version: "1.1.0",
+    buildId: buildInfo.buildId,
+    entry: "index.html",
+  });
+  for (const manifest of [pulseManifest, tumbledrumManifest]) {
+    expect(manifest.files).toContain("index.html");
+    expect(manifest.files).toContain("game.manifest.json");
+  }
 });
