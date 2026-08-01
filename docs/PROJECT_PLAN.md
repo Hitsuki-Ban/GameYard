@@ -130,7 +130,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 - Cloudflare Workers Static Assets dry-run 成功。
 - 上游 revision/license 进入 provenance。
 
-### M1 — Pulse vertical slice（进行中）
+### M1 — Pulse vertical slice（完成）
 
 1. 已非 squash 导入上游历史到 `games/pulse-link-overdrive`，并固定 36 assertions / 293 locks 的独立基线。
 2. 已完成 strict guest bridge、manifest、testkit 与原子 assembler；production catalog 精确登记 Pulse。
@@ -138,7 +138,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 4. 公共 locale/audio/motion 只从 HostContext/setting revision 获取；游戏专属 glyphs/haptics 保留在新命名空间存档。
 5. 纯 model 与 action mapping 保持不变；无旧 HTML 页面依赖的 runner 继续锁定 36 assertions / 293 locks。
 
-剩余完成门由 Issue #5 收口：root 与 repository-style prefix 均能直达；三语/audio/motion 即时同步；50 次进入/退出仅一个 frame、无悬挂消息；生产无写型 QA。
+6. Issue #5 的发布门已收口：root 与 repository-style prefix 均能直达；三视口 × 三语言 viewport 基线、暂停后的真实 gameplay 基线、可观察结果的 pointer/keyboard、只读有界诊断通过；50 次进入/退出与周期性重载仅保留当前 frame，Host port 与 runtime listener 回到基线，且无失败请求或 console/page error。
 
 ### M2 — TUMBLEDRUM
 

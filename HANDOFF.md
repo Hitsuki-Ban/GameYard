@@ -1,9 +1,9 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-4-pulse-runtime-adapter`
-- goal: Finish, merge, and clean Issue #4, then continue Issue #5 from a synchronized clean `main`.
-- current artifact: `gameyard@0b4045a0ba833638`, one exact Pulse exhibit, 10 files, no Lab runtime, game Service Worker, standalone manifest, or repository-prefix-breaking URL.
+- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-5-pulse-release-gates`
+- goal: Close Issue #5 through its broad release gate, merge and clean it, then start the TUMBLEDRUM rights gate in Issue #6 from a synchronized clean `main`.
+- current artifact: `gameyard@63d43c2a68f56bd6`, one exact Pulse exhibit, 10 files, no Lab runtime, game Service Worker, standalone manifest, repository-prefix-breaking URL, or production mutation surface.
 - done-this-task:
   - Published Issues #1–#16; merged and cleaned #2 through PR #17 and #3 through PR #18.
   - Added the INIT-gated Pulse guest, Hub runtime catalog/controller, live locale/settings, ACKed lifecycle, fullscreen requests, bounded diagnostics, game-only storage, and terminal cleanup.
@@ -11,14 +11,15 @@
   - `vp run dev` starts a strict Pulse source server and waits for its matching dev manifest before the Hub opens its same-origin proxy; the existing Lab browser scenario covers both playable Pulse and dev tools.
   - Replaced the standalone HTML smoke with the same 36 assertions / 293 locks runner before deleting the old page, SW, manifests, Python builder, and permanent debug surface.
   - Assembled and verified Pulse + Hub as one content-derived artifact; real-browser load, pause/resume, live locale/settings, reload, and close paths work with one iframe.
+  - Added one repository-prefix release matrix for 3 viewports × 3 locales, real pointer/keyboard input, and bounded diagnostics, plus one 50-cycle enter/exit/reload lifecycle soak.
 - verified:
-  - `vp run ready`; production E2E 18/18; integrated dev/Lab E2E 1/1; Cloudflare deploy dry-run; root and repository-prefix browser probes.
-  - Manual browser back navigation disposes the only iframe and returns to the index with zero console errors or warnings.
+  - `vp run ready`; production E2E 18/18; integrated dev/Lab E2E 1/1; repository-prefix release E2E 2/2; Cloudflare deploy dry-run.
+  - Ten screenshot baselines cover desktop, portrait, and landscape in English, Japanese, and Simplified Chinese plus paused gameplay; 50 lifecycle cycles return frames, Host ports, and runtime listeners to baseline with zero failed requests.
 - next:
-  - Obtain independent delta review and verification, merge PR with `Closes #4`, synchronize `main`, delete local/remote topic branches, and confirm a clean worktree.
-  - Start Issue #5 only from that clean state.
+  - Obtain independent owner review and verification, merge PR with `Closes #5`, synchronize `main`, delete local/remote topic branches, and confirm a clean worktree.
+  - Start Issue #6 only from that clean state; record distributable TUMBLEDRUM rights before importing source or assets.
 - gates:
   - Do not copy TUMBLEDRUM source/assets into the public artifact before Issue #6 records distributable rights.
   - Do not reintroduce Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path.
 - authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; decisions -> `docs/adr/`; commands -> `docs/DEVELOPMENT.md`.
-- stale-first: rerun `vp run ready`, `vp run e2e:lab`, `vp run e2e`, and `vp run deploy:dry-run` after source, dependency, artifact-config, or deployment changes.
+- stale-first: rerun the single complete `vp run release:pulse` gate after source, dependency, artifact-config, or deployment changes.

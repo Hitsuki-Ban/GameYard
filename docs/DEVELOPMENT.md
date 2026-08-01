@@ -22,6 +22,8 @@ vp run ready
 vp run artifact:verify
 vp run e2e:lab
 vp run e2e
+vp run e2e:release
+vp run release:pulse
 vp run deploy:dry-run
 ```
 
@@ -38,6 +40,8 @@ vp run deploy:dry-run
 5. 关闭 milestone：`vp run ready`、三视口 E2E、固定视觉基线和独立 reviewer。
 
 首次在本机运行浏览器测试前执行一次 `vp run e2e:install`，它只安装项目固定 Playwright 版本所需的 Chromium。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 Pulse 启动、三语与公共设置实时同步、暂停/恢复/重载/关闭、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。三个 Canvas 视口由单 worker 顺序运行，使负载与“一次一个活动游戏”的产品边界一致，也避免并行渲染争用掩盖协议结果。
+
+`vp run e2e:release` 在 `/GameYard/` repository prefix 下执行 Pulse 发布门：一条矩阵覆盖 desktop、portrait、landscape 与 en/ja/zh-Hans 的 9 张 viewport 视觉基线，并保留一张暂停后的真实 gameplay 基线，同时走 pointer 启动与触控键按下/释放、keyboard 暂停的可观察结果链并下载有界诊断 JSON；另一条连续执行 50 次进入/退出，每 5 次重载 Guest，统一拒绝残留 iframe、Host MessagePort、全局 runtime listener、失败请求和 console/page error。`vp run release:pulse` 将 ready、root E2E、Lab、prefix release gate 与 Cloudflare dry-run 串成 Issue #5 的完整关闭门。
 
 生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
