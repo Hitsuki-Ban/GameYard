@@ -11,24 +11,61 @@ function collectRuntimeErrors(page: Page): string[] {
   return errors;
 }
 
-test("catalog selection, strict route, and diagnostics stay coherent", async ({ page }) => {
+test("Pulse runs through the Hub lifecycle with live public preferences", async ({ page }) => {
+  test.slow();
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "OPEN INDEX" })).toBeVisible();
+  await page.locator("select").selectOption("en");
   await page.getByRole("link", { name: /PULSE LINK \/\/ OVERDRIVE/ }).click();
 
   await expect(page).toHaveURL(/\?game=pulse-link-overdrive$/);
-  await expect(page.getByRole("heading", { name: "PULSE LINK // OVERDRIVE" })).toBeVisible();
+  const frameElement = page.locator(".runtime-frame iframe");
+  const pulse = page.frameLocator(".runtime-frame iframe");
+  await expect(frameElement).toHaveCount(1);
+  await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
   await expect(page.getByRole("link", { name: /PULSE LINK \/\/ OVERDRIVE/ })).toHaveAttribute(
     "aria-current",
     "page",
   );
 
+  const firstGuest = page
+    .frames()
+    .find((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html"));
+  expect(firstGuest).toBeDefined();
+
+  await page.locator("select").selectOption("ja");
+  await expect(pulse.getByRole("button", { name: "ゲームを始める" })).toBeVisible();
+  await page.locator("select").selectOption("zh-Hans");
+  await expect(pulse.getByRole("button", { name: "开始游戏" })).toBeVisible();
+  await page.locator("select").selectOption("en");
+  await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
+
+  await page.getByRole("slider", { name: /Master/ }).fill("0.31");
+  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
   await page.getByRole("button", { name: /Diagnostics/ }).click();
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
   await expect(page.locator(".diagnostics__facts")).toContainText("game:pulse-link-overdrive");
-  await expect(page.locator(".diagnostics__events")).toContainText("route.select");
+  await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
+  await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
+  await page.getByRole("button", { name: "Close ×" }).click();
+
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
+
+  await page.getByRole("button", { name: "Reload" }).click();
+  await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
+  await expect.poll(() => page.frames().includes(firstGuest!)).toBe(false);
+  expect(
+    page.frames().filter((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html")),
+  ).toHaveLength(1);
+
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(frameElement).toHaveCount(0);
 
   expect(runtimeErrors).toEqual([]);
 });
@@ -100,17 +137,40 @@ test("unknown and duplicate game routes are rejected visibly", async ({ page }) 
   expect(runtimeErrors).toEqual([]);
 });
 
-test("production metadata matches the assembled Issue 3 artifact", async ({ request }) => {
+test("production metadata describes the assembled Pulse exhibit exactly", async ({ request }) => {
   const buildInfoResponse = await request.get("./build-info.json");
   const catalogResponse = await request.get("./games/catalog.json");
+  const manifestResponse = await request.get("./games/pulse-link-overdrive/game.manifest.json");
   expect(buildInfoResponse.ok()).toBe(true);
   expect(catalogResponse.ok()).toBe(true);
+  expect(manifestResponse.ok()).toBe(true);
 
   const buildInfo = await buildInfoResponse.json();
   const catalog = await catalogResponse.json();
+  const manifest = await manifestResponse.json();
   expect(buildInfo).toMatchObject({ schemaVersion: 1 });
   expect(buildInfo.buildId).toMatch(/^gameyard@[a-f0-9]{16}$/);
   expect(buildInfo.files).toContain("build-info.json");
   expect(buildInfo.files).toContain("games/catalog.json");
-  expect(catalog).toEqual({ schemaVersion: 1, buildId: buildInfo.buildId, games: [] });
+  expect(catalog).toEqual({
+    schemaVersion: 1,
+    buildId: buildInfo.buildId,
+    games: [
+      {
+        id: "pulse-link-overdrive",
+        entry: "./pulse-link-overdrive/index.html",
+        manifest: "./pulse-link-overdrive/game.manifest.json",
+      },
+    ],
+  });
+  expect(manifest).toMatchObject({
+    schemaVersion: 1,
+    protocol: 1,
+    id: "pulse-link-overdrive",
+    version: "1.1.0",
+    buildId: buildInfo.buildId,
+    entry: "index.html",
+  });
+  expect(manifest.files).toContain("index.html");
+  expect(manifest.files).toContain("game.manifest.json");
 });

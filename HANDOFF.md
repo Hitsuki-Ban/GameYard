@@ -1,21 +1,24 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | delivery target: `main` through Issue #3
-- goal: Complete Issue #4 by replacing PulseLinkOverdrive's standalone boot/settings/storage/Service Worker path with the exact GameYard guest adapter and making it the first playable Hub iframe.
-- verified: Issue #3 `vp check`; tooling 39/39; workspace tests 59/59 including Pulse 36 assertions / 293 locks; `vp run ready`; production E2E 18/18; `vp run deploy:dry-run`; artifact `gameyard@54bc998d3fe45e36`, 5 files, 0 games.
+- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-4-pulse-runtime-adapter`
+- goal: Finish, merge, and clean Issue #4, then continue Issue #5 from a synchronized clean `main`.
+- current artifact: `gameyard@0b4045a0ba833638`, one exact Pulse exhibit, 10 files, no Lab runtime, game Service Worker, standalone manifest, or repository-prefix-breaking URL.
 - done-this-task:
-  - Published the full roadmap as Issues #1–#16 and completed Issue #2 through merged PR #17.
-  - Preserved the exact Pulse upstream ancestry and deterministic standalone baseline without adding it to the public artifact.
-  - Replaced the circular hello/connect handshake with one exact `ready-for-init`/`init`/MessagePort path.
-  - Added strict game manifests, production guest disposal, deterministic bridge testkit, isolated stages, transactional assembly, structural artifact verification, and site-level build IDs.
-  - Made root build, preview, E2E, and Wrangler dry-run consume the same newly assembled `dist`; no game or game Service Worker is present yet.
+  - Published Issues #1–#16; merged and cleaned #2 through PR #17 and #3 through PR #18.
+  - Added the INIT-gated Pulse guest, Hub runtime catalog/controller, live locale/settings, ACKed lifecycle, fullscreen requests, bounded diagnostics, game-only storage, and terminal cleanup.
+  - Terminal runtime failures now close the bridge and remove the iframe; mount-time visibility is locked into activation; pause stops the Pulse frame loop.
+  - `vp run dev` starts a strict Pulse source server and waits for its matching dev manifest before the Hub opens its same-origin proxy; the existing Lab browser scenario covers both playable Pulse and dev tools.
+  - Replaced the standalone HTML smoke with the same 36 assertions / 293 locks runner before deleting the old page, SW, manifests, Python builder, and permanent debug surface.
+  - Assembled and verified Pulse + Hub as one content-derived artifact; real-browser load, pause/resume, live locale/settings, reload, and close paths work with one iframe.
+- verified:
+  - `vp run ready`; production E2E 18/18; integrated dev/Lab E2E 1/1; Cloudflare deploy dry-run; root and repository-prefix browser probes.
+  - Manual browser back navigation disposes the only iframe and returns to the index with zero console errors or warnings.
 - next:
-  - Start from a clean, synchronized `main` after Issue #3 merges.
-  - Open Issue #4's isolated branch and preserve Pulse's 36 assertions / 293 locks while replacing the standalone runtime in one cutover.
-  - Add Pulse production inputs and stage to `site.assembly.json`, then prove root/prefix loading, locale/settings updates, focus/lifecycle, and terminal exit cleanup.
+  - Obtain independent delta review and verification, merge PR with `Closes #4`, synchronize `main`, delete local/remote topic branches, and confirm a clean worktree.
+  - Start Issue #5 only from that clean state.
 - gates:
   - Do not copy TUMBLEDRUM source/assets into the public artifact before Issue #6 records distributable rights.
-  - Do not retain Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path after the Issue #4 cutover.
+  - Do not reintroduce Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path.
 - authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; decisions -> `docs/adr/`; commands -> `docs/DEVELOPMENT.md`.
 - stale-first: rerun `vp run ready`, `vp run e2e:lab`, `vp run e2e`, and `vp run deploy:dry-run` after source, dependency, artifact-config, or deployment changes.

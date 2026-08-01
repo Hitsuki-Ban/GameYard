@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const devPort = 5197;
+const devPort = 5173;
 const devUrl = `http://127.0.0.1:${devPort}`;
 
 export default defineConfig({
@@ -21,7 +21,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: `vp dev apps/hub --host 127.0.0.1 --port ${devPort} --strictPort`,
+    command: "vp run dev",
     url: devUrl,
     reuseExistingServer: false,
     timeout: 30_000,

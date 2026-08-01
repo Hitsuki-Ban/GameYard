@@ -13,8 +13,14 @@ describe("game catalog", () => {
     ]);
   });
 
-  it("keeps every game queued and migration order explicit", () => {
-    expect(GAME_CATALOG.every((game) => game.status === "queued")).toBe(true);
+  it("marks Pulse playable locally while later migrations remain queued", () => {
+    expect(getGameById("pulse-link-overdrive")).toMatchObject({
+      status: "playable",
+      runtime: "local",
+    });
+    expect(getGameById("pulse-link-overdrive").liveUrl).toBeUndefined();
+    expect(getGameById("tumbledrum").status).toBe("queued");
+    expect(getGameById("crown-breaker").status).toBe("queued");
     expect(
       [...GAME_CATALOG].sort((a, b) => a.migrationOrder - b.migrationOrder).map((game) => game.id),
     ).toEqual(["pulse-link-overdrive", "tumbledrum", "crown-breaker"]);

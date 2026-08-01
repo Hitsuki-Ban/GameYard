@@ -1,5 +1,5 @@
 export type GameId = "tumbledrum" | "pulse-link-overdrive" | "crown-breaker";
-export type MigrationStatus = "queued";
+export type MigrationStatus = "playable" | "queued";
 export type PosterKind = "drum" | "pulse" | "crown";
 
 export interface GameCatalogEntry {
@@ -11,7 +11,8 @@ export interface GameCatalogEntry {
   readonly status: MigrationStatus;
   readonly migrationOrder: 1 | 2 | 3;
   readonly repositoryUrl: string;
-  readonly liveUrl: string;
+  readonly liveUrl?: string;
+  readonly runtime?: "local";
   readonly accent: "ultramarine" | "vermilion" | "graphite";
   readonly poster: PosterKind;
 }
@@ -36,10 +37,10 @@ export const GAME_CATALOG = [
     typeKey: "game.pulse.type",
     descriptionKey: "game.pulse.description",
     languages: ["en", "ja", "zh-Hans"],
-    status: "queued",
+    status: "playable",
     migrationOrder: 1,
     repositoryUrl: "https://github.com/Hitsuki-Ban/PulseLinkOverdrive",
-    liveUrl: "https://hitsuki-ban.github.io/PulseLinkOverdrive/",
+    runtime: "local",
     accent: "ultramarine",
     poster: "pulse",
   },

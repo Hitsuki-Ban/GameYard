@@ -5,7 +5,8 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "strict": true,
-    "target": "ES2023"
+    "target": "ES2023",
+    "types": ["node"]
   },
   "include": ["playwright.baseline.config.ts", "tests/**/*.ts"]
 }

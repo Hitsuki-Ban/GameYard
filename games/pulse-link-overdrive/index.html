@@ -1,205 +1,407 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#07071a">
-  <meta name="color-scheme" content="dark">
-  <meta name="description" content="">
-  <title>PULSE LINK // OVERDRIVE</title>
-  <script src="src/config.js"></script>
-  <script src="src/i18n.js"></script>
-  <script>
-    window.PLO.i18n = new window.PLO.I18n({ mode: window.PLO.I18n.readStoredMode() });
-    window.PLO.i18n.applyHead();
-  </script>
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <main id="app" class="app" data-screen="title">
-    <canvas id="game-canvas" tabindex="0" data-i18n-aria-label="canvas.label" aria-describedby="game-status game-controls-description"></canvas>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+    />
+    <meta name="theme-color" content="#07071a" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="" />
+    <title>PULSE LINK // OVERDRIVE</title>
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app" data-screen="title">
+      <canvas
+        id="game-canvas"
+        tabindex="0"
+        data-i18n-aria-label="canvas.label"
+        aria-describedby="game-status game-controls-description"
+      ></canvas>
 
-    <div id="scanlines" aria-hidden="true"></div>
-    <div id="flash-layer" aria-hidden="true"></div>
+      <div id="scanlines" aria-hidden="true"></div>
+      <div id="flash-layer" aria-hidden="true"></div>
 
-    <section id="title-screen" class="screen screen--title" data-i18n-aria-label="screen.title">
-      <div class="language-switcher" role="group" data-i18n-aria-label="language.label">
-        <button class="language-button" type="button" data-locale-mode="auto" aria-pressed="false" data-i18n-aria-label="language.chooseAuto"><span aria-hidden="true">AUTO</span></button>
-        <button class="language-button" type="button" data-locale-mode="zh-CN" aria-pressed="false" data-i18n-aria-label="language.chooseChinese"><span lang="zh-CN" aria-hidden="true">中</span></button>
-        <button class="language-button" type="button" data-locale-mode="ja" aria-pressed="false" data-i18n-aria-label="language.chooseJapanese"><span lang="ja" aria-hidden="true">日</span></button>
-        <button class="language-button" type="button" data-locale-mode="en" aria-pressed="false" data-i18n-aria-label="language.chooseEnglish"><span aria-hidden="true">EN</span></button>
-      </div>
+      <section id="title-screen" class="screen screen--title" data-i18n-aria-label="screen.title">
+        <div class="brand-lockup" aria-label="PULSE LINK OVERDRIVE">
+          <div class="brand-kicker">PULSE LINK</div>
+          <h1><span>//</span> OVERDRIVE</h1>
+          <div class="brand-rule"><i></i><b></b><i></i></div>
+        </div>
 
-      <div class="brand-lockup" aria-label="PULSE LINK OVERDRIVE">
-        <div class="brand-kicker">PULSE LINK</div>
-        <h1><span>//</span> OVERDRIVE</h1>
-        <div class="brand-rule"><i></i><b></b><i></i></div>
-      </div>
-
-      <button id="play-button" class="play-button" type="button" data-i18n-aria-label="title.play">
-        <span class="play-button__orbit" aria-hidden="true"></span>
-        <span class="play-button__triangle" aria-hidden="true"></span>
-      </button>
-
-      <div class="mode-strip" role="radiogroup" data-i18n-aria-label="title.modeGroup">
-        <button class="mode-card is-selected" type="button" data-mode="duel" role="radio" aria-checked="true" data-i18n-aria-label="mode.duelLabel">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 8l8 8-5 5-8-8 5-5zm22 0l5 5-8 8-5-5 8-8zM18 23l7 7-5 5-7-7 5-5zm12 0l5 5-7 7-5-5 7-7z"/><path d="M18 18l12 12M30 18L18 30"/></svg>
-          <span data-i18n="mode.duel"></span>
+        <button
+          id="play-button"
+          class="play-button"
+          type="button"
+          data-i18n-aria-label="title.play"
+        >
+          <span class="play-button__orbit" aria-hidden="true"></span>
+          <span class="play-button__triangle" aria-hidden="true"></span>
         </button>
-        <button class="mode-card" type="button" data-mode="blitz" role="radio" aria-checked="false" data-i18n-aria-label="mode.blitzLabel">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="26" r="14"/><path d="M24 26l8-5M18 5h12M24 5v7"/></svg>
-          <span data-i18n="mode.blitz"></span>
+
+        <div class="mode-strip" role="radiogroup" data-i18n-aria-label="title.modeGroup">
+          <button
+            class="mode-card is-selected"
+            type="button"
+            data-mode="duel"
+            role="radio"
+            aria-checked="true"
+            data-i18n-aria-label="mode.duelLabel"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path
+                d="M13 8l8 8-5 5-8-8 5-5zm22 0l5 5-8 8-5-5 8-8zM18 23l7 7-5 5-7-7 5-5zm12 0l5 5-7 7-5-5 7-7z"
+              />
+              <path d="M18 18l12 12M30 18L18 30" />
+            </svg>
+            <span data-i18n="mode.duel"></span>
+          </button>
+          <button
+            class="mode-card"
+            type="button"
+            data-mode="blitz"
+            role="radio"
+            aria-checked="false"
+            data-i18n-aria-label="mode.blitzLabel"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="26" r="14" />
+              <path d="M24 26l8-5M18 5h12M24 5v7" />
+            </svg>
+            <span data-i18n="mode.blitz"></span>
+          </button>
+          <button
+            class="mode-card"
+            type="button"
+            data-mode="lab"
+            role="radio"
+            aria-checked="false"
+            data-i18n-aria-label="mode.labLabel"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M18 6h12M21 6v12L10 38c-1 2 1 4 3 4h22c2 0 4-2 3-4L27 18V6" />
+              <path d="M16 31h16M19 25h10" />
+            </svg>
+            <span data-i18n="mode.lab"></span>
+          </button>
+        </div>
+
+        <div class="difficulty" data-i18n-aria-label="difficulty.label">
+          <button
+            class="difficulty__arrow"
+            id="difficulty-down"
+            type="button"
+            data-i18n-aria-label="difficulty.lower"
+          >
+            ‹
+          </button>
+          <div class="difficulty__pips" id="difficulty-pips" aria-live="polite">
+            <i class="is-on"></i><i class="is-on"></i><i></i><i></i>
+          </div>
+          <button
+            class="difficulty__arrow"
+            id="difficulty-up"
+            type="button"
+            data-i18n-aria-label="difficulty.higher"
+          >
+            ›
+          </button>
+        </div>
+
+        <div class="title-actions">
+          <button
+            id="help-button"
+            class="icon-button"
+            type="button"
+            data-i18n-aria-label="title.help"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="24" r="18" />
+              <path d="M17 18c1-5 13-6 14 0 1 6-7 6-7 12M24 37h.01" />
+            </svg>
+          </button>
+          <button
+            id="settings-button"
+            class="icon-button"
+            type="button"
+            data-i18n-aria-label="title.settings"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="24" r="7" />
+              <path
+                d="M24 5v6M24 37v6M5 24h6M37 24h6M10.5 10.5l4.2 4.2M33.3 33.3l4.2 4.2M37.5 10.5l-4.2 4.2M14.7 33.3l-4.2 4.2"
+              />
+            </svg>
+          </button>
+          <button
+            id="fullscreen-button"
+            class="icon-button"
+            type="button"
+            data-i18n-aria-label="title.fullscreen"
+          >
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M8 19V8h11M29 8h11v11M40 29v11H29M19 40H8V29" />
+            </svg>
+          </button>
+        </div>
+
+        <div id="title-stats" class="title-stats" data-i18n-aria-label="title.stats">
+          <span><b id="stat-wins">0</b> <span data-i18n="title.wins"></span></span>
+          <i></i>
+          <span><b id="stat-best-chain">0</b> <span data-i18n="title.bestChain"></span></span>
+        </div>
+
+        <p class="title-footnote" data-i18n="title.footnote"></p>
+      </section>
+
+      <section id="hud" class="hud" data-i18n-aria-label="screen.game" hidden>
+        <button id="pause-button" class="hud__pause" type="button" data-i18n-aria-label="hud.pause">
+          <span></span><span></span>
         </button>
-        <button class="mode-card" type="button" data-mode="lab" role="radio" aria-checked="false" data-i18n-aria-label="mode.labLabel">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 6h12M21 6v12L10 38c-1 2 1 4 3 4h22c2 0 4-2 3-4L27 18V6"/><path d="M16 31h16M19 25h10"/></svg>
-          <span data-i18n="mode.lab"></span>
+        <div id="match-timer" class="match-timer" hidden>01:30</div>
+        <div id="announcer" class="announcer" aria-live="polite"></div>
+        <div id="tutorial-symbol" class="tutorial-symbol" aria-hidden="true"></div>
+        <p id="game-status" class="sr-only" aria-live="off"></p>
+        <p id="game-controls-description" class="sr-only" data-i18n="aria.gameControls"></p>
+        <div class="assist-actions" data-i18n-aria-label="aria.gameActions">
+          <button
+            id="assist-attack"
+            type="button"
+            aria-keyshortcuts="C L"
+            data-i18n="controls.attack"
+            data-i18n-aria-label="aria.attackControl"
+          ></button>
+          <button
+            id="assist-defense"
+            type="button"
+            aria-keyshortcuts="V ;"
+            data-i18n="controls.guard"
+            data-i18n-aria-label="aria.defenseControl"
+          ></button>
+        </div>
+      </section>
+
+      <nav id="touch-controls" class="touch-controls" data-i18n-aria-label="touch.label" hidden>
+        <div class="touch-controls__move">
+          <button
+            class="touch-key"
+            data-action="left"
+            type="button"
+            data-i18n-aria-label="touch.left"
+          >
+            <span class="chevron chevron--left"></span>
+          </button>
+          <button
+            class="touch-key touch-key--drop"
+            data-action="hardDrop"
+            type="button"
+            data-i18n-aria-label="touch.hardDrop"
+          >
+            <span class="chevron chevron--down"></span
+            ><span class="chevron chevron--down second"></span>
+          </button>
+          <button
+            class="touch-key"
+            data-action="right"
+            type="button"
+            data-i18n-aria-label="touch.right"
+          >
+            <span class="chevron chevron--right"></span>
+          </button>
+        </div>
+        <div class="touch-controls__action">
+          <button
+            class="touch-key touch-key--rotate"
+            data-action="rotateCW"
+            type="button"
+            data-i18n-aria-label="touch.rotate"
+          >
+            <span class="rotate-glyph">↻</span>
+          </button>
+        </div>
+      </nav>
+
+      <section
+        id="pause-screen"
+        class="screen screen--modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pause-title"
+        hidden
+      >
+        <div class="modal-card modal-card--compact" tabindex="-1">
+          <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
+          <h2 id="pause-title" data-i18n="pause.title"></h2>
+          <button id="resume-button" class="wide-button wide-button--primary" type="button">
+            <span class="wide-button__icon" aria-hidden="true">▶</span
+            ><span data-i18n="pause.resume"></span>
+          </button>
+          <button id="restart-button" class="wide-button" type="button">
+            <span class="wide-button__icon" aria-hidden="true">↻</span
+            ><span data-i18n="pause.restart"></span>
+          </button>
+          <button id="quit-button" class="wide-button" type="button">
+            <span class="wide-button__icon" aria-hidden="true">⌂</span
+            ><span data-i18n="pause.quit"></span>
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="result-screen"
+        class="screen screen--modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="result-title"
+        hidden
+      >
+        <div class="modal-card result-card" tabindex="-1">
+          <div id="result-emblem" class="result-emblem" aria-hidden="true"></div>
+          <h2 id="result-title"></h2>
+          <p id="result-subtitle"></p>
+          <div class="result-stats">
+            <div><span data-i18n="result.score"></span><b id="result-score">0</b></div>
+            <div><span data-i18n="result.maxChain"></span><b id="result-chain">0</b></div>
+            <div><span data-i18n="result.pressure"></span><b id="result-pressure">0</b></div>
+          </div>
+          <button id="retry-button" class="wide-button wide-button--primary" type="button">
+            <span class="wide-button__icon" aria-hidden="true">↻</span
+            ><span data-i18n="result.retry"></span>
+          </button>
+          <button id="result-title-button" class="wide-button" type="button">
+            <span class="wide-button__icon" aria-hidden="true">⌂</span
+            ><span data-i18n="result.title"></span>
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="settings-screen"
+        class="screen screen--modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        hidden
+      >
+        <div class="modal-card settings-card" tabindex="-1">
+          <div class="modal-heading">
+            <h2 id="settings-title" data-i18n="settings.title"></h2>
+            <button
+              id="settings-close"
+              class="close-button"
+              type="button"
+              data-i18n-aria-label="settings.close"
+            >
+              ×
+            </button>
+          </div>
+          <label class="setting-row setting-row--toggle"
+            ><div>
+              <b data-i18n="settings.glyphsTitle"></b
+              ><span data-i18n="settings.glyphsDescription"></span>
+            </div>
+            <input id="setting-glyphs" type="checkbox" checked /><i></i
+          ></label>
+          <label class="setting-row setting-row--toggle"
+            ><div>
+              <b data-i18n="settings.hapticsTitle"></b
+              ><span data-i18n="settings.hapticsDescription"></span>
+            </div>
+            <input id="setting-haptics" type="checkbox" checked /><i></i
+          ></label>
+          <button id="reset-tutorial" class="wide-button" type="button">
+            <span class="wide-button__icon" aria-hidden="true">◎</span
+            ><span id="reset-tutorial-label" data-i18n="settings.tutorialReplay"></span>
+          </button>
+        </div>
+      </section>
+
+      <section
+        id="help-screen"
+        class="screen screen--modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="help-title"
+        hidden
+      >
+        <div class="modal-card help-card" tabindex="-1">
+          <div class="modal-heading">
+            <h2 id="help-title" data-i18n="help.title"></h2>
+            <button
+              id="help-close"
+              class="close-button"
+              type="button"
+              data-i18n-aria-label="help.close"
+            >
+              ×
+            </button>
+          </div>
+          <div class="rule-demo" aria-hidden="true">
+            <div class="demo-chain">
+              <i class="demo-blob c0"></i><i class="demo-blob c0"></i><i class="demo-blob c0"></i
+              ><b>✦</b>
+            </div>
+            <div class="demo-arrow">→</div>
+            <div class="demo-meter"><span></span><b>100</b></div>
+            <div class="demo-arrow">→</div>
+            <div class="demo-choice"><i>✹</i><i>⬡</i></div>
+          </div>
+          <div class="help-grid">
+            <div>
+              <span class="help-icon">③</span><b data-i18n="help.connectTitle"></b>
+              <p data-i18n="help.connectBody"></p>
+            </div>
+            <div>
+              <span class="help-icon">✦</span><b data-i18n="help.pulseTitle"></b>
+              <p data-i18n="help.pulseBody"></p>
+            </div>
+            <div>
+              <span class="help-icon">✹</span><b data-i18n="help.attackTitle"></b>
+              <p data-i18n="help.attackBody"></p>
+            </div>
+            <div>
+              <span class="help-icon">⬡</span><b data-i18n="help.defenseTitle"></b>
+              <p data-i18n="help.defenseBody"></p>
+            </div>
+            <div>
+              <span class="help-icon">┃</span><b data-i18n="help.centerTitle"></b>
+              <p data-i18n="help.centerBody"></p>
+            </div>
+            <div>
+              <span class="help-icon">↯</span><b data-i18n="help.reverseTitle"></b>
+              <p data-i18n="help.reverseBody"></p>
+            </div>
+          </div>
+          <div class="controls-map">
+            <span>← → / A D</span><b data-i18n="controls.move"></b> <span>↓ / S</span
+            ><b data-i18n="controls.softDrop"></b> <span>↑ / X / K</span
+            ><b data-i18n="controls.rotateCW"></b> <span>Z / J</span
+            ><b data-i18n="controls.rotateCCW"></b> <span>SPACE</span
+            ><b data-i18n="controls.hardDrop"></b> <span>C / L</span
+            ><b data-i18n="controls.attack"></b> <span>V / ;</span
+            ><b data-i18n="controls.guard"></b> <span>ESC / P</span
+            ><b data-i18n="controls.pause"></b>
+          </div>
+          <p class="controls-note" data-i18n="controls.gamepad"></p>
+        </div>
+      </section>
+
+      <div id="rotate-device" class="rotate-device" hidden aria-hidden="true">
+        <div class="phone-glyph">↻</div>
+      </div>
+
+      <div id="aria-live" class="sr-only" aria-live="assertive"></div>
+      <div id="save-notice" class="save-notice" role="status" hidden>
+        <span id="save-notice-text"></span>
+        <button id="save-notice-dismiss" type="button" data-i18n-aria-label="save.dismiss">
+          ×
         </button>
       </div>
+    </main>
 
-      <div class="difficulty" data-i18n-aria-label="difficulty.label">
-        <button class="difficulty__arrow" id="difficulty-down" type="button" data-i18n-aria-label="difficulty.lower">‹</button>
-        <div class="difficulty__pips" id="difficulty-pips" aria-live="polite">
-          <i class="is-on"></i><i class="is-on"></i><i></i><i></i>
-        </div>
-        <button class="difficulty__arrow" id="difficulty-up" type="button" data-i18n-aria-label="difficulty.higher">›</button>
-      </div>
-
-      <div class="title-actions">
-        <button id="help-button" class="icon-button" type="button" data-i18n-aria-label="title.help">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="18"/><path d="M17 18c1-5 13-6 14 0 1 6-7 6-7 12M24 37h.01"/></svg>
-        </button>
-        <button id="settings-button" class="icon-button" type="button" data-i18n-aria-label="title.settings">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="7"/><path d="M24 5v6M24 37v6M5 24h6M37 24h6M10.5 10.5l4.2 4.2M33.3 33.3l4.2 4.2M37.5 10.5l-4.2 4.2M14.7 33.3l-4.2 4.2"/></svg>
-        </button>
-      </div>
-
-      <div id="title-stats" class="title-stats" data-i18n-aria-label="title.stats">
-        <span><b id="stat-wins">0</b> <span data-i18n="title.wins"></span></span>
-        <i></i>
-        <span><b id="stat-best-chain">0</b> <span data-i18n="title.bestChain"></span></span>
-      </div>
-
-      <p class="title-footnote" data-i18n="title.footnote"></p>
-    </section>
-
-    <section id="hud" class="hud" data-i18n-aria-label="screen.game" hidden>
-      <button id="pause-button" class="hud__pause" type="button" data-i18n-aria-label="hud.pause">
-        <span></span><span></span>
-      </button>
-      <div id="match-timer" class="match-timer" hidden>01:30</div>
-      <div id="announcer" class="announcer" aria-live="polite"></div>
-      <div id="tutorial-symbol" class="tutorial-symbol" aria-hidden="true"></div>
-      <p id="game-status" class="sr-only" aria-live="off"></p>
-      <p id="game-controls-description" class="sr-only" data-i18n="aria.gameControls"></p>
-      <div class="assist-actions" data-i18n-aria-label="aria.gameActions">
-        <button id="assist-attack" type="button" aria-keyshortcuts="C L" data-i18n="controls.attack" data-i18n-aria-label="aria.attackControl"></button>
-        <button id="assist-defense" type="button" aria-keyshortcuts="V ;" data-i18n="controls.guard" data-i18n-aria-label="aria.defenseControl"></button>
-      </div>
-    </section>
-
-    <nav id="touch-controls" class="touch-controls" data-i18n-aria-label="touch.label" hidden>
-      <div class="touch-controls__move">
-        <button class="touch-key" data-action="left" type="button" data-i18n-aria-label="touch.left"><span class="chevron chevron--left"></span></button>
-        <button class="touch-key touch-key--drop" data-action="hardDrop" type="button" data-i18n-aria-label="touch.hardDrop"><span class="chevron chevron--down"></span><span class="chevron chevron--down second"></span></button>
-        <button class="touch-key" data-action="right" type="button" data-i18n-aria-label="touch.right"><span class="chevron chevron--right"></span></button>
-      </div>
-      <div class="touch-controls__action">
-        <button class="touch-key touch-key--rotate" data-action="rotateCW" type="button" data-i18n-aria-label="touch.rotate"><span class="rotate-glyph">↻</span></button>
-      </div>
-    </nav>
-
-    <section id="pause-screen" class="screen screen--modal" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden>
-      <div class="modal-card modal-card--compact" tabindex="-1">
-        <div class="pause-mark" aria-hidden="true"><span></span><span></span></div>
-        <h2 id="pause-title" data-i18n="pause.title"></h2>
-        <button id="resume-button" class="wide-button wide-button--primary" type="button"><span class="wide-button__icon" aria-hidden="true">▶</span><span data-i18n="pause.resume"></span></button>
-        <button id="restart-button" class="wide-button" type="button"><span class="wide-button__icon" aria-hidden="true">↻</span><span data-i18n="pause.restart"></span></button>
-        <button id="quit-button" class="wide-button" type="button"><span class="wide-button__icon" aria-hidden="true">⌂</span><span data-i18n="pause.quit"></span></button>
-      </div>
-    </section>
-
-    <section id="result-screen" class="screen screen--modal" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden>
-      <div class="modal-card result-card" tabindex="-1">
-        <div id="result-emblem" class="result-emblem" aria-hidden="true"></div>
-        <h2 id="result-title"></h2>
-        <p id="result-subtitle"></p>
-        <div class="result-stats">
-          <div><span data-i18n="result.score"></span><b id="result-score">0</b></div>
-          <div><span data-i18n="result.maxChain"></span><b id="result-chain">0</b></div>
-          <div><span data-i18n="result.pressure"></span><b id="result-pressure">0</b></div>
-        </div>
-        <button id="retry-button" class="wide-button wide-button--primary" type="button"><span class="wide-button__icon" aria-hidden="true">↻</span><span data-i18n="result.retry"></span></button>
-        <button id="result-title-button" class="wide-button" type="button"><span class="wide-button__icon" aria-hidden="true">⌂</span><span data-i18n="result.title"></span></button>
-      </div>
-    </section>
-
-    <section id="settings-screen" class="screen screen--modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
-      <div class="modal-card settings-card" tabindex="-1">
-        <div class="modal-heading">
-          <h2 id="settings-title" data-i18n="settings.title"></h2>
-          <button id="settings-close" class="close-button" type="button" data-i18n-aria-label="settings.close">×</button>
-        </div>
-        <div class="setting-row"><div><b data-i18n="settings.sfxTitle"></b><span data-i18n="settings.sfxDescription"></span></div><input id="setting-sfx" type="range" min="0" max="100" value="80" data-i18n-aria-label="settings.sfxVolume"></div>
-        <div class="setting-row"><div><b data-i18n="settings.musicTitle"></b><span data-i18n="settings.musicDescription"></span></div><input id="setting-music" type="range" min="0" max="100" value="45" data-i18n-aria-label="settings.musicVolume"></div>
-        <label class="setting-row setting-row--toggle"><div><b data-i18n="settings.shakeTitle"></b><span data-i18n="settings.shakeDescription"></span></div><input id="setting-shake" type="checkbox" checked><i></i></label>
-        <label class="setting-row setting-row--toggle"><div><b data-i18n="settings.motionTitle"></b><span data-i18n="settings.motionDescription"></span></div><input id="setting-motion" type="checkbox"><i></i></label>
-        <label class="setting-row setting-row--toggle"><div><b data-i18n="settings.glyphsTitle"></b><span data-i18n="settings.glyphsDescription"></span></div><input id="setting-glyphs" type="checkbox" checked><i></i></label>
-        <label class="setting-row setting-row--toggle"><div><b data-i18n="settings.hapticsTitle"></b><span data-i18n="settings.hapticsDescription"></span></div><input id="setting-haptics" type="checkbox" checked><i></i></label>
-        <button id="reset-tutorial" class="wide-button" type="button"><span class="wide-button__icon" aria-hidden="true">◎</span><span id="reset-tutorial-label" data-i18n="settings.tutorialReplay"></span></button>
-      </div>
-    </section>
-
-    <section id="help-screen" class="screen screen--modal" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
-      <div class="modal-card help-card" tabindex="-1">
-        <div class="modal-heading">
-          <h2 id="help-title" data-i18n="help.title"></h2>
-          <button id="help-close" class="close-button" type="button" data-i18n-aria-label="help.close">×</button>
-        </div>
-        <div class="rule-demo" aria-hidden="true">
-          <div class="demo-chain"><i class="demo-blob c0"></i><i class="demo-blob c0"></i><i class="demo-blob c0"></i><b>✦</b></div>
-          <div class="demo-arrow">→</div>
-          <div class="demo-meter"><span></span><b>100</b></div>
-          <div class="demo-arrow">→</div>
-          <div class="demo-choice"><i>✹</i><i>⬡</i></div>
-        </div>
-        <div class="help-grid">
-          <div><span class="help-icon">③</span><b data-i18n="help.connectTitle"></b><p data-i18n="help.connectBody"></p></div>
-          <div><span class="help-icon">✦</span><b data-i18n="help.pulseTitle"></b><p data-i18n="help.pulseBody"></p></div>
-          <div><span class="help-icon">✹</span><b data-i18n="help.attackTitle"></b><p data-i18n="help.attackBody"></p></div>
-          <div><span class="help-icon">⬡</span><b data-i18n="help.defenseTitle"></b><p data-i18n="help.defenseBody"></p></div>
-          <div><span class="help-icon">┃</span><b data-i18n="help.centerTitle"></b><p data-i18n="help.centerBody"></p></div>
-          <div><span class="help-icon">↯</span><b data-i18n="help.reverseTitle"></b><p data-i18n="help.reverseBody"></p></div>
-        </div>
-        <div class="controls-map">
-          <span>← → / A D</span><b data-i18n="controls.move"></b>
-          <span>↓ / S</span><b data-i18n="controls.softDrop"></b>
-          <span>↑ / X / K</span><b data-i18n="controls.rotateCW"></b>
-          <span>Z / J</span><b data-i18n="controls.rotateCCW"></b>
-          <span>SPACE</span><b data-i18n="controls.hardDrop"></b>
-          <span>C / L</span><b data-i18n="controls.attack"></b>
-          <span>V / ;</span><b data-i18n="controls.guard"></b>
-          <span>ESC / P</span><b data-i18n="controls.pause"></b>
-        </div>
-        <p class="controls-note" data-i18n="controls.gamepad"></p>
-      </div>
-    </section>
-
-    <div id="rotate-device" class="rotate-device" hidden aria-hidden="true">
-      <div class="phone-glyph">↻</div>
-    </div>
-
-    <div id="aria-live" class="sr-only" aria-live="assertive"></div>
-    <div id="save-notice" class="save-notice" role="status" hidden>
-      <span id="save-notice-text"></span>
-      <button id="save-notice-dismiss" type="button" data-i18n-aria-label="save.dismiss">×</button>
-    </div>
-  </main>
-
-  <script defer src="src/audio.js"></script>
-  <script defer src="src/input.js"></script>
-  <script defer src="src/model.js"></script>
-  <script defer src="src/render.js"></script>
-  <script defer src="src/app.js"></script>
-</body>
+    <script type="module" src="./src/app.js"></script>
+  </body>
 </html>

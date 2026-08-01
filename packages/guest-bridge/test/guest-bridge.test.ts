@@ -12,6 +12,7 @@ import {
   GuestConfigurationError,
   GuestDisposedError,
   GuestHandshakeMismatchError,
+  GuestInitializationError,
   connectGuest,
   type GuestBridge,
   type GuestBridgeHooks,
@@ -54,6 +55,7 @@ interface ConnectedGuest {
   readonly channel: FakeMessageChannel;
   readonly bridge: GuestBridge;
   readonly hooks: GuestBridgeHooks;
+  readonly initialize: ReturnType<typeof vi.fn>;
   readonly windowMessages: unknown[];
   readonly portMessages: unknown[];
 }
@@ -65,7 +67,10 @@ async function flushAsync(pair: FakeWindowPair, rounds: number): Promise<void> {
   }
 }
 
-async function connect(hooks: GuestBridgeHooks = createHooks()): Promise<ConnectedGuest> {
+async function connect(
+  hooks: GuestBridgeHooks = createHooks(),
+  initialize = vi.fn(),
+): Promise<ConnectedGuest> {
   const pair = createFakeWindowPair("https://gameyard.test");
   const channel = new FakeMessageChannel(pair.clock);
   const windowMessages: unknown[] = [];
@@ -87,11 +92,12 @@ async function connect(hooks: GuestBridgeHooks = createHooks()): Promise<Connect
     identity: { gameId: context.gameId, buildId: context.buildId },
     handshakeTimeoutMs: 100,
     hooks,
+    initialize,
   });
   pair.clock.advanceBy(0);
   const bridge = await connection;
   pair.clock.advanceBy(0);
-  return { pair, channel, bridge, hooks, windowMessages, portMessages };
+  return { pair, channel, bridge, hooks, initialize, windowMessages, portMessages };
 }
 
 describe("connectGuest", () => {
@@ -106,7 +112,22 @@ describe("connectGuest", () => {
         identity: { gameId: context.gameId, buildId: context.buildId },
         handshakeTimeoutMs: 100,
         hooks: { ...hooks, diagnostics: {} } as unknown as GuestBridgeHooks,
+        initialize: vi.fn(),
       }),
+    ).toThrow(GuestConfigurationError);
+  });
+
+  it("fails fast when the required initializer is missing", () => {
+    const pair = createFakeWindowPair("https://gameyard.test");
+    expect(() =>
+      connectGuest({
+        window: pair.guest,
+        parent: pair.hostProxy,
+        targetOrigin: pair.guest.location.origin,
+        identity: { gameId: context.gameId, buildId: context.buildId },
+        handshakeTimeoutMs: 100,
+        hooks: createHooks(),
+      } as unknown as Parameters<typeof connectGuest>[0]),
     ).toThrow(GuestConfigurationError);
   });
 
@@ -123,8 +144,114 @@ describe("connectGuest", () => {
     ]);
     expect(connected.windowMessages[0]).not.toHaveProperty("instanceId");
     expect(connected.portMessages).toEqual([{ type: "ready" }]);
+    expect(connected.initialize).toHaveBeenCalledOnce();
+    expect(connected.initialize).toHaveBeenCalledWith(connected.bridge);
     expect(connected.bridge.context.instanceId).toBe("instance-host-owned");
     expect(connected.pair.guest.listenerCount).toBe(0);
+  });
+
+  it("withholds ready and command handling until initialization completes", async () => {
+    const pair = createFakeWindowPair("https://gameyard.test");
+    const channel = new FakeMessageChannel(pair.clock);
+    const hooks = createHooks();
+    const portMessages: unknown[] = [];
+    let finishInitialization!: () => void;
+    const initializationGate = new Promise<void>((resolve) => {
+      finishInitialization = resolve;
+    });
+    const initialize = vi.fn((bridge: GuestBridge) => {
+      expect(() => bridge.emitLifecycleState("booting")).toThrow(GuestInitializationError);
+      return initializationGate;
+    });
+    channel.port1.addEventListener("message", ((event: MessageEvent<unknown>) => {
+      portMessages.push(event.data);
+    }) as EventListener);
+    pair.host.addEventListener("message", (() => {
+      pair.guestProxy.postMessage({ type: "gameyard:init", context }, pair.guest.location.origin, [
+        channel.port2 as unknown as MessagePort,
+      ]);
+    }) as EventListener);
+
+    const connection = connectGuest({
+      window: pair.guest,
+      parent: pair.hostProxy,
+      targetOrigin: pair.guest.location.origin,
+      identity: { gameId: context.gameId, buildId: context.buildId },
+      handshakeTimeoutMs: 100,
+      hooks,
+      initialize,
+    });
+    await flushAsync(pair, 4);
+
+    expect(initialize).toHaveBeenCalledOnce();
+    expect(portMessages).toEqual([]);
+    expect(hooks.input.setEnabled).not.toHaveBeenCalled();
+
+    finishInitialization();
+    await flushAsync(pair, 8);
+    const bridge = await connection;
+    await flushAsync(pair, 4);
+
+    expect(portMessages[0]).toEqual({ type: "ready" });
+    expect(hooks.input.setEnabled).not.toHaveBeenCalled();
+
+    channel.port1.postMessage({
+      type: "input.setEnabled",
+      commandId: "first-after-ready",
+      enabled: false,
+    });
+    await flushAsync(pair, 4);
+    expect(hooks.input.setEnabled).toHaveBeenCalledWith(false);
+    expect(portMessages).toContainEqual({
+      type: "ack",
+      commandId: "first-after-ready",
+      result: { ok: true },
+    });
+    channel.port1.postMessage({ type: "lifecycle.dispose", commandId: "cleanup" });
+    await flushAsync(pair, 4);
+    expect(bridge.isDisposed).toBe(true);
+  });
+
+  it("rejects failed initialization without announcing ready and clears resources", async () => {
+    const pair = createFakeWindowPair("https://gameyard.test");
+    const channel = new FakeMessageChannel(pair.clock);
+    const cleanup = vi.fn();
+    const portMessages: unknown[] = [];
+    channel.port1.addEventListener("message", ((event: MessageEvent<unknown>) => {
+      portMessages.push(event.data);
+    }) as EventListener);
+    pair.host.addEventListener("message", (() => {
+      pair.guestProxy.postMessage({ type: "gameyard:init", context }, pair.guest.location.origin, [
+        channel.port2 as unknown as MessagePort,
+      ]);
+    }) as EventListener);
+
+    const connection = connectGuest({
+      window: pair.guest,
+      parent: pair.hostProxy,
+      targetOrigin: pair.guest.location.origin,
+      identity: { gameId: context.gameId, buildId: context.buildId },
+      handshakeTimeoutMs: 100,
+      hooks: createHooks(),
+      initialize: (bridge) => {
+        bridge.resources.register(cleanup);
+        throw new Error("app boot failed");
+      },
+    });
+    await flushAsync(pair, 5);
+
+    await expect(connection).rejects.toMatchObject({
+      name: "GuestInitializationError",
+      message: "Guest initialization failed",
+    });
+    expect(portMessages).toEqual([]);
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(channel.port2.closed).toBe(true);
+    expect(snapshotResources(pair.guest, pair.clock, [channel.port2])).toEqual({
+      listeners: 0,
+      scheduledTasks: 0,
+      openPorts: 0,
+    });
   });
 
   it("rejects an init context that does not match guest identity", async () => {
@@ -147,6 +274,7 @@ describe("connectGuest", () => {
       identity: { gameId: context.gameId, buildId: context.buildId },
       handshakeTimeoutMs: 100,
       hooks: createHooks(),
+      initialize: vi.fn(),
     });
 
     pair.clock.advanceBy(0);
@@ -193,6 +321,23 @@ describe("GuestBridge commands", () => {
         inputEnabled: true,
         events: [],
       },
+    });
+  });
+
+  it("emits strict lifecycle change requests for Hub-owned pause policy", async () => {
+    const connected = await connect();
+
+    connected.bridge.requestLifecycleChange("pause");
+    connected.bridge.requestLifecycleChange("resume");
+    connected.pair.clock.advanceBy(0);
+
+    expect(connected.portMessages).toContainEqual({
+      type: "lifecycle.changeRequest",
+      action: "pause",
+    });
+    expect(connected.portMessages).toContainEqual({
+      type: "lifecycle.changeRequest",
+      action: "resume",
     });
   });
 

@@ -1,5 +1,6 @@
 import type { HubRoute } from "./route";
 import type { SupportedLocale } from "./settings";
+import type { DiagnosticSnapshot as GuestDiagnosticSnapshot } from "@gameyard/game-contract";
 
 export interface DiagnosticEvent {
   readonly at: string;
@@ -13,6 +14,7 @@ export interface DiagnosticSnapshot {
   readonly selectedGame: string | null;
   readonly locale: SupportedLocale;
   readonly settingsRevision: number | null;
+  readonly guest: GuestDiagnosticSnapshot | null;
   readonly events: readonly DiagnosticEvent[];
 }
 
@@ -27,6 +29,7 @@ export function makeDiagnosticSnapshot(
   locale: SupportedLocale,
   settingsRevision: number | null,
   events: readonly DiagnosticEvent[],
+  guest: GuestDiagnosticSnapshot | null = null,
 ): DiagnosticSnapshot {
   return {
     build: __GAMEYARD_BUILD__,
@@ -34,6 +37,7 @@ export function makeDiagnosticSnapshot(
     selectedGame: route.kind === "game" ? route.game.id : null,
     locale,
     settingsRevision,
+    guest,
     events,
   };
 }
@@ -45,6 +49,10 @@ export function diagnosticText(snapshot: DiagnosticSnapshot): string {
     `selected=${snapshot.selectedGame ?? "none"}`,
     `locale=${snapshot.locale}`,
     `settingsRevision=${snapshot.settingsRevision ?? "invalid"}`,
+    `guestLifecycle=${snapshot.guest?.lifecycle ?? "none"}`,
+    `guestSettingsRevision=${snapshot.guest?.settingsRevision ?? "none"}`,
+    `guestInputEnabled=${snapshot.guest?.inputEnabled ?? "none"}`,
+    `guestEvents=${snapshot.guest?.events.length ?? 0}`,
     `events=${snapshot.events.length}`,
   ].join("\n");
 }

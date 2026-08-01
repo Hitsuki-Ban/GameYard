@@ -1,3 +1,4 @@
+import type { DiagnosticSnapshot as GuestDiagnosticSnapshot } from "@gameyard/game-contract";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +11,7 @@ import {
   type DiagnosticSnapshot,
 } from "./diagnostics";
 import { i18n } from "./i18n";
+import { PulseRuntime, type PulseRuntimeHandle } from "./PulseRuntime";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
   SETTINGS_STORAGE_KEY,
@@ -222,14 +224,35 @@ function CatalogRow({
         <span>{t("catalog.order", { order: game.migrationOrder })}</span>
         <span>{t("catalog.languages")}</span>
         <span className="status-label">
-          <i aria-hidden="true" /> {t("catalog.queued")}
+          <i aria-hidden="true" />
+          {t(game.status === "playable" ? "catalog.playable" : "catalog.queued")}
         </span>
       </div>
     </li>
   );
 }
 
-function Stage({ route }: { readonly route: HubRoute }) {
+interface StageProps {
+  readonly route: HubRoute;
+  readonly settings: HubSettings | null;
+  readonly systemLanguages: readonly string[];
+  readonly pulseRef: React.RefObject<PulseRuntimeHandle | null>;
+  readonly onClosePulse: () => Promise<void>;
+  readonly onSettingsChange: (patch: HubSettingsPatch) => void;
+  readonly onGuestDiagnosticSnapshot: (snapshot: GuestDiagnosticSnapshot | null) => void;
+  readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
+}
+
+function Stage({
+  route,
+  settings,
+  systemLanguages,
+  pulseRef,
+  onClosePulse,
+  onSettingsChange,
+  onGuestDiagnosticSnapshot,
+  onEvent,
+}: StageProps) {
   const { t } = useTranslation();
 
   if (route.kind === "error") {
@@ -261,6 +284,20 @@ function Stage({ route }: { readonly route: HubRoute }) {
   }
 
   const game = route.game;
+  if (game.id === "pulse-link-overdrive" && settings !== null) {
+    return (
+      <PulseRuntime
+        ref={pulseRef}
+        game={game}
+        settings={settings}
+        systemLanguages={systemLanguages}
+        onClose={onClosePulse}
+        onSettingsChange={onSettingsChange}
+        onDiagnosticSnapshot={onGuestDiagnosticSnapshot}
+        onEvent={onEvent}
+      />
+    );
+  }
   return (
     <section
       className={`stage stage--game stage--${game.accent}`}
@@ -286,9 +323,11 @@ function Stage({ route }: { readonly route: HubRoute }) {
           <a href={game.repositoryUrl} target="_blank" rel="noreferrer">
             {t("catalog.repository")}
           </a>
-          <a href={game.liveUrl} target="_blank" rel="noreferrer">
-            {t("catalog.live")}
-          </a>
+          {game.liveUrl ? (
+            <a href={game.liveUrl} target="_blank" rel="noreferrer">
+              {t("catalog.live")}
+            </a>
+          ) : null}
         </div>
         <small>{t("stage.linksNote")}</small>
       </div>
@@ -364,6 +403,22 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
             <dt>{t("diagnostics.revision")}</dt>
             <dd>{snapshot.settingsRevision ?? t("diagnostics.invalid")}</dd>
           </div>
+          <div>
+            <dt>{t("diagnostics.guestLifecycle")}</dt>
+            <dd>{snapshot.guest?.lifecycle ?? t("diagnostics.none")}</dd>
+          </div>
+          <div>
+            <dt>{t("diagnostics.guestInput")}</dt>
+            <dd>{snapshot.guest ? String(snapshot.guest.inputEnabled) : t("diagnostics.none")}</dd>
+          </div>
+          <div>
+            <dt>{t("diagnostics.guestRevision")}</dt>
+            <dd>{snapshot.guest?.settingsRevision ?? t("diagnostics.none")}</dd>
+          </div>
+          <div>
+            <dt>{t("diagnostics.guestEvents")}</dt>
+            <dd>{snapshot.guest?.events.length ?? 0}</dd>
+          </div>
         </dl>
         <div className="diagnostics__events">
           <h3>{t("diagnostics.events")}</h3>
@@ -379,6 +434,22 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
                 </li>
               ))}
             </ol>
+          )}
+          <h3>{t("diagnostics.guestEvents")}</h3>
+          {snapshot.guest?.events.length ? (
+            <ol>
+              {snapshot.guest.events.map((event, index) => (
+                <li key={`${event.timestampMs}-${event.code}-${index}`}>
+                  <time>{event.timestampMs}</time>
+                  <strong>{event.level}</strong>
+                  <code>
+                    {event.code}: {event.message}
+                  </code>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>{t("diagnostics.empty")}</p>
           )}
         </div>
         <div className="diagnostics__actions">
@@ -462,6 +533,10 @@ export function App() {
   const [systemLanguages, setSystemLanguages] = useState<readonly string[]>(currentSystemLanguages);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
+  const [guestDiagnosticSnapshot, setGuestDiagnosticSnapshot] =
+    useState<GuestDiagnosticSnapshot | null>(null);
+  const pulseRef = useRef<PulseRuntimeHandle>(null);
+  const routeRef = useRef(route);
   const [events, setEvents] = useState<readonly DiagnosticEvent[]>(() => [
     {
       at: new Date().toISOString(),
@@ -480,6 +555,7 @@ export function App() {
   const locale: SupportedLocale = settings
     ? resolveLocale(settings.localePreference, systemLanguages)
     : resolveSystemLocale(systemLanguages);
+  routeRef.current = route;
 
   useEffect(() => {
     if (settingsState.kind !== "empty") return;
@@ -515,6 +591,24 @@ export function App() {
   useEffect(() => {
     const handlePopState = () => {
       const nextRoute = parseHubRoute(window.location.search);
+      const currentRoute = routeRef.current;
+      if (
+        currentRoute.kind === "game" &&
+        currentRoute.game.id === "pulse-link-overdrive" &&
+        pulseRef.current
+      ) {
+        void pulseRef.current
+          .dispose()
+          .then(() => {
+            routeRef.current = nextRoute;
+            setRoute(nextRoute);
+            setGuestDiagnosticSnapshot(null);
+            recordEvent("route.popstate", { route: describeRoute(nextRoute) });
+          })
+          .catch(() => undefined);
+        return;
+      }
+      routeRef.current = nextRoute;
       setRoute(nextRoute);
       recordEvent("route.popstate", { route: describeRoute(nextRoute) });
     };
@@ -522,9 +616,15 @@ export function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [recordEvent]);
 
-  const selectGame = (gameId: GameId) => {
+  const selectGame = async (gameId: GameId) => {
+    if (route.kind === "game" && route.game.id === gameId) return;
+    if (route.kind === "game" && route.game.id === "pulse-link-overdrive") {
+      await pulseRef.current?.dispose();
+      setGuestDiagnosticSnapshot(null);
+    }
     window.history.pushState(null, "", gameSearch(gameId));
     const nextRoute = parseHubRoute(window.location.search);
+    routeRef.current = nextRoute;
     setRoute(nextRoute);
     recordEvent("route.select", { gameId });
   };
@@ -563,9 +663,42 @@ export function App() {
     });
   };
 
+  const closePulse = useCallback(async () => {
+    await pulseRef.current?.dispose();
+    setGuestDiagnosticSnapshot(null);
+    window.history.pushState(null, "", "./");
+    const nextRoute = parseHubRoute(window.location.search);
+    routeRef.current = nextRoute;
+    setRoute(nextRoute);
+    recordEvent("route.close", { gameId: "pulse-link-overdrive" });
+  }, [recordEvent]);
+
+  const openDiagnostics = useCallback(() => {
+    setDiagnosticsOpen(true);
+    const handle = pulseRef.current;
+    if (!handle) return;
+    void handle
+      .requestDiagnostics()
+      .then((snapshot) => {
+        if (snapshot) setGuestDiagnosticSnapshot(snapshot);
+      })
+      .catch((error: unknown) => {
+        recordEvent("diagnostics.guest-failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
+  }, [recordEvent]);
+
   const diagnosticSnapshot = useMemo(
-    () => makeDiagnosticSnapshot(route, locale, settings?.revision ?? null, events),
-    [events, locale, route, settings?.revision],
+    () =>
+      makeDiagnosticSnapshot(
+        route,
+        locale,
+        settings?.revision ?? null,
+        events,
+        guestDiagnosticSnapshot,
+      ),
+    [events, guestDiagnosticSnapshot, locale, route, settings?.revision],
   );
   const selectedId = route.kind === "game" ? route.game.id : null;
 
@@ -573,7 +706,16 @@ export function App() {
     <div className="app-shell">
       <header className="site-header">
         <div className="brand-block">
-          <a className="wordmark" href="./" aria-label="GameYard home">
+          <a
+            className="wordmark"
+            href="./"
+            aria-label="GameYard home"
+            onClick={(event) => {
+              if (route.kind !== "game" || route.game.id !== "pulse-link-overdrive") return;
+              event.preventDefault();
+              void closePulse().catch(() => undefined);
+            }}
+          >
             <span>GAME</span>
             <span>YARD</span>
           </a>
@@ -592,7 +734,7 @@ export function App() {
               {LAB_COPY[locale].open}
             </button>
           ) : null}
-          <button className="utility-button" type="button" onClick={() => setDiagnosticsOpen(true)}>
+          <button className="utility-button" type="button" onClick={openDiagnostics}>
             {t("nav.diagnostics")} <span aria-hidden="true">↘</span>
           </button>
         </div>
@@ -637,12 +779,23 @@ export function App() {
                   key={game.id}
                   game={game}
                   selected={game.id === selectedId}
-                  onSelect={selectGame}
+                  onSelect={(gameId) => {
+                    void selectGame(gameId).catch(() => undefined);
+                  }}
                 />
               ))}
             </ol>
           </section>
-          <Stage route={route} />
+          <Stage
+            route={route}
+            settings={settings}
+            systemLanguages={systemLanguages}
+            pulseRef={pulseRef}
+            onClosePulse={closePulse}
+            onSettingsChange={updateSettings}
+            onGuestDiagnosticSnapshot={setGuestDiagnosticSnapshot}
+            onEvent={recordEvent}
+          />
         </div>
       </main>
 

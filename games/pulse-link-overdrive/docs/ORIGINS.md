@@ -4,7 +4,7 @@ PULSE LINK // OVERDRIVE is an unofficial, independently made web game. Its code,
 
 ## Mechanical roots
 
-The design began with publicly documented ideas from Falcom's *Pomっと！*: rotating two-piece drops, groups of three connected colors, chains that build a resource, an all-in choice between attack and defense, colored rows rising from below, and defeat centered on the spawn column.
+The design began with publicly documented ideas from Falcom's _Pomっと！_: rotating two-piece drops, groups of three connected colors, chains that build a resource, an all-in choice between attack and defense, colored rows rising from below, and defeat centered on the spawn column.
 
 Those ideas define the starting vocabulary, not a claim of exact reproduction. Public sources do not establish every formula or randomization rule. PULSE LINK // OVERDRIVE therefore uses independently designed scoring, energy, attack, defense, AI, pacing, accessibility, audiovisual feedback, and game modes.
 

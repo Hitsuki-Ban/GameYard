@@ -80,6 +80,9 @@ importers:
       '@gameyard/game-contract':
         specifier: workspace:*
         version: link:../../packages/game-contract
+      '@gameyard/host-bridge':
+        specifier: workspace:*
+        version: link:../../packages/host-bridge
       i18next:
         specifier: 'catalog:'
         version: 26.3.6(typescript@7.0.2)
@@ -113,10 +116,20 @@ importers:
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)
 
   games/pulse-link-overdrive:
+    dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../../packages/game-contract
+      '@gameyard/guest-bridge':
+        specifier: workspace:*
+        version: link:../../packages/guest-bridge
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.2
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)

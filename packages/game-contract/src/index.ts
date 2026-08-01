@@ -388,6 +388,14 @@ export const SettingsChangeRequestEventSchema = z.strictObject({
   change: SettingsChangeSchema,
 });
 
+export const LifecycleChangeActionSchema = z.enum(["pause", "resume"]);
+export type LifecycleChangeAction = z.infer<typeof LifecycleChangeActionSchema>;
+
+export const LifecycleChangeRequestEventSchema = z.strictObject({
+  type: z.literal("lifecycle.changeRequest"),
+  action: LifecycleChangeActionSchema,
+});
+
 export const HostActionSchema = z.enum(["fullscreen.enter", "fullscreen.exit"]);
 export type HostAction = z.infer<typeof HostActionSchema>;
 
@@ -412,6 +420,7 @@ export const GuestEventSchema = z.discriminatedUnion("type", [
   AckEventSchema,
   LifecycleStateEventSchema,
   SettingsChangeRequestEventSchema,
+  LifecycleChangeRequestEventSchema,
   HostActionRequestEventSchema,
   DiagnosticEventMessageSchema,
   DiagnosticsSnapshotResultEventSchema,
@@ -421,6 +430,7 @@ export type GuestEvent = z.infer<typeof GuestEventSchema>;
 export type ReadyEvent = z.infer<typeof ReadyEventSchema>;
 export type LifecycleStateEvent = z.infer<typeof LifecycleStateEventSchema>;
 export type SettingsChangeRequestEvent = z.infer<typeof SettingsChangeRequestEventSchema>;
+export type LifecycleChangeRequestEvent = z.infer<typeof LifecycleChangeRequestEventSchema>;
 export type HostActionRequestEvent = z.infer<typeof HostActionRequestEventSchema>;
 export type DiagnosticEventMessage = z.infer<typeof DiagnosticEventMessageSchema>;
 export type DiagnosticsSnapshotResultEvent = z.infer<typeof DiagnosticsSnapshotResultEventSchema>;

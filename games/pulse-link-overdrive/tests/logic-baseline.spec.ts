@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
-const logicSmokeUrl = new URL("./logic-smoke.html", import.meta.url).href;
+const source = (name: string) => fileURLToPath(new URL(`../src/${name}`, import.meta.url));
+const runner = fileURLToPath(new URL("./logic-baseline.runner.js", import.meta.url));
 
 test("preserves the pinned deterministic logic baseline", async ({ page }) => {
   const consoleErrors: string[] = [];
@@ -15,13 +17,22 @@ test("preserves the pinned deterministic logic baseline", async ({ page }) => {
     pageErrors.push(error.message);
   });
 
-  await page.goto(logicSmokeUrl, { waitUntil: "load" });
+  await page.goto("about:blank");
+  for (const name of ["config.js", "i18n.js", "model.js"]) {
+    await page.addScriptTag({ path: source(name) });
+  }
+  await page.addScriptTag({ path: runner });
 
-  const status = page.locator("#status");
-  await expect(status).toHaveText("PASS · 36 ASSERTIONS · 293 LOCKS");
-  await expect(page.locator("#summary")).toHaveClass("pass");
-  await expect(page.locator("#results li")).toHaveCount(36);
-  await expect(page.locator("#error")).toBeHidden();
+  const result = await page.evaluate(() => window.runPulseLogicBaseline());
+  expect(result.assertions).toBe(36);
+  expect(result.locks).toBe(293);
+  expect(result.passed).toHaveLength(36);
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
 });
+
+declare global {
+  interface Window {
+    runPulseLogicBaseline(): { assertions: number; locks: number; passed: string[] };
+  }
+}

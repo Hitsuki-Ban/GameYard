@@ -1,35 +1,30 @@
 # Development
 
-PULSE LINK // OVERDRIVE is a zero-dependency browser project. There is no package install or bundler step: `index.html` loads the CSS and plain JavaScript modules directly, and the Python standard library serves and assembles releases.
+PULSE LINK // OVERDRIVE is a Vite+ GameYard Guest. Use `vp` for every package operation.
 
 ## Module boundaries
 
-- `src/config.js` owns constants, utilities, events, and local saves.
-- `src/i18n.js` owns the `zh-CN`, `ja`, and `en` catalogs, system-language resolution, and localized manifest selection.
+- `src/config.js` owns constants, utilities, events, and game-owned saves.
+- `src/i18n.js` owns the `zh-CN`, `ja`, and `en` catalogs; the Hub owns locale selection.
 - `src/model.js` owns deterministic board rules, matches, modes, and AI; it does not render the DOM.
-- `src/input.js` normalizes keyboard, pointer, touch, and standard Gamepad input into game actions.
+- `src/input.js` normalizes keyboard, pointer, touch, and standard Gamepad input.
 - `src/render.js` draws snapshots and effects without deciding game outcomes.
-- `src/audio.js` owns procedural sound, music, and haptics.
-- `src/app.js` connects the page lifecycle, menus, persistence, input, simulation, and presentation.
+- `src/audio.js` owns procedural audio and haptics while applying Host audio levels.
+- `src/app.js` is the sole Guest bootstrap and connects Host lifecycle, settings, locale, input, diagnostics, persistence, simulation, and presentation.
 
 Keep rule changes in the simulation layer and presentation changes in the UI layers. Do not make rendering code mutate match results.
 
-## Run and test
+## Run and verify
 
-```bash
-uv run python -m http.server 8080
+```powershell
+# From the repository root: start the same-origin Hub and watched Pulse stage.
+vp run dev
+
+# From this package: verify or build the Guest stage.
+vp run test
+vp run build
 ```
 
-Use `http://localhost:8080/` for the game and `http://localhost:8080/tests/logic-smoke.html` for deterministic core regression checks. The smoke page is the test entry point and must report PASS before release.
+The Playwright baseline injects the logic modules into a blank browser page; it must report exactly 36 assertions and 293 locks. The build writes only to `.gameyard/stage/games/pulse-link-overdrive`, uses relative asset URLs, and declares every emitted file in `game.manifest.json`.
 
-## Standalone build
-
-```bash
-uv run python tools/build_standalone.py
-```
-
-This writes `dist/pulse-link-overdrive-standalone.html`, with the project CSS and scripts embedded for direct offline play.
-
-## GitHub Pages
-
-Publish the repository root as the Pages artifact. The root `index.html`, `src/`, `assets/`, `manifest.zh-CN.webmanifest`, `manifest.ja.webmanifest`, `manifest.en.webmanifest`, Service Worker, and styles are one deployable static site; no dependency installation or production build is required for Pages.
+The Guest does not run without a valid same-origin Hub INIT. Its pause UI requests a Hub lifecycle change; only acknowledged Host commands change runtime state.
