@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "recordId": "tumbledrum-gameyard-distribution-2026-08-01",
+  "gameId": "tumbledrum",
+  "authorization": {
+    "source": "owner-project-direction",
+    "recordedAt": "2026-08-01T00:00:00+09:00",
+    "taskId": "019fbbb1-910c-7652-9cb5-f27d8150dd88",
+    "grantText": "provenance/tumbledrum/distribution-grant.md",
+    "grantTextSha256": "9840ecbe8cd38edc54586bb465c809e754fa54342e023e8d1312403a0411a939"
+  },
+  "upstream": {
+    "repository": "https://github.com/Hitsuki-Ban/TUMBLEDRUM",
+    "revision": "ba6fc680626ac59db793175122600369d48f9834",
+    "tree": "57b7202e7326a606ad1e4a1a6b39c4300e5034c8",
+    "checksumManifest": {
+      "path": "SHA256SUMS.txt",
+      "sha256": "98716ed822086f4ff4055c1142a4d77e7e5628eb68875a825670288d9b5b0a64"
+    },
+    "assetManifest": {
+      "path": "ASSET_MANIFEST.md",
+      "sha256": "65ed88fa4178ce5dc5117dddf54d281134c45202a53c569f73b2347bd7dbb1a7"
+    }
+  },
+  "permissions": {
+    "actions": [
+      "copy",
+      "modify",
+      "build",
+      "public-host",
+      "display-and-run",
+      "distribute-source",
+      "distribute-static-artifact"
+    ],
+    "venues": ["https://github.com/Hitsuki-Ban/GameYard", "GitHub Pages", "Cloudflare"],
+    "licenseScope": "GameYard-project-only"
+  },
+  "assetClasses": [
+    {
+      "id": "runtime-source-and-localization",
+      "coverage": "covered",
+      "paths": ["index.html", "styles.css", "src/*.js"],
+      "evidence": "The pinned checksum manifest covers the HTML, CSS, four runtime modules, authored content, and three locale catalogs."
+    },
+    {
+      "id": "programmatic-visuals-and-ui",
+      "coverage": "covered",
+      "paths": ["index.html", "styles.css", "src/game.js"],
+      "evidence": "ASSET_MANIFEST.md states that runtime visuals are drawn with Canvas 2D and CSS."
+    },
+    {
+      "id": "inline-icon",
+      "coverage": "covered",
+      "paths": ["index.html"],
+      "evidence": "The only bundled icon is an inline base64 SVG favicon inside index.html."
+    },
+    {
+      "id": "programmatic-audio",
+      "coverage": "covered",
+      "paths": ["src/audio.js"],
+      "evidence": "Audio is synthesized at runtime with Web Audio oscillators, noise, filters, and envelopes; no recordings are bundled."
+    },
+    {
+      "id": "single-file-build",
+      "coverage": "covered",
+      "paths": ["TUMBLEDRUM_PLAY.html", "tools/build_single.py"],
+      "evidence": "The pinned repository includes one generated standalone HTML artifact and its builder."
+    },
+    {
+      "id": "screenshots",
+      "coverage": "covered",
+      "paths": ["screenshots/*.png"],
+      "evidence": "Eleven PNG screenshots are enumerated by the pinned checksum manifest."
+    },
+    {
+      "id": "documentation-tests-and-build-metadata",
+      "coverage": "covered",
+      "paths": [
+        "*.md",
+        "BUILD_INFO.json",
+        "VERSION.txt",
+        "SHA256SUMS.txt",
+        "tests/*.py",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "evidence": "The record covers authored documentation, test programs, build metadata, and development lockfiles if they are imported."
+    },
+    {
+      "id": "font-files",
+      "coverage": "not-distributed",
+      "paths": [],
+      "evidence": "The game references a system font stack and contains no font files or @font-face declarations."
+    },
+    {
+      "id": "recorded-audio-and-external-runtime-assets",
+      "coverage": "none-found",
+      "paths": [],
+      "evidence": "The pinned tree and ASSET_MANIFEST.md contain no recorded audio, external image packs, SVG packs, or icon libraries."
+    }
+  ],
+  "excludedThirdParty": [
+    {
+      "id": "system-fonts",
+      "boundary": "Names in the CSS system-font stack are referenced but no font binaries are copied or distributed.",
+      "evidence": "ASSET_MANIFEST.md and source inspection."
+    },
+    {
+      "id": "research-references",
+      "boundary": "Games, papers, and websites cited by RESEARCH_AND_DESIGN*.md are references, not bundled runtime assets.",
+      "evidence": "Pinned research documents and the absence of downloaded reference assets."
+    },
+    {
+      "id": "playwright-development-dependencies",
+      "boundary": "Playwright and its transitive packages are development tooling and are not copied as TUMBLEDRUM assets.",
+      "evidence": "pyproject.toml and uv.lock contain no game runtime dependency."
+    }
+  ]
+}

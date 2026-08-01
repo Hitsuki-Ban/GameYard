@@ -1,9 +1,9 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-5-pulse-release-gates`
-- goal: Close Issue #5 through its broad release gate, merge and clean it, then start the TUMBLEDRUM rights gate in Issue #6 from a synchronized clean `main`.
-- current artifact: `gameyard@63d43c2a68f56bd6`, one exact Pulse exhibit, 10 files, no Lab runtime, game Service Worker, standalone manifest, repository-prefix-breaking URL, or production mutation surface.
+- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | working branch: `agent/issue-6-tumbledrum-rights`
+- goal: Close Issue #6 through its project-specific TUMBLEDRUM distribution record and fail-closed artifact gate, merge and clean it, then start Issue #7 from synchronized `main`.
+- current artifact: `gameyard@aee7cee5fbf31d66`, one exact Pulse exhibit, 10 files, with the pinned TUMBLEDRUM distribution record validated before stage assembly.
 - done-this-task:
   - Published Issues #1–#16; merged and cleaned #2 through PR #17 and #3 through PR #18.
   - Added the INIT-gated Pulse guest, Hub runtime catalog/controller, live locale/settings, ACKed lifecycle, fullscreen requests, bounded diagnostics, game-only storage, and terminal cleanup.
@@ -12,14 +12,19 @@
   - Replaced the standalone HTML smoke with the same 36 assertions / 293 locks runner before deleting the old page, SW, manifests, Python builder, and permanent debug surface.
   - Assembled and verified Pulse + Hub as one content-derived artifact; real-browser load, pause/resume, live locale/settings, reload, and close paths work with one iframe.
   - Added one repository-prefix release matrix for 3 viewports × 3 locales, real pointer/keyboard input, and bounded diagnostics, plus one 50-cycle enter/exit/reload lifecycle soak.
+  - Merged Issue #5 through PR #20 and cleaned its topic branch.
+  - Recorded TUMBLEDRUM's project-specific owner direction, pinned revision/tree/evidence hashes, every distributable asset class, and explicit third-party boundaries without claiming a general upstream license.
+  - Added a strict provenance parser and an assembler gate that validates project-specific records before stage/build checks; provenance participates in the content-derived build ID.
+  - Fixed the owner-review downgrade path: TUMBLEDRUM cannot replace its required LicenseRef/record with a generic license string or change its pinned repository/revision/tree.
 - verified:
-  - `vp run ready`; production E2E 18/18; integrated dev/Lab E2E 1/1; repository-prefix release E2E 2/2; Cloudflare deploy dry-run.
+  - Final `vp run release:pulse` after the owner-review fix: tooling 41/41; `vp check`; workspace tests; 36 assertions / 293 locks; production E2E 18/18; integrated dev/Lab E2E 1/1; repository-prefix release E2E 2/2; Cloudflare deploy dry-run.
   - Ten screenshot baselines cover desktop, portrait, and landscape in English, Japanese, and Simplified Chinese plus paused gameplay; 50 lifecycle cycles return frames, Host ports, and runtime listeners to baseline with zero failed requests.
+  - Independent verifier PASS; owner reviewer PASS after the license-downgrade bypass was fixed, with no remaining P0–P3.
 - next:
-  - Obtain independent owner review and verification, merge PR with `Closes #5`, synchronize `main`, delete local/remote topic branches, and confirm a clean worktree.
-  - Start Issue #6 only from that clean state; record distributable TUMBLEDRUM rights before importing source or assets.
+  - Commit and push the Issue #6 branch, merge its PR with `Closes #6`, synchronize `main`, delete local/remote topic branches, and confirm a clean worktree.
+  - Start Issue #7 only from that clean state; import the pinned TUMBLEDRUM history and preserve its upstream simulation baseline before adapter changes.
 - gates:
-  - Do not copy TUMBLEDRUM source/assets into the public artifact before Issue #6 records distributable rights.
+  - TUMBLEDRUM distribution remains limited to the recorded GameYard project scope; a missing, incomplete, blocked, or hash-mismatched record must stop artifact assembly.
   - Do not reintroduce Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path.
 - authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; decisions -> `docs/adr/`; commands -> `docs/DEVELOPMENT.md`.
 - stale-first: rerun the single complete `vp run release:pulse` gate after source, dependency, artifact-config, or deployment changes.

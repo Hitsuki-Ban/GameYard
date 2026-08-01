@@ -1,12 +1,12 @@
 # 三个上游游戏实现审计
 
-审计日期：2026-08-01。证据来自三个仓库 `main` 的浅克隆、GitHub API 与源码逐文件检查。GameYard 当前没有复制任何上游游戏代码或素材。
+审计日期：2026-08-01。证据来自三个仓库 `main` 的浅克隆、GitHub API 与源码逐文件检查。GameYard 当前只包含已完成迁移的 PulseLinkOverdrive；TUMBLEDRUM 与 CrownBreaker 尚未导入。
 
 ## 快速对照
 
 | 项目               | 固定 revision                              | 浏览器结构                                             | 工具链                                                 | 公共设置                                                         | 主要集成风险                                                 | 迁移顺序 |
 | ------------------ | ------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------ | -------- |
-| TUMBLEDRUM         | `ba6fc680626ac59db793175122600369d48f9834` | Canvas；4 个经典 IIFE；`window.TD`；约 4,105 行 `Game` | `uv` + Python 3.12；Playwright 1.61.0；单 HTML builder | audio/music 布尔、shake、motion、contrast、language              | 永续 RAF、不可卸载全局监听、全 viewport、无 LICENSE          | 2        |
+| TUMBLEDRUM         | `ba6fc680626ac59db793175122600369d48f9834` | Canvas；4 个经典 IIFE；`window.TD`；约 4,105 行 `Game` | `uv` + Python 3.12；Playwright 1.61.0；单 HTML builder | audio/music 布尔、shake、motion、contrast、language              | 永续 RAF、不可卸载全局监听、全 viewport、项目专用权利边界    | 2        |
 | PulseLinkOverdrive | `1e42e4130145922f22315e420daaabf44b42b325` | Canvas + DOM；7 个边界清晰的 IIFE；纯 model 层         | 零依赖运行；Python standalone builder                  | sfx/music 数值、shake、reducedMotion、glyphs、haptics、locale    | 全局 App/RAF/SW；部分 destroy 不完整                         | 1        |
 | CrownBreaker       | `1f7b911926c786043ba793e16c4f25cd5f523b21` | Canvas + DOM + SVG；约 4,720 行单体 `game.js`          | `pnpm@11.7.0`；Playwright 1.61.1；模拟/静态检查        | master/music/sfx、shake、flashes、hints、reducedMotion、language | 立即 init、音频 interval、永续 RAF、单体状态、SW cache scope | 3        |
 
@@ -20,7 +20,9 @@
 - 设置与存档键为 `tumbledrum-settings-v1`、`tumbledrum-save-v1`；活动 run 不持久化：[game.js](https://github.com/Hitsuki-Ban/TUMBLEDRUM/blob/ba6fc680626ac59db793175122600369d48f9834/src/game.js#L220-L258)。
 - 日/中/英目录会严格比较 key/type，System 模式监听 `languagechange`：[i18n.js](https://github.com/Hitsuki-Ban/TUMBLEDRUM/blob/ba6fc680626ac59db793175122600369d48f9834/src/i18n.js#L183-L239)。
 - Canvas 逻辑尺寸为 900×1200，模拟采用固定步长，缩放依据整个 `window`；输入、resize、orientation、visibility 均为页面级监听：[game.js](https://github.com/Hitsuki-Ban/TUMBLEDRUM/blob/ba6fc680626ac59db793175122600369d48f9834/src/game.js#L298-L414)。
-- 仓库当前没有 LICENSE。公开 artifact 在明确许可或内部权属记录之前不得包含其源代码和素材；这不是技术兼容问题，而是 M0 发布门。
+- 仓库仍没有通用 LICENSE。GameYard 仅依据项目所有者在任务 `019fbbb1-910c-7652-9cb5-f27d8150dd88` 中给出的迁移与公开托管方向，记录了绑定该 revision/tree 的项目专用分发授权；它不是 standalone 仓库的通用开源许可证，也不扩张为 GameYard 之外的商业使用或转授权声明。
+- `provenance/tumbledrum/distribution-record.json` 逐类覆盖运行源码与本地化、Canvas/CSS 视觉、内联图标、程序化音频、单文件构建、11 张截图、文档/测试/构建元数据，并明确不存在随包分发的字体、录音或外部 runtime 素材。记录同时固定上游 `SHA256SUMS.txt` 与 `ASSET_MANIFEST.md` 的 SHA-256。
+- Site assembler 在读取 stage 前校验严格 upstream index、项目专用记录、授权文本哈希与 revision/tree；记录缺失、不完整、被篡改或禁止公开时整站 artifact 直接失败。权利记录本身也进入内容派生 build ID。
 
 可保留：内容/关卡模型、程序化音频、严格翻译目录、现有完整浏览器测试。需要改造：显式 boot、pause/resume、设置映射、音频数值增益和 bridge 事件。无需实现同页 destroy，因为卸载由移除 iframe 完成。
 
