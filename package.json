@@ -11,7 +11,7 @@
     "test": "vp run -r test",
     "tooling:test": "vp exec node --test tooling/*.test.mjs",
     "artifact:verify": "vp exec node tooling/verify-production.mjs",
-    "e2e:install": "vp exec playwright install chromium",
+    "e2e:install": "vp exec playwright install chromium && vp run tumbledrum#browser:install",
     "e2e:lab": "vp exec playwright test --config playwright.dev.config.ts",
     "e2e": "vp run build && vp exec playwright test",
     "e2e:release": "vp run build && vp exec playwright test --config playwright.release.config.ts",

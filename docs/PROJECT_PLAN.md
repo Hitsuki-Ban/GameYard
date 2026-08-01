@@ -144,7 +144,9 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 前置已完成：`provenance/tumbledrum/` 记录了绑定固定 revision/tree、GameYard 仓库、GitHub Pages 与 Cloudflare 的项目专用分发方向，并逐类审计源代码、程序化视听内容、截图、构建元数据及未随包分发的第三方边界。Assembler 会在任何 stage/build ID 检查之前 fail closed；该记录不是 standalone 仓库的通用许可证。
 
-保留 120 Hz 固定步长、Canvas、内容与程序音频；加入 boot/bridge，公共布尔设置映射到数值 audio policy，不读取旧键。完成门包括原 smoke/integration/regression/full-run、三语言、3:4 desktop/mobile 截图和退出 frame 清理。
+固定上游历史与 standalone baseline 已完成：非 squash subtree 精确指向 `ba6fc680626ac59db793175122600369d48f9834`；36 条上游 checksum、120 Hz 固定步长、原 smoke/integration/regression/full-run、13 关、Campaign/Endless 结果，以及源码/单文件的 desktop/portrait/landscape 冒烟均可执行。TUMBLEDRUM 尚未进入 `site.assembly.json` 或生产 artifact。
+
+下一步保留 Canvas、内容与程序音频，加入 boot/bridge，公共布尔设置映射到数值 audio policy，不读取旧键。M2 完成门还包括三语言、3:4 desktop/mobile 截图和退出 frame 清理。
 
 ### M3 — CrownBreaker
 
