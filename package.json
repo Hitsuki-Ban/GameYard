@@ -1,0 +1,32 @@
+{
+  "name": "gameyard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp run hub#dev",
+    "build": "vp run hub#build",
+    "preview": "vp run hub#preview",
+    "check": "vp check",
+    "test": "vp run -r test",
+    "tooling:test": "vp exec node --test tooling/*.test.mjs",
+    "artifact:verify": "vp exec node tooling/verify-production.mjs",
+    "e2e:install": "vp exec playwright install chromium",
+    "e2e:lab": "vp exec playwright test --config playwright.dev.config.ts",
+    "e2e": "vp run hub#build && vp run artifact:verify && vp exec playwright test",
+    "ready": "vp run tooling:test && vp check && vp run -r test && vp run hub#build && vp run artifact:verify",
+    "deploy:dry-run": "vp exec wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "wrangler": "catalog:"
+  },
+  "engines": {
+    "node": "24.18.1"
+  },
+  "packageManager": "pnpm@11.18.0"
+}

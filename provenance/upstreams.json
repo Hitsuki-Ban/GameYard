@@ -1,0 +1,26 @@
+{
+  "auditedAt": "2026-08-01T00:00:00+09:00",
+  "repositories": [
+    {
+      "id": "tumbledrum",
+      "url": "https://github.com/Hitsuki-Ban/TUMBLEDRUM",
+      "revision": "ba6fc680626ac59db793175122600369d48f9834",
+      "license": null,
+      "publicImportAllowed": false
+    },
+    {
+      "id": "pulse-link-overdrive",
+      "url": "https://github.com/Hitsuki-Ban/PulseLinkOverdrive",
+      "revision": "1e42e4130145922f22315e420daaabf44b42b325",
+      "license": "MIT",
+      "publicImportAllowed": true
+    },
+    {
+      "id": "crown-breaker",
+      "url": "https://github.com/Hitsuki-Ban/CrownBreaker",
+      "revision": "1f7b911926c786043ba793e16c4f25cd5f523b21",
+      "license": "MIT",
+      "publicImportAllowed": true
+    }
+  ]
+}

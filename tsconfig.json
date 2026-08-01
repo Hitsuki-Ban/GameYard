@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/hub" },
+    { "path": "./packages/game-contract" },
+    { "path": "./packages/host-bridge" }
+  ]
+}
