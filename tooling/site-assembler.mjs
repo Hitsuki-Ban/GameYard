@@ -5,10 +5,12 @@ import { GameManifestSchema } from "../packages/game-contract/src/index.ts";
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import { inspectArtifactFiles, listArtifactFiles } from "./artifact-inspector.mjs";
 import { parseAssemblyConfig, parseRepositoryRelativePath } from "./assembly-config.mjs";
+import { loadProvenanceIndex, requireGameDistributionRights } from "./provenance.mjs";
 
 const assemblyConfigFilename = "site.assembly.json";
 const manifestFilename = "game.manifest.json";
 const hubManifestFilename = "hub.manifest.json";
+const provenanceIndexFilename = "provenance/upstreams.json";
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -124,6 +126,21 @@ export async function createAssemblyPlan(projectRoot) {
   const config = parseAssemblyConfig(
     await readJson(resolve(root, assemblyConfigFilename), assemblyConfigFilename),
   );
+  const provenance = await loadProvenanceIndex(root);
+  const distributions = new Map();
+  for (const repository of provenance.repositories) {
+    if (repository.rightsRecord) {
+      distributions.set(
+        repository.id,
+        await requireGameDistributionRights(root, provenance, repository.id),
+      );
+    }
+  }
+  for (const game of config.games) {
+    if (!distributions.has(game.id)) {
+      distributions.set(game.id, await requireGameDistributionRights(root, provenance, game.id));
+    }
+  }
   const buildId = await createArtifactBuildId(root);
   const hubStage = resolve(root, config.hubStage);
   await requireDirectory(hubStage, "Hub stage");
@@ -165,6 +182,7 @@ export async function createAssemblyPlan(projectRoot) {
   const gameIds = new Set();
 
   for (const gameConfig of config.games) {
+    const distribution = distributions.get(gameConfig.id);
     const stage = resolve(root, gameConfig.stage);
     await requireDirectory(stage, `Game stage ${gameConfig.stage}`);
     const manifestPath = resolve(stage, manifestFilename);
@@ -180,6 +198,15 @@ export async function createAssemblyPlan(projectRoot) {
     if (manifest.id !== gameConfig.id) {
       throw new Error(
         `${gameConfig.stage}/${manifestFilename} game ID mismatch: expected ${gameConfig.id}, received ${manifest.id}.`,
+      );
+    }
+    if (
+      manifest.provenance.repository !== distribution.url ||
+      manifest.provenance.revision !== distribution.revision ||
+      manifest.provenance.license !== distribution.license
+    ) {
+      throw new Error(
+        `${gameConfig.stage}/${manifestFilename} provenance does not match ${provenanceIndexFilename} for game ${manifest.id}.`,
       );
     }
     if (manifest.buildId !== buildId) {

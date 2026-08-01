@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Hitsuki-Ban/GameYard/provenance/schema/distribution-record.schema.json",
+  "title": "GameYard project-specific distribution record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordId",
+    "gameId",
+    "authorization",
+    "upstream",
+    "permissions",
+    "assetClasses",
+    "excludedThirdParty"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "recordId": { "type": "string", "minLength": 1 },
+    "gameId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "recordedAt", "taskId", "grantText", "grantTextSha256"],
+      "properties": {
+        "source": { "const": "owner-project-direction" },
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "grantText": { "type": "string", "minLength": 1 },
+        "grantTextSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision", "tree", "checksumManifest", "assetManifest"],
+      "properties": {
+        "repository": { "type": "string", "format": "uri" },
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "tree": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "checksumManifest": { "$ref": "#/$defs/upstreamEvidence" },
+        "assetManifest": { "$ref": "#/$defs/upstreamEvidence" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "venues", "licenseScope"],
+      "properties": {
+        "actions": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "venues": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "licenseScope": { "const": "GameYard-project-only" }
+      }
+    },
+    "assetClasses": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assetClass" },
+      "minItems": 1
+    },
+    "excludedThirdParty": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/excludedBoundary" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "upstreamEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "assetClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "coverage", "paths", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "coverage": { "enum": ["covered", "not-distributed", "none-found"] },
+        "paths": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "string", "minLength": 1 }
+      }
+    },
+    "excludedBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "boundary", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "boundary": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

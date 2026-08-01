@@ -142,7 +142,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 ### M2 — TUMBLEDRUM
 
-前置：明确 LICENSE 或在 `provenance/` 提供足以公开再分发的权属记录。
+前置已完成：`provenance/tumbledrum/` 记录了绑定固定 revision/tree、GameYard 仓库、GitHub Pages 与 Cloudflare 的项目专用分发方向，并逐类审计源代码、程序化视听内容、截图、构建元数据及未随包分发的第三方边界。Assembler 会在任何 stage/build ID 检查之前 fail closed；该记录不是 standalone 仓库的通用许可证。
 
 保留 120 Hz 固定步长、Canvas、内容与程序音频；加入 boot/bridge，公共布尔设置映射到数值 audio policy，不读取旧键。完成门包括原 smoke/integration/regression/full-run、三语言、3:4 desktop/mobile 截图和退出 frame 清理。
 
@@ -156,7 +156,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 ## 风险与暂不处理
 
-- TUMBLEDRUM license 是真实发布阻塞，不通过技术 workaround 绕开。
+- TUMBLEDRUM 没有通用 LICENSE；公开迁移严格限于已记录的 GameYard 项目专用授权。记录、授权文本哈希或素材覆盖不完整时，artifact 门禁重新阻断发布。
 - iOS Safari 的音频解锁、fullscreen、Gamepad 与 frame focus 需要真机门。
 - Workers preview URL 的 server logs 能力有限；预览期依赖前端诊断导出与 CI E2E。
 - 三个游戏都小于当前静态资产单文件限制；未来大型 Wasm/Unity 包再评估 R2，不预建路径。

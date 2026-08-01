@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { createArtifactBuildId, REQUIRED_PRODUCTION_INPUTS } from "./artifact-build-id.mjs";
 import { parseAssemblyConfig } from "./assembly-config.mjs";
@@ -16,6 +17,7 @@ import { verifyProductionArtifact } from "./verify-production.mjs";
 const temporaryRoots = [];
 const gameStagePath = ".gameyard/stage/games/demo";
 const gameProductionInput = "games/demo/src";
+const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 afterEach(async () => {
   await Promise.all(
@@ -58,6 +60,42 @@ async function createFixture({ game = true } = {}) {
       2,
     )}\n`,
   );
+  await writeFile(
+    join(root, "provenance/upstreams.json"),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        auditedAt: "2026-08-01T00:00:00Z",
+        repositories: [
+          {
+            id: "demo",
+            url: "https://example.test/demo",
+            revision: "0123456789abcdef0123456789abcdef01234567",
+            tree: "89abcdef0123456789abcdef0123456789abcdef",
+            license: "MIT",
+            rightsRecord: null,
+            publicImportAllowed: true,
+          },
+          (await readJson(join(repositoryRoot, "provenance/upstreams.json"))).repositories.find(
+            (repository) => repository.id === "tumbledrum",
+          ),
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  await mkdir(join(root, "provenance/tumbledrum"), { recursive: true });
+  await Promise.all([
+    copyFile(
+      join(repositoryRoot, "provenance/tumbledrum/distribution-grant.md"),
+      join(root, "provenance/tumbledrum/distribution-grant.md"),
+    ),
+    copyFile(
+      join(repositoryRoot, "provenance/tumbledrum/distribution-record.json"),
+      join(root, "provenance/tumbledrum/distribution-record.json"),
+    ),
+  ]);
 
   const hubStage = join(root, ".gameyard/stage/hub");
   await mkdir(join(hubStage, "assets"), { recursive: true });
@@ -244,6 +282,44 @@ await test("rejects a manifest ID that differs from the configured game ID", asy
   await writeFile(manifestPath, JSON.stringify(manifest));
 
   await assert.rejects(createAssemblyPlan(fixture.root), /game ID mismatch/);
+});
+
+await test("fails closed when distribution rights are missing, blocked, or incomplete", async () => {
+  const missingFixture = await createFixture();
+  await rm(join(missingFixture.root, "provenance/upstreams.json"));
+  await assert.rejects(createAssemblyPlan(missingFixture.root), /upstreams\.json is missing/);
+
+  const blockedFixture = await createFixture();
+  const blockedIndexPath = join(blockedFixture.root, "provenance/upstreams.json");
+  const blockedIndex = await readJson(blockedIndexPath);
+  blockedIndex.repositories[0].publicImportAllowed = false;
+  await writeFile(blockedIndexPath, JSON.stringify(blockedIndex));
+  await assert.rejects(
+    createAssemblyPlan(blockedFixture.root),
+    /Public distribution is not allowed for game demo/,
+  );
+
+  const incompleteFixture = await createFixture();
+  const incompleteIndexPath = join(incompleteFixture.root, "provenance/upstreams.json");
+  const incompleteIndex = await readJson(incompleteIndexPath);
+  incompleteIndex.repositories[0].license = "LicenseRef-GameYard-Demo-Distribution";
+  incompleteIndex.repositories[0].rightsRecord = "provenance/demo/distribution-record.json";
+  await writeFile(incompleteIndexPath, JSON.stringify(incompleteIndex));
+  await assert.rejects(
+    createAssemblyPlan(incompleteFixture.root),
+    /Distribution record .* is missing/,
+  );
+
+  const downgradedFixture = await createFixture();
+  const downgradedIndexPath = join(downgradedFixture.root, "provenance/upstreams.json");
+  const downgradedIndex = await readJson(downgradedIndexPath);
+  const tumbledrum = downgradedIndex.repositories.find(
+    (repository) => repository.id === "tumbledrum",
+  );
+  tumbledrum.license = "MIT";
+  tumbledrum.rightsRecord = null;
+  await writeFile(downgradedIndexPath, JSON.stringify(downgradedIndex));
+  await assert.rejects(createAssemblyPlan(downgradedFixture.root), /must keep tumbledrum pinned/);
 });
 
 await test("rejects game Service Workers and root-absolute asset URLs", async () => {
