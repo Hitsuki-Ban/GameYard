@@ -146,7 +146,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 固定上游历史与原始行为证据已完成：非 squash subtree 精确指向 `ba6fc680626ac59db793175122600369d48f9834`，上游 checksum 保留在 provenance 历史中。当前唯一生产源码通过 test-only 同源 Host harness 继续执行 smoke/integration/regression/full-run，锁定 120 Hz 固定步长、13 关、Campaign/Endless 结果和 desktop/portrait/landscape 输入路径。
 
-Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。Issue #9 的发布门覆盖三语言 × 三视口完整游戏基线、真实 pointer/touch/keyboard、三路音频与 reduced-motion/screen-shake 的可观察结果，并通过 50 次 Pulse/TUMBLEDRUM 交替进入、周期性重载与退出验证 frame、port 和 runtime listener 回到基线。
+Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。Issue #9 的发布门覆盖三语言 × 三视口完整游戏基线，低高度横屏会让工具栏与完整 Canvas 同屏；真实 pointer/touch/keyboard、三路音频与 reduced-motion/screen-shake 具有可观察结果，并通过 50 次 Pulse/TUMBLEDRUM 交替进入、周期性重载与退出验证 frame、port 和 runtime listener 回到基线。
 
 ### M3 — CrownBreaker
 

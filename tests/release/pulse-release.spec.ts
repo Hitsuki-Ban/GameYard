@@ -238,6 +238,14 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
         .locator(".stage--runtime")
         .evaluate((element) => element.scrollIntoView({ block: "start" }));
       await expectInsideViewport(page, ".runtime-toolbar");
+      const canvasBox = await tumbledrum.locator("#game").boundingBox();
+      const viewportSize = page.viewportSize();
+      expect(canvasBox, "TUMBLEDRUM canvas must have a viewport box").not.toBeNull();
+      expect(viewportSize).not.toBeNull();
+      expect(canvasBox!.x).toBeGreaterThanOrEqual(0);
+      expect(canvasBox!.y).toBeGreaterThanOrEqual(0);
+      expect(canvasBox!.x + canvasBox!.width).toBeLessThanOrEqual(viewportSize!.width + 1);
+      expect(canvasBox!.y + canvasBox!.height).toBeLessThanOrEqual(viewportSize!.height + 1);
       await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-${locale.id}.png`, {
         animations: "disabled",
         mask: [page.locator(".site-footer span:last-child")],
