@@ -3,12 +3,34 @@ import { readFile } from "node:fs/promises";
 
 const PULSE_FRAME_URL = "/games/pulse-link-overdrive/index.html";
 const TUMBLEDRUM_FRAME_URL = "/games/tumbledrum/index.html";
+const CROWN_FRAME_URL = "/games/crown-breaker/index.html";
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
 const locales = [
-  { id: "en", start: "Start game", tumbledrumStatus: "TUMBLEDRUM title screen" },
-  { id: "ja", start: "ゲームを始める", tumbledrumStatus: "TUMBLEDRUMのタイトル画面" },
-  { id: "zh-Hans", start: "开始游戏", tumbledrumStatus: "TUMBLEDRUM 标题画面" },
+  {
+    id: "en",
+    start: "Start game",
+    tumbledrumCampaign: "Campaign stage 1 of 13",
+    tumbledrumStatus: "TUMBLEDRUM title screen",
+    crownLanguage: "en",
+    crownNewRun: "New Run",
+  },
+  {
+    id: "ja",
+    start: "ゲームを始める",
+    tumbledrumCampaign: "キャンペーン 1／13ステージ",
+    tumbledrumStatus: "TUMBLEDRUMのタイトル画面",
+    crownLanguage: "ja",
+    crownNewRun: "ニューラン",
+  },
+  {
+    id: "zh-Hans",
+    start: "开始游戏",
+    tumbledrumCampaign: "战役第 1 关，共 13 关",
+    tumbledrumStatus: "TUMBLEDRUM 标题画面",
+    crownLanguage: "zh-CN",
+    crownNewRun: "新局",
+  },
 ] as const;
 
 const viewports = [
@@ -24,8 +46,14 @@ interface RuntimeSignals {
 }
 
 interface ReleaseResourceSnapshot {
+  readonly guestAnimationFrames: number;
+  readonly guestAudioContexts: number;
+  readonly guestGlobalListeners: number;
+  readonly guestGlobalListenerTypes: Readonly<Record<string, number>>;
+  readonly guestIntervals: number;
+  readonly guestTimeouts: number;
+  readonly hostGlobalListeners: Readonly<Record<string, number>>;
   readonly openHostPorts: number;
-  readonly globalListeners: Readonly<Record<string, number>>;
 }
 
 async function expectInsideViewport(page: Page, selector: string) {
@@ -87,6 +115,95 @@ async function openTumbledrum(page: Page, status = "TUMBLEDRUM title screen") {
   await expect(tumbledrum.locator("#game")).toBeVisible();
   await expect(tumbledrum.locator("#status")).toContainText(status);
   return { frameElement, tumbledrum };
+}
+
+async function openCrown(page: Page, newRunLabel = "New Run") {
+  await page.getByRole("link", { name: /CROWN\/\/BREAKER/ }).click();
+  const frameElement = page.locator(".runtime-frame iframe");
+  const crown = page.frameLocator(".runtime-frame iframe");
+  await expect(frameElement).toHaveCount(1);
+  await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
+  await expect(crown.locator('#btn-new [data-i18n="title.newRun"]')).toHaveText(newRunLabel);
+  return { frameElement, crown };
+}
+
+type ReleaseLocale = (typeof locales)[number];
+type RoundRobinGame = "pulse-link-overdrive" | "tumbledrum" | "crown-breaker";
+
+const roundRobinGames = [
+  { id: "pulse-link-overdrive", frameUrl: PULSE_FRAME_URL },
+  { id: "tumbledrum", frameUrl: TUMBLEDRUM_FRAME_URL },
+  { id: "crown-breaker", frameUrl: CROWN_FRAME_URL },
+] as const satisfies readonly { id: RoundRobinGame; frameUrl: string }[];
+
+async function expectRoundRobinRuntimeReady(
+  page: Page,
+  gameId: RoundRobinGame,
+  locale: ReleaseLocale,
+) {
+  const runtime = page.frameLocator(".runtime-frame iframe");
+  await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
+  if (gameId === "pulse-link-overdrive") {
+    await expect(runtime.getByRole("button", { name: locale.start })).toBeVisible();
+  } else if (gameId === "tumbledrum") {
+    await expect(runtime.locator("#status")).toContainText(locale.tumbledrumStatus);
+  } else {
+    await expect(runtime.locator('#btn-new [data-i18n="title.newRun"]')).toHaveText(
+      locale.crownNewRun,
+    );
+  }
+}
+
+async function openRoundRobinRuntime(page: Page, gameId: RoundRobinGame, locale: ReleaseLocale) {
+  if (gameId === "pulse-link-overdrive") {
+    await openPulse(page, locale.start);
+  } else if (gameId === "tumbledrum") {
+    await openTumbledrum(page, locale.tumbledrumStatus);
+  } else {
+    await openCrown(page, locale.crownNewRun);
+  }
+  const guest = page.frames().find((frame) => frame.url().includes(`/games/${gameId}/index.html`));
+  expect(guest, `${gameId} guest frame must exist`).toBeDefined();
+  return guest!;
+}
+
+async function activateRoundRobinAudio(page: Page, gameId: RoundRobinGame, locale: ReleaseLocale) {
+  const runtime = page.frameLocator(".runtime-frame iframe");
+  if (gameId === "pulse-link-overdrive") {
+    await runtime.locator("#play-button").click();
+    await expect(runtime.locator("#hud")).toBeVisible();
+  } else if (gameId === "tumbledrum") {
+    const canvas = runtime.locator("#game");
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await canvas.click({ position: { x: box!.width * 0.5, y: box!.height * 0.8 } });
+    await expect(runtime.locator("#status")).toContainText(locale.tumbledrumCampaign);
+  } else {
+    await runtime.locator("#btn-new").click();
+    await expect(runtime.locator("#hud")).toHaveClass(/active/);
+  }
+}
+
+async function expectProductionDiagnostics(
+  page: Page,
+  gameId: RoundRobinGame,
+  locale: ReleaseLocale,
+  settingsRevision: number,
+  expectAppliedEvents = true,
+) {
+  await page.locator(".header-actions .utility-button").last().click();
+  const facts = page.locator(".diagnostics__facts dd");
+  await expect(facts.nth(1)).toHaveText(`game:${gameId}`);
+  await expect(facts.nth(2)).toHaveText(gameId);
+  await expect(facts.nth(3)).toHaveText(locale.id);
+  await expect(facts.nth(4)).toHaveText(String(settingsRevision));
+  await expect(facts.nth(5)).toHaveText("active");
+  await expect(facts.nth(7)).toHaveText(String(settingsRevision));
+  if (expectAppliedEvents) {
+    await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
+    await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
+  }
+  await page.locator(".diagnostics__bar button").click();
 }
 
 async function closeRuntime(page: Page) {
@@ -307,119 +424,368 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   expect(mobileSignals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("50 alternating enter-exit cycles with periodic reloads leave one clean browsing context", async ({
+test("CrownBreaker release matrix covers locale visuals and real lifecycle input", async ({
   page,
 }) => {
   test.slow();
   const signals = collectRuntimeSignals(page);
   await page.addInitScript(() => {
-    const listenerSets = new Map<string, Set<EventListenerOrEventListenerObject>>();
+    if (!window.location.pathname.includes("/games/crown-breaker/")) return;
+    let seed = 0x0c40b7ea;
+    Math.random = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 0x1_0000_0000;
+    };
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => nativeRequestAnimationFrame(() => callback(1_000));
+  });
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const locale of locales) {
+      await page.goto("./");
+      await page.locator("select").selectOption(locale.id);
+      const { crown } = await openCrown(page, locale.crownNewRun);
+      await expect(crown.locator("html")).toHaveAttribute("lang", locale.crownLanguage);
+      await page.evaluate(() => document.fonts.ready);
+      await crown.locator("body").evaluate(() => document.fonts.ready);
+      await page
+        .locator(".stage--runtime")
+        .evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await expectInsideViewport(page, ".runtime-toolbar");
+      await expect(page).toHaveScreenshot(`crown-${viewport.id}-${locale.id}.png`, {
+        animations: "disabled",
+        mask: [page.locator(".site-footer span:last-child")],
+        maskColor: "#070a12",
+      });
+      await closeRuntime(page);
+    }
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+  await page.locator("select").selectOption("en");
+  const { crown } = await openCrown(page);
+  await crown.locator("#btn-new").click();
+  await expect(crown.locator("#hud")).toHaveClass(/active/);
+  const canvas = crown.locator("#game-canvas");
+  await canvas.focus();
+  await canvas.press("Escape");
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
+  await expect(crown.locator("#pause-modal")).toHaveClass(/active/);
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
+  await expect(crown.locator("#pause-modal")).not.toHaveClass(/active/);
+  await closeRuntime(page);
+
+  expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
+});
+
+test("50 three-game round-robin cycles leave one clean browsing context", async ({ page }) => {
+  test.slow();
+  const signals = collectRuntimeSignals(page);
+  await page.addInitScript(() => {
+    interface MutableReleaseResourceState {
+      guestAnimationFrames: number;
+      guestAudioContexts: number;
+      guestGlobalListeners: number;
+      guestGlobalListenerTypes: Record<string, number>;
+      guestIntervals: number;
+      guestTimeouts: number;
+      openHostPorts: number;
+    }
+    type ReleaseProbeWindow = typeof window & {
+      __gameyardReleaseResources?: {
+        state: MutableReleaseResourceState;
+        snapshot(): ReleaseResourceSnapshot;
+      };
+    };
     type EventListenerMethod = (
       this: EventTarget,
       type: string,
       listener: EventListenerOrEventListenerObject | null,
       options?: boolean | AddEventListenerOptions,
     ) => void;
-    const originalAdd = Object.getOwnPropertyDescriptor(EventTarget.prototype, "addEventListener")!
+    const nativeAdd = Object.getOwnPropertyDescriptor(EventTarget.prototype, "addEventListener")!
       .value as EventListenerMethod;
-    const originalRemove = Object.getOwnPropertyDescriptor(
+    const nativeRemove = Object.getOwnPropertyDescriptor(
       EventTarget.prototype,
       "removeEventListener",
     )!.value as EventListenerMethod;
-    const listenerKey = (
+    const topWindow = window.top as ReleaseProbeWindow;
+
+    if (window === window.top) {
+      const state: MutableReleaseResourceState = {
+        guestAnimationFrames: 0,
+        guestAudioContexts: 0,
+        guestGlobalListeners: 0,
+        guestGlobalListenerTypes: {},
+        guestIntervals: 0,
+        guestTimeouts: 0,
+        openHostPorts: 0,
+      };
+      const hostListenerSets = new Map<string, Set<EventListenerOrEventListenerObject>>();
+      const hostListenerKey = (
+        target: EventTarget,
+        type: string,
+        options?: boolean | AddEventListenerOptions,
+      ) => {
+        const targetName =
+          target === window && type === "message"
+            ? "window"
+            : target === document && type === "visibilitychange"
+              ? "document"
+              : null;
+        if (!targetName) return null;
+        const capture = typeof options === "boolean" ? options : !!options?.capture;
+        return `${targetName}:${type}:${capture ? "capture" : "bubble"}`;
+      };
+      EventTarget.prototype.addEventListener = function (type, listener, options) {
+        const key = hostListenerKey(this, type, options);
+        if (key && listener) {
+          const listeners = hostListenerSets.get(key) ?? new Set();
+          listeners.add(listener);
+          hostListenerSets.set(key, listeners);
+        }
+        nativeAdd.call(this, type, listener, options);
+      };
+      EventTarget.prototype.removeEventListener = function (type, listener, options) {
+        const key = hostListenerKey(this, type, options);
+        if (key && listener) hostListenerSets.get(key)?.delete(listener);
+        nativeRemove.call(this, type, listener, options);
+      };
+
+      const NativeMessageChannel = window.MessageChannel;
+      window.MessageChannel = class ReleaseMessageChannel extends NativeMessageChannel {
+        constructor() {
+          super();
+          state.openHostPorts += 1;
+          const nativeClose = this.port1.close.bind(this.port1);
+          let closed = false;
+          this.port1.close = () => {
+            if (!closed) {
+              closed = true;
+              state.openHostPorts -= 1;
+            }
+            nativeClose();
+          };
+        }
+      };
+
+      Object.defineProperty(window, "__gameyardReleaseResources", {
+        value: {
+          state,
+          snapshot: (): ReleaseResourceSnapshot => ({
+            ...state,
+            guestGlobalListenerTypes: { ...state.guestGlobalListenerTypes },
+            hostGlobalListeners: Object.fromEntries(
+              [...hostListenerSets]
+                .filter(([, listeners]) => listeners.size > 0)
+                .map(([key, listeners]): [string, number] => [key, listeners.size])
+                .sort(([left], [right]) => left.localeCompare(right)),
+            ),
+          }),
+        },
+      });
+      return;
+    }
+
+    if (!window.location.pathname.includes("/games/")) return;
+    const state = topWindow.__gameyardReleaseResources?.state;
+    if (!state) throw new Error("Release resource probe top-level state is missing");
+    const resourceState = state;
+
+    const nativeSetInterval = window.setInterval.bind(window);
+    const nativeClearInterval = window.clearInterval.bind(window);
+    const intervals = new Set<number>();
+    window.setInterval = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      const id = nativeSetInterval(handler, timeout, ...args);
+      intervals.add(id);
+      resourceState.guestIntervals += 1;
+      return id;
+    }) as typeof window.setInterval;
+    window.clearInterval = ((id?: number) => {
+      if (id !== undefined && intervals.delete(id)) resourceState.guestIntervals -= 1;
+      nativeClearInterval(id);
+    }) as typeof window.clearInterval;
+
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    const nativeClearTimeout = window.clearTimeout.bind(window);
+    const timeouts = new Set<number>();
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (typeof handler !== "function") {
+        throw new TypeError("Release resource probe requires callback-based timeouts");
+      }
+      let id = 0;
+      const trackedHandler = (...handlerArgs: unknown[]) => {
+        if (timeouts.delete(id)) resourceState.guestTimeouts -= 1;
+        handler(...handlerArgs);
+      };
+      id = nativeSetTimeout(trackedHandler, timeout, ...args);
+      timeouts.add(id);
+      resourceState.guestTimeouts += 1;
+      return id;
+    }) as typeof window.setTimeout;
+    window.clearTimeout = ((id?: number) => {
+      if (id !== undefined && timeouts.delete(id)) resourceState.guestTimeouts -= 1;
+      nativeClearTimeout(id);
+    }) as typeof window.clearTimeout;
+
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const nativeCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
+    const animationFrames = new Set<number>();
+    window.requestAnimationFrame = (callback) => {
+      let id = 0;
+      id = nativeRequestAnimationFrame((timestamp) => {
+        if (animationFrames.delete(id)) resourceState.guestAnimationFrames -= 1;
+        callback(timestamp);
+      });
+      animationFrames.add(id);
+      resourceState.guestAnimationFrames += 1;
+      return id;
+    };
+    window.cancelAnimationFrame = (id) => {
+      if (animationFrames.delete(id)) resourceState.guestAnimationFrames -= 1;
+      nativeCancelAnimationFrame(id);
+    };
+
+    const trackedEventTypes = new Set([
+      "beforeunload",
+      "blur",
+      "focus",
+      "keydown",
+      "keyup",
+      "languagechange",
+      "message",
+      "orientationchange",
+      "pagehide",
+      "pointerdown",
+      "resize",
+      "visibilitychange",
+    ]);
+    const guestListenerSets = new Map<string, Set<EventListenerOrEventListenerObject>>();
+    const guestListenerKey = (
       target: EventTarget,
       type: string,
       options?: boolean | AddEventListenerOptions,
     ) => {
-      const targetName =
-        target === window && type === "message"
-          ? "window"
-          : target === document && type === "visibilitychange"
-            ? "document"
-            : null;
-      if (!targetName) return null;
+      if ((target !== window && target !== document) || !trackedEventTypes.has(type)) return null;
       const capture = typeof options === "boolean" ? options : !!options?.capture;
-      return `${targetName}:${type}:${capture ? "capture" : "bubble"}`;
+      if (capture) return null;
+      return `${target === window ? "window" : "document"}:${type}:${capture}`;
     };
     EventTarget.prototype.addEventListener = function (type, listener, options) {
-      const key = listenerKey(this, type, options);
+      const key = guestListenerKey(this, type, options);
       if (key && listener) {
-        const listeners = listenerSets.get(key) ?? new Set();
-        listeners.add(listener);
-        listenerSets.set(key, listeners);
+        const listeners = guestListenerSets.get(key) ?? new Set();
+        if (!listeners.has(listener)) {
+          listeners.add(listener);
+          guestListenerSets.set(key, listeners);
+          resourceState.guestGlobalListeners += 1;
+          resourceState.guestGlobalListenerTypes[key] =
+            (resourceState.guestGlobalListenerTypes[key] ?? 0) + 1;
+        }
       }
-      originalAdd.call(this, type, listener, options);
+      nativeAdd.call(this, type, listener, options);
     };
     EventTarget.prototype.removeEventListener = function (type, listener, options) {
-      const key = listenerKey(this, type, options);
-      if (key && listener) listenerSets.get(key)?.delete(listener);
-      originalRemove.call(this, type, listener, options);
+      const key = guestListenerKey(this, type, options);
+      if (key && listener && guestListenerSets.get(key)?.delete(listener)) {
+        resourceState.guestGlobalListeners -= 1;
+        const remaining = (resourceState.guestGlobalListenerTypes[key] ?? 1) - 1;
+        if (remaining === 0) delete resourceState.guestGlobalListenerTypes[key];
+        else resourceState.guestGlobalListenerTypes[key] = remaining;
+      }
+      nativeRemove.call(this, type, listener, options);
     };
 
-    const NativeMessageChannel = window.MessageChannel;
-    let openHostPorts = 0;
-    window.MessageChannel = class ReleaseMessageChannel extends NativeMessageChannel {
-      constructor() {
-        super();
-        openHostPorts += 1;
-        const nativeClose = this.port1.close.bind(this.port1);
-        let closed = false;
-        this.port1.close = () => {
-          if (!closed) {
-            closed = true;
-            openHostPorts -= 1;
-          }
-          nativeClose();
-        };
+    const NativeAudioContext = window.AudioContext;
+    const trackedAudioContexts = new WeakSet<AudioContext>();
+    window.AudioContext = class ReleaseAudioContext extends NativeAudioContext {
+      constructor(options?: AudioContextOptions) {
+        super(options);
+        trackedAudioContexts.add(this);
+        resourceState.guestAudioContexts += 1;
+      }
+
+      override close(): Promise<void> {
+        if (trackedAudioContexts.delete(this)) resourceState.guestAudioContexts -= 1;
+        return super.close();
       }
     };
-
-    Object.defineProperty(window, "__gameyardReleaseResources", {
-      value: {
-        snapshot: () => ({
-          openHostPorts,
-          globalListeners: Object.fromEntries(
-            [...listenerSets]
-              .filter(([, listeners]) => listeners.size > 0)
-              .map(([key, listeners]): [string, number] => [key, listeners.size])
-              .sort(([left], [right]) => left.localeCompare(right)),
-          ),
-        }),
-      },
-    });
   });
   await page.goto("./");
-  await page.locator("select").selectOption("en");
+  await page.locator("select").selectOption("zh-Hans");
   const baselineResources = await releaseResources(page);
+  let currentLocale: ReleaseLocale = locales[2];
 
   for (let cycle = 1; cycle <= 50; cycle += 1) {
-    const pulseCycle = cycle % 2 === 1;
-    const frameUrl = pulseCycle ? PULSE_FRAME_URL : TUMBLEDRUM_FRAME_URL;
-    const runtime = pulseCycle
-      ? { pulse: (await openPulse(page)).pulse, tumbledrum: null }
-      : { pulse: null, tumbledrum: (await openTumbledrum(page)).tumbledrum };
-    expect(page.frames().filter((frame) => frame.url().includes(frameUrl))).toHaveLength(1);
-    expect((await releaseResources(page)).openHostPorts).toBe(baselineResources.openHostPorts + 1);
+    const game = roundRobinGames[(cycle - 1) % roundRobinGames.length]!;
+    let guest = await openRoundRobinRuntime(page, game.id, currentLocale);
+    expect(page.frames()).toHaveLength(2);
+    expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
+
+    const targetLocale = locales[(cycle - 1) % locales.length]!;
+    await page.locator("select").selectOption(targetLocale.id);
+    const masterValue = String(Number((0.31 + (cycle % 10) * 0.01).toFixed(2)));
+    await page.locator('input[type="range"]').first().fill(masterValue);
+    const settingsRevision = await page.evaluate(() => {
+      const raw = window.localStorage.getItem("gameyard.settings.v1");
+      if (raw === null) throw new Error("Release settings revision is missing");
+      const value = JSON.parse(raw) as { revision?: unknown };
+      if (!Number.isSafeInteger(value.revision)) {
+        throw new TypeError("Release settings revision must be a safe integer");
+      }
+      return value.revision as number;
+    });
+    await expectRoundRobinRuntimeReady(page, game.id, targetLocale);
+    await expectProductionDiagnostics(page, game.id, targetLocale, settingsRevision);
+
+    await expect
+      .poll(async () => (await releaseResources(page)).openHostPorts)
+      .toBeGreaterThan(baselineResources.openHostPorts);
+    await expect
+      .poll(async () => (await releaseResources(page)).guestAnimationFrames)
+      .toBeGreaterThan(baselineResources.guestAnimationFrames);
+    await expect
+      .poll(async () => (await releaseResources(page)).guestGlobalListeners)
+      .toBeGreaterThan(baselineResources.guestGlobalListeners);
+
+    if (cycle <= roundRobinGames.length) {
+      await activateRoundRobinAudio(page, game.id, targetLocale);
+      await expect
+        .poll(async () => (await releaseResources(page)).guestAudioContexts)
+        .toBeGreaterThan(baselineResources.guestAudioContexts);
+      if (game.id === "crown-breaker") {
+        const baselineTimers = baselineResources.guestIntervals + baselineResources.guestTimeouts;
+        await expect
+          .poll(async () => {
+            const resources = await releaseResources(page);
+            return resources.guestIntervals + resources.guestTimeouts;
+          })
+          .toBeGreaterThan(baselineTimers);
+      }
+    }
 
     if (cycle % 5 === 0) {
-      const previousGuest = page.frames().find((frame) => frame.url().includes(frameUrl));
-      expect(previousGuest).toBeDefined();
-      await page.getByRole("button", { name: "Reload" }).click();
-      if (pulseCycle) {
-        await expect(runtime.pulse!.getByRole("button", { name: "Start game" })).toBeVisible();
-      } else {
-        await expect(runtime.tumbledrum!.locator("#status")).toContainText(
-          "TUMBLEDRUM title screen",
-        );
-      }
-      await expect.poll(() => page.frames().includes(previousGuest!)).toBe(false);
-      expect(page.frames().filter((frame) => frame.url().includes(frameUrl))).toHaveLength(1);
+      const previousGuest = guest;
+      await page.locator(".runtime-toolbar__actions button").nth(1).click();
+      await expectRoundRobinRuntimeReady(page, game.id, targetLocale);
+      await expect.poll(() => page.frames().includes(previousGuest)).toBe(false);
+      guest = page.frames().find((frame) => frame.url().includes(`/games/${game.id}/index.html`))!;
+      expect(guest).toBeDefined();
+      expect(page.frames()).toHaveLength(2);
+      expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
+      await expectProductionDiagnostics(page, game.id, targetLocale, settingsRevision, false);
     }
 
     await closeRuntime(page);
     expect(page.frames()).toHaveLength(1);
+    await expect.poll(() => page.frames().includes(guest)).toBe(false);
     await expect.poll(() => releaseResources(page)).toEqual(baselineResources);
+    currentLocale = targetLocale;
   }
 
+  expect(page.context().serviceWorkers()).toEqual([]);
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
