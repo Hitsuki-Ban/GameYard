@@ -9,6 +9,7 @@ import {
   HostCommandSchema,
   HostBaseUrlSchema,
   HostContextSchema,
+  LifecycleChangeRequestEventSchema,
   LifecycleStateSchema,
   LocaleSchema,
   PROTOCOL_VERSION,
@@ -221,6 +222,28 @@ describe("v1 contract", () => {
       SettingsChangeRequestEventSchema.safeParse({
         type: "settings.changeRequest",
         change: { audio: { sfx: 0.25 }, motion: {} },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only explicit pause and resume lifecycle requests", () => {
+    expect(
+      LifecycleChangeRequestEventSchema.parse({
+        type: "lifecycle.changeRequest",
+        action: "pause",
+      }),
+    ).toEqual({ type: "lifecycle.changeRequest", action: "pause" });
+    expect(
+      LifecycleChangeRequestEventSchema.safeParse({
+        type: "lifecycle.changeRequest",
+        action: "toggle",
+      }).success,
+    ).toBe(false);
+    expect(
+      LifecycleChangeRequestEventSchema.safeParse({
+        type: "lifecycle.changeRequest",
+        action: "resume",
+        legacy: true,
       }).success,
     ).toBe(false);
   });

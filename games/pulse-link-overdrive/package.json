@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "uv run python -m http.server 4191 --bind 127.0.0.1",
-    "build": "uv run python tools/build_standalone.py",
+    "dev": "vp dev --host 127.0.0.1 --port 5174 --strictPort",
+    "build": "vp build",
     "check": "vp check",
     "test": "vp exec playwright test --config playwright.baseline.config.ts"
   },
+  "dependencies": {
+    "@gameyard/game-contract": "workspace:*",
+    "@gameyard/guest-bridge": "workspace:*"
+  },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
     "vite-plus": "catalog:"
   }
 }

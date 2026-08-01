@@ -2,56 +2,32 @@
 
 Release target: `1.1.0`
 
-This is a reproducible checklist, not a record of completed verification. Check an item only after observing it in the release candidate.
+## Automated gates
 
-## Run
-
-```bash
-uv run python -m http.server 8080
-uv run python tools/build_standalone.py
+```powershell
+vp run test
+vp run check
+vp run build
 ```
 
-Open `http://localhost:8080/` and `http://localhost:8080/tests/logic-smoke.html`. The standalone output is `dist/pulse-link-overdrive-standalone.html`.
+- [ ] Logic baseline is exactly 36 assertions and 293 locks.
+- [ ] Stage manifest lists the exact sorted asset graph.
+- [ ] Root and repository-prefix hosting both load relative assets.
+- [ ] Production artifact contains no Service Worker, install manifest, debug surface, or lab mutation tool.
 
-## Automated and build
+## Host contract
 
-- [x] The logic smoke page reports PASS with no failed assertion.
-- [x] The standalone build finishes without an exception.
-- [x] The generated standalone file starts a match when opened directly.
-- [x] The main page and smoke page produce no unexpected console error.
+- [ ] No App, RAF, audio context, storage access, or runtime listener exists before valid INIT.
+- [ ] Transport ready follows successful App initialization; lifecycle ready is emitted in the following task.
+- [ ] Host audio master/music/sfx, reduced motion, screen shake, and live locale updates apply without persistence.
+- [ ] Pause freezes simulation, input, and music; pause/resume UI only requests the Hub transition.
+- [ ] Dispose is terminal and cleans RAF, listeners, subscriptions, timers, AudioContext, and vibration.
+- [ ] Diagnostics are read-only and bounded.
 
-## Localization
+## Play and accessibility
 
-- [x] A fresh session follows a Chinese, Japanese, and English browser preference respectively.
-- [x] An unsupported browser language uses English, the default language.
-- [x] The language selector is usable on the title screen with mouse and touch.
-- [x] Changing language updates menus, settings, help, HUD, results, tutorial, and accessibility text without a reload.
-- [x] The selected language survives a reload.
-
-## Play and input
-
-- [x] DUEL ends correctly when either central spawn column tops out.
-- [x] BLITZ ends at 90 seconds and reports its score-based result.
-- [x] LAB resets the target board after target top-out.
-- [ ] Keyboard actions cover movement, both rotations, soft/hard drop, attack, defense, and pause.
-- [ ] Touch gestures, virtual controls, attack/defense controls, and pause all respond once per intended action.
-- [ ] A standard-mapping gamepad covers movement, both rotations, soft/hard drop, attack, defense, and pause.
-
-## Layout, accessibility, and offline
-
-- [x] Title, match, pause, help, settings, and results fit at 390×844 and 844×390 without page scrolling.
-- [ ] Reduced motion, screen shake, color glyphs, haptics, music, and sound settings take effect.
-- [x] Keyboard focus and visible labels make every title-screen control operable without relying on color alone.
-- [x] After one online visit, a reload works offline under the installed Service Worker.
-- [x] The standalone file remains playable with network access disabled.
-
-## Release result
-
-Verified on 2026-07-22 with Chromium:
-
-- Logic smoke: `PASS · 36 ASSERTIONS · 293 LOCKS`.
-- JavaScript syntax, three manifests, and the 213,091-byte standalone build passed.
-- Automatic and manual locale selection, reload persistence, dialog focus, localized assistive game status, damaged-save recovery, responsive layouts, cache isolation, and offline reload passed.
-- The standalone file launched from `file://` in Japanese with no network request, manifest, Service Worker, console warning, or console error.
-
-Unchecked items above still require a deliberate manual hardware or sensory-effects pass; they are not implied by this result.
+- [ ] DUEL, BLITZ, and LAB preserve pinned rules and result handling.
+- [ ] Keyboard, pointer, touch, assist controls, and standard gamepad input release cleanly when disabled.
+- [ ] Desktop, portrait mobile, and landscape mobile layouts remain usable.
+- [ ] English, Japanese, and Simplified Chinese update menus, HUD, results, tutorial, and assistive text live.
+- [ ] Color glyphs and haptics persist under `gameyard.game.pulse-link-overdrive.*`; public settings do not.

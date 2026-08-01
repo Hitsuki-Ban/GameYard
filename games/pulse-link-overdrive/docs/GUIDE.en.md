@@ -19,24 +19,24 @@
 
 ## Controls
 
-| Action | Keyboard | Touch | Standard-mapping gamepad |
-|---|---|---|---|
-| Move left/right | `←` `→` / `A` `D` | Swipe across the board; left/right buttons | Left stick / D-pad left and right |
-| Soft drop | `↓` / `S` | — | Left stick down / D-pad down |
-| Rotate clockwise | `↑` / `X` / `K` | Tap the board; rotate button | A / Cross |
-| Rotate counterclockwise | `Z` / `J` | — | X / Square |
-| Hard drop | `Space` | Swipe down; double-arrow button | Y / Triangle / D-pad up |
-| Attack | `C` / `L` | Attack button between the boards | R1 / RB |
-| Defend | `V` / `;` | Shield button between the boards | L1 / LB |
-| Pause / resume | `Esc` / `P` | Top-right pause button; resume button | Start |
-| Start from title | `Enter` | Play button | A / Cross |
+| Action                  | Keyboard          | Touch                                      | Standard-mapping gamepad          |
+| ----------------------- | ----------------- | ------------------------------------------ | --------------------------------- |
+| Move left/right         | `←` `→` / `A` `D` | Swipe across the board; left/right buttons | Left stick / D-pad left and right |
+| Soft drop               | `↓` / `S`         | —                                          | Left stick down / D-pad down      |
+| Rotate clockwise        | `↑` / `X` / `K`   | Tap the board; rotate button               | A / Cross                         |
+| Rotate counterclockwise | `Z` / `J`         | —                                          | X / Square                        |
+| Hard drop               | `Space`           | Swipe down; double-arrow button            | Y / Triangle / D-pad up           |
+| Attack                  | `C` / `L`         | Attack button between the boards           | R1 / RB                           |
+| Defend                  | `V` / `;`         | Shield button between the boards           | L1 / LB                           |
+| Pause / resume          | `Esc` / `P`       | Top-right pause button; resume button      | Start                             |
+| Start from title        | `Enter`           | Play button                                | A / Cross                         |
 
 A horizontal swipe moves up to five cells depending on distance. Button labels differ by controller brand; the table names their positions in the browser's standard mapping.
 
 On the title screen, choose the mode, difficulty, language, and settings with mouse/touch, or move keyboard focus with `Tab` / `Shift+Tab` and confirm with `Enter` / `Space`. A gamepad can confirm Start but does not navigate those title-screen options.
 
-## Accessibility and offline play
+## Accessibility in GameYard
 
 Settings separately control music, sound effects, screen shake, reduced motion, color glyphs, and haptic feedback. The first launch respects the system reduced-motion preference, and patterns and glyphs reinforce color. Audio begins only after the first click or key press.
 
-After one visit over HTTPS or a local server, the Service Worker caches the game for offline use. For a completely self-contained offline file, run `uv run python tools/build_standalone.py` and open `dist/pulse-link-overdrive-standalone.html`. Installation, vibration, and gamepad support vary by browser and device.
+GameYard owns language, audio levels, reduced motion, screen shake, focus, pause, and fullscreen policy. The game keeps only color glyph and haptics preferences. Vibration and gamepad support vary by browser and device.

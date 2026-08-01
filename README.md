@@ -2,7 +2,7 @@
 
 GameYard is a Vite+ workspace for presenting experimental HTML games through one exhibition Hub. The Hub owns navigation, shared comfort settings, locale selection, lifecycle coordination, diagnostics, and deployment. Each game keeps its own simulation, renderer, input semantics, audio design, saves, and text catalog inside one same-origin iframe at a time.
 
-The pinned PulseLinkOverdrive upstream baseline is now preserved under `games/pulse-link-overdrive`. It is intentionally excluded from the public artifact until the next migration slice replaces its standalone boot, settings, storage, and Service Worker path with the GameYard guest adapter. TUMBLEDRUM and CrownBreaker have not been imported.
+PulseLinkOverdrive is the first playable exhibit. Its pinned simulation baseline remains intact while a GameYard guest adapter now owns INIT-gated startup, Hub settings and locale mapping, lifecycle commands, bounded diagnostics, fullscreen requests, and terminal cleanup. The old standalone build, game Service Worker, install manifests, public-setting storage, and production mutation surface are not part of the product. TUMBLEDRUM and CrownBreaker have not been imported.
 
 The production runtime/build boundary is active:
 
@@ -12,7 +12,7 @@ The production runtime/build boundary is active:
 - content-derived `gameyard@<16 lowercase hex>` site build IDs;
 - structural rejection of stale IDs, undeclared files, collisions, game Service Workers, Lab mutation code, and repository-prefix-breaking URLs.
 
-The current `site.assembly.json` contains no production game, so `dist/games/catalog.json` is deliberately empty until PulseLinkOverdrive is adapted.
+`site.assembly.json` currently assembles PulseLinkOverdrive with the Hub into one exact artifact. `dist/games/catalog.json` registers that one local exhibit; later games remain queued in the editorial index until their own migration Issues close.
 
 ## Commands
 

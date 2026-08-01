@@ -9,10 +9,19 @@ function collectRuntimeErrors(page: Page): string[] {
   return errors;
 }
 
-test("dev-only Lab loads its CSS and mutates only session tokens", async ({ page }) => {
+test("the integrated dev room runs Pulse and keeps Lab mutations session-only", async ({
+  page,
+}) => {
+  test.slow();
   const runtimeErrors = collectRuntimeErrors(page);
 
-  await page.goto("./");
+  await page.goto("./?game=pulse-link-overdrive");
+  const pulse = page.frameLocator(".runtime-frame iframe");
+  await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
+
   await page.getByRole("button", { name: "Open Lab" }).click();
 
   const overlay = page.locator(".lab-overlay");
@@ -44,5 +53,6 @@ test("dev-only Lab loads its CSS and mutates only session tokens", async ({ page
 
   await page.getByRole("button", { name: /Close Lab/ }).click();
   await expect(overlay).toBeHidden();
+
   expect(runtimeErrors).toEqual([]);
 });

@@ -9,6 +9,7 @@ import {
   HostActionRequestEventSchema,
   HostCommandSchema,
   InitMessageSchema,
+  LifecycleChangeRequestEventSchema,
   LifecycleStateEventSchema,
   PROTOCOL_VERSION,
   ReadyEventSchema,
@@ -22,6 +23,7 @@ import {
   type HostAction,
   type HostContext,
   type HostSettings,
+  type LifecycleChangeAction,
   type LifecycleState,
   type LocaleContext,
   type SettingsChange,
@@ -76,6 +78,7 @@ export interface ConnectGuestOptions {
   readonly identity: GuestIdentity;
   readonly handshakeTimeoutMs: number;
   readonly hooks: GuestBridgeHooks;
+  readonly initialize: (bridge: GuestBridge) => void | Promise<void>;
 }
 
 export interface ResourceEventTarget {
@@ -102,6 +105,7 @@ export interface GuestBridge {
   readonly isDisposed: boolean;
   emitLifecycleState(state: LifecycleState): void;
   requestSettingsChange(change: SettingsChange): void;
+  requestLifecycleChange(action: LifecycleChangeAction): void;
   requestHostAction(action: HostAction): void;
   emitDiagnostic(event: DiagnosticEvent): void;
 }
@@ -120,6 +124,10 @@ export class GuestHandshakeMismatchError extends Error {
 
 export class GuestHandshakeTimeoutError extends Error {
   override readonly name = "GuestHandshakeTimeoutError";
+}
+
+export class GuestInitializationError extends Error {
+  override readonly name = "GuestInitializationError";
 }
 
 export class GuestDisposedError extends Error {
@@ -167,6 +175,14 @@ function assertHooks(hooks: GuestBridgeHooks): void {
   ];
   if (callbacks.some((callback) => typeof callback !== "function")) {
     throw new GuestConfigurationError("All guest bridge hooks must be explicit functions");
+  }
+}
+
+function assertInitializer(
+  initialize: ConnectGuestOptions["initialize"],
+): asserts initialize is ConnectGuestOptions["initialize"] {
+  if (typeof initialize !== "function") {
+    throw new GuestConfigurationError("Guest initialization must be an explicit function");
   }
 }
 
@@ -270,6 +286,7 @@ class PortGuestBridge implements GuestBridge {
   readonly #port: MessagePort;
   readonly #hooks: GuestBridgeHooks;
   #settingsRevision: number;
+  #active = false;
   #disposed = false;
   #queue: Promise<void> = Promise.resolve();
 
@@ -295,9 +312,23 @@ class PortGuestBridge implements GuestBridge {
     this.#hooks = hooks;
     this.#settingsRevision = context.settings.revision;
     this.resources = new ResourceRegistry(guestWindow);
+  }
+
+  activate(): void {
+    if (this.#disposed) {
+      throw new GuestDisposedError("Guest bridge is disposed");
+    }
+    if (this.#active) {
+      throw new GuestInitializationError("Guest bridge is already active");
+    }
+    this.#active = true;
     this.#port.addEventListener("message", this.#handleMessage);
     this.#port.addEventListener("messageerror", this.#handleMessageError);
     this.#port.start();
+  }
+
+  abortInitialization(): void {
+    this.#terminate();
   }
 
   get isDisposed(): boolean {
@@ -311,6 +342,12 @@ class PortGuestBridge implements GuestBridge {
   requestSettingsChange(change: SettingsChange): void {
     this.#postGuestEvent(
       SettingsChangeRequestEventSchema.parse({ type: "settings.changeRequest", change }),
+    );
+  }
+
+  requestLifecycleChange(action: LifecycleChangeAction): void {
+    this.#postGuestEvent(
+      LifecycleChangeRequestEventSchema.parse({ type: "lifecycle.changeRequest", action }),
     );
   }
 
@@ -411,6 +448,11 @@ class PortGuestBridge implements GuestBridge {
     if (this.#disposed) {
       throw new GuestDisposedError("Guest bridge is disposed");
     }
+    if (!this.#active) {
+      throw new GuestInitializationError(
+        "Guest bridge is not active until initialization completes",
+      );
+    }
     const parsed = GuestEventSchema.parse(event);
     try {
       this.#port.postMessage(parsed);
@@ -427,8 +469,11 @@ class PortGuestBridge implements GuestBridge {
       return;
     }
     this.#disposed = true;
-    this.#port.removeEventListener("message", this.#handleMessage);
-    this.#port.removeEventListener("messageerror", this.#handleMessageError);
+    if (this.#active) {
+      this.#port.removeEventListener("message", this.#handleMessage);
+      this.#port.removeEventListener("messageerror", this.#handleMessageError);
+    }
+    this.#active = false;
     this.#port.close();
     this.resources.dispose();
   }
@@ -450,10 +495,12 @@ export function connectGuest(options: ConnectGuestOptions): Promise<GuestBridge>
   assertPositiveTimeout(options.handshakeTimeoutMs, "handshakeTimeoutMs");
   assertTargetOrigin(options.targetOrigin, options.window);
   assertHooks(options.hooks);
+  assertInitializer(options.initialize);
   const identityResult = parseIdentity(options.identity);
 
   return new Promise<GuestBridge>((resolve, reject) => {
     let settled = false;
+    let initializingBridge: PortGuestBridge | undefined;
 
     const cleanup = (): void => {
       options.window.removeEventListener("message", handleInit);
@@ -466,8 +513,12 @@ export function connectGuest(options: ConnectGuestOptions): Promise<GuestBridge>
       }
       settled = true;
       cleanup();
-      for (const port of ports) {
-        port.close();
+      if (initializingBridge === undefined) {
+        for (const port of ports) {
+          port.close();
+        }
+      } else {
+        initializingBridge.abortInitialization();
       }
       reject(error);
     };
@@ -498,18 +549,15 @@ export function connectGuest(options: ConnectGuestOptions): Promise<GuestBridge>
         return;
       }
 
-      cleanup();
+      options.window.removeEventListener("message", handleInit);
       const port = event.ports[0]!;
       try {
-        port.postMessage(ReadyEventSchema.parse({ type: "ready" }));
-        const bridge = new PortGuestBridge(
+        initializingBridge = new PortGuestBridge(
           initResult.data.context,
           port,
           options.window,
           options.hooks,
         );
-        settled = true;
-        resolve(bridge);
       } catch (error) {
         fail(
           error instanceof Error
@@ -517,7 +565,40 @@ export function connectGuest(options: ConnectGuestOptions): Promise<GuestBridge>
             : new GuestHandshakeProtocolError("Guest port could not be activated"),
           [port],
         );
+        return;
       }
+
+      const bridge = initializingBridge;
+      void Promise.resolve()
+        .then(() => options.initialize(bridge))
+        .then(() => {
+          if (settled) {
+            return;
+          }
+          try {
+            port.postMessage(ReadyEventSchema.parse({ type: "ready" }));
+            bridge.activate();
+          } catch (error) {
+            fail(
+              error instanceof Error
+                ? error
+                : new GuestHandshakeProtocolError("Guest port could not be activated"),
+              [port],
+            );
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(bridge);
+        })
+        .catch((error: unknown) => {
+          fail(
+            new GuestInitializationError("Guest initialization failed", {
+              cause: error,
+            }),
+            [port],
+          );
+        });
     }
 
     const timeoutId = options.window.setTimeout(() => {

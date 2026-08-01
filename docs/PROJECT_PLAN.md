@@ -4,7 +4,7 @@
 
 一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 的精确上游历史与独立逻辑基线也已进入仓库。生产 catalog 仍为空，直到 Pulse adapter 在下一迁移 slice 中完成，不伪装成已经可从 Hub 启动游戏。
+Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 的精确上游历史、独立逻辑基线和 guest adapter 已进入仓库。生产 catalog 现在精确登记 Pulse，它能由 Hub 启动、调节、暂停、重载和关闭；其余游戏仍保持排队状态。
 
 ## 架构结论
 
@@ -51,7 +51,7 @@ dist/games/catalog.json
 dist/build-info.json
 ```
 
-各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 明确为空。
+各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 只有 `pulse-link-overdrive`。
 
 最终 `games/` 命名空间只属于 assembler。Hub stage 不得写入任何 `games` 路径，production verifier 也拒绝 catalog 与已登记 game manifest 之外的 game 文件。
 
@@ -93,7 +93,7 @@ type HostContext = {
 
 Host → game：`locale.apply`、`settings.apply`、`input.setEnabled`、`input.releaseAll`、`lifecycle.pause/resume/dispose`、`diagnostics.snapshot`。语言与设置更新都携带完整快照和 `commandId`，必须 ACK；不发送空 patch。
 
-Game → host：`ready`、`ack`、`lifecycle.state`、`settings.changeRequest`、`hostAction.request`、`diagnostic.event`、`diagnostics.snapshotResult`。
+Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`、`settings.changeRequest`、`hostAction.request`、`diagnostic.event`、`diagnostics.snapshotResult`。
 
 暂停、设置与 dispose 都需要 commandId/ACK。公共 settings 采用单调 revision；未知字段、错误 revision、错误 build 或超时都显式失败。
 
@@ -133,12 +133,12 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`settings.changeRequest`�
 ### M1 — Pulse vertical slice（进行中）
 
 1. 已非 squash 导入上游历史到 `games/pulse-link-overdrive`，并固定 36 assertions / 293 locks 的独立基线。
-2. 已完成 strict guest bridge、manifest、testkit 与原子 assembler；production catalog 仍为空。
-3. 下一步禁止 Pulse Service Worker，增加明确 boot adapter，只在 INIT 后启动。
-4. 公共 locale/audio/motion 只从 HostContext/setting revision 获取；游戏专属 glyphs/haptics 保留。
-5. 保留纯 model、logic smoke 与游戏 action mapping。
+2. 已完成 strict guest bridge、manifest、testkit 与原子 assembler；production catalog 精确登记 Pulse。
+3. 已删除 Pulse Service Worker 与 standalone 产品路径；guest 只在有效 INIT 的 initialize 阶段构造 App。
+4. 公共 locale/audio/motion 只从 HostContext/setting revision 获取；游戏专属 glyphs/haptics 保留在新命名空间存档。
+5. 纯 model 与 action mapping 保持不变；无旧 HTML 页面依赖的 runner 继续锁定 36 assertions / 293 locks。
 
-完成门：现有 logic smoke 全过；root 与 repository-style prefix 均能直达；三语/audio/motion 即时同步；50 次进入/退出仅一个 frame、无悬挂消息；生产无写型 QA。
+剩余完成门由 Issue #5 收口：root 与 repository-style prefix 均能直达；三语/audio/motion 即时同步；50 次进入/退出仅一个 frame、无悬挂消息；生产无写型 QA。
 
 ### M2 — TUMBLEDRUM
 

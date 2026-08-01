@@ -27,6 +27,8 @@ vp run deploy:dry-run
 
 缺失 `vp`、根 `packageManager`、必需 schema 或构建输入时直接停止；不要回退到其他 manager 或静态服务器。
 
+`vp run dev` 是唯一的交互式游戏开发入口：它并行启动 `127.0.0.1:5174` 上的 Pulse 源码服务器与 `127.0.0.1:5173` 上的 Hub。Hub 在严格的 Pulse dev manifest 就绪且 build ID 匹配后才开始监听，并将 `/games/pulse-link-overdrive/` 同源代理到 Guest；不存在 stage 清空窗口。Pulse 关闭自动 HMR，源码变化后使用 Hub 的“重新加载”按钮建立一条新的 INIT/MessageChannel 连接。单独打开 Pulse server 没有 Host INIT，不能作为 standalone 页面运行。
+
 ## 验证梯度
 
 1. 修改 contract/settings/catalog：对应 Vitest。
@@ -35,11 +37,11 @@ vp run deploy:dry-run
 4. 修改构建/路由：生产 build、root/subpath preview、Wrangler dry-run。
 5. 关闭 milestone：`vp run ready`、三视口 E2E、固定视觉基线和独立 reviewer。
 
-首次在本机运行浏览器测试前执行一次 `vp run e2e:install`，它只安装项目固定 Playwright 版本所需的 Chromium。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 URL 选择、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。
+首次在本机运行浏览器测试前执行一次 `vp run e2e:install`，它只安装项目固定 Playwright 版本所需的 Chromium。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 Pulse 启动、三语与公共设置实时同步、暂停/恢复/重载/关闭、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。三个 Canvas 视口由单 worker 顺序运行，使负载与“一次一个活动游戏”的产品边界一致，也避免并行渲染争用掩盖协议结果。
 
 生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
-`vp run build` 始终执行 Hub stage → site assembler → production verifier。Assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。新 artifact 安装成功后如旧 backup 清理失败，构建会报告残留 backup 的精确路径，但不会用可能已部分删除的旧 artifact 覆盖完整新产物。当前 games 数组为空，Pulse adapter 完成前不得把 standalone 目录加入配置。
+`vp run build` 始终执行 Pulse stage → Hub stage → site assembler → production verifier。Assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。新 artifact 安装成功后如旧 backup 清理失败，构建会报告残留 backup 的精确路径，但不会用可能已部分删除的旧 artifact 覆盖完整新产物。当前 catalog 精确登记 Pulse；后续游戏只能在对应迁移工单中增加自己的 stage。
 
 `vp run artifact:verify` 还会验证 `build-info.json`、`games/catalog.json`、每个 manifest、catalog 外 game 路径和完整文件集合，并检查产物不含 Lab/Tweakpane、game Service Worker 注册，以及 HTML、CSS、manifest/JSON 和明确 JavaScript URL 调用中的根绝对路径；`//cdn.example/...` 这类 scheme-relative URL 不视为 repository-root 路径。该检查已包含在根 build、preview、ready、production E2E 与 Wrangler dry-run 中，因此 direct preview 会拒绝与当前源码 build ID 不同的陈旧 `dist`。`vp run e2e:lab` 单独启动严格端口的开发服务器，验证动态 Lab CSS、参数写入/还原和关闭流程；它不复用 production preview。
 

@@ -6,10 +6,10 @@ const hubUrl = `http://127.0.0.1:${hubPort}`;
 export default defineConfig({
   testDir: "./tests/e2e",
   outputDir: "./test-results/playwright",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: true,
   retries: 0,
-  workers: 3,
+  workers: 1,
   reporter: "line",
   use: {
     baseURL: hubUrl,

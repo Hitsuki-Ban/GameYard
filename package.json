@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp run hub#dev",
-    "build": "vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
+    "dev": "vp run --parallel --filter @gameyard/pulse-link-overdrive --filter hub dev",
+    "build": "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
     "preview": "vp run artifact:verify && vp preview --config tooling/preview.vite.config.mjs",
     "check": "vp check",
     "test": "vp run -r test",

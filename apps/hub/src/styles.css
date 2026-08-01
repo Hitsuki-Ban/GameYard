@@ -610,6 +610,140 @@ main {
   background: var(--paper);
 }
 
+.stage--runtime {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 588px;
+  padding: 0;
+  background: #090b13;
+}
+
+.runtime-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(244, 242, 236, 0.24);
+  color: var(--mineral);
+  background: var(--graphite);
+}
+
+.runtime-toolbar > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.runtime-toolbar strong {
+  overflow: hidden;
+  font: 900 18px/1 var(--wide-title);
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 9px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.runtime-state::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--acid);
+  content: "";
+}
+
+.runtime-state--failed::before {
+  background: var(--vermilion);
+}
+
+.runtime-state--paused::before,
+.runtime-state--disposing::before {
+  background: #f4a261;
+}
+
+.runtime-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.runtime-toolbar button {
+  padding: 7px 9px;
+  border: 1px solid rgba(244, 242, 236, 0.6);
+  color: var(--mineral);
+  background: transparent;
+  font: 700 9px var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.runtime-toolbar button:hover:not(:disabled) {
+  color: var(--graphite);
+  background: var(--acid);
+}
+
+.runtime-frame {
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+  background: #090b13;
+}
+
+.runtime-frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  border: 0;
+  background: #090b13;
+}
+
+.runtime-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  color: var(--mineral);
+  background: #090b13;
+  font: 700 11px/1.5 var(--mono);
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.runtime-overlay--failed {
+  gap: 12px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 24px,
+      rgba(240, 68, 46, 0.1) 24px,
+      rgba(240, 68, 46, 0.1) 48px
+    ),
+    #090b13;
+}
+
+.runtime-overlay--failed code {
+  max-width: 560px;
+  padding: 10px;
+  color: var(--graphite);
+  background: var(--vermilion);
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
 .stage__poster-wrap {
   min-height: 550px;
 }
@@ -1204,6 +1338,15 @@ html[data-reduced-motion="true"] *::after {
     grid-template-columns: minmax(150px, 0.58fr) minmax(250px, 1.42fr);
   }
 
+  .runtime-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .runtime-toolbar__actions {
+    justify-content: flex-start;
+  }
+
   .poster,
   .stage__poster-wrap {
     min-height: 480px;
@@ -1254,6 +1397,16 @@ html[data-reduced-motion="true"] *::after {
     display: flex;
     flex-direction: column;
     padding: 12px;
+  }
+
+  .stage--runtime {
+    display: grid;
+    padding: 0;
+  }
+
+  .runtime-frame,
+  .runtime-frame iframe {
+    min-height: min(68vh, 560px);
   }
 
   .stage__poster-wrap,

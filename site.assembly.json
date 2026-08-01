@@ -1,5 +1,19 @@
 {
   "schemaVersion": 1,
   "hubStage": ".gameyard/stage/hub",
-  "games": []
+  "games": [
+    {
+      "id": "pulse-link-overdrive",
+      "stage": ".gameyard/stage/games/pulse-link-overdrive",
+      "productionInputs": [
+        "games/pulse-link-overdrive/assets/icon.svg",
+        "games/pulse-link-overdrive/index.html",
+        "games/pulse-link-overdrive/package.json",
+        "games/pulse-link-overdrive/src",
+        "games/pulse-link-overdrive/styles.css",
+        "games/pulse-link-overdrive/tsconfig.json",
+        "games/pulse-link-overdrive/vite.config.ts"
+      ]
+    }
+  ]
 }
