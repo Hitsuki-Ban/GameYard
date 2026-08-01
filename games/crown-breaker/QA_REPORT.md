@@ -1,5 +1,7 @@
 # QA 报告
 
+> **归档说明：** 本文件保留 CROWN//BREAKER 独立项目各历史版本当时的验证记录，其中的 `pnpm`、standalone、Manifest、Service Worker、GitHub Pages 与旧存储键均不是当前 GameYard 发布或操作说明。当前 Issue #11 的架构、命令与验证证据以 [`GAMEYARD.md`](GAMEYARD.md)、固定模拟 fixture 和 GameYard 根级 E2E 为准；GameYard 只发布 same-origin iframe guest，部署与未来单一 Service Worker 由 Hub 统一负责。
+
 ## v3.7.0
 
 构建：CROWN//BREAKER v3.7.0 三幕舞台叙事版

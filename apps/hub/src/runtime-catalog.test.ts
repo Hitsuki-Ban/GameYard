@@ -5,7 +5,11 @@ import { loadGameRuntime, parseRuntimeCatalog, type RuntimeFetch } from "./runti
 
 const BUILD_ID = "gameyard@0123456789abcdef";
 
-const playableGameIds = ["pulse-link-overdrive", "tumbledrum"] as const satisfies readonly GameId[];
+const playableGameIds = [
+  "pulse-link-overdrive",
+  "tumbledrum",
+  "crown-breaker",
+] as const satisfies readonly GameId[];
 
 const catalog = {
   schemaVersion: 1,
@@ -56,7 +60,7 @@ describe("runtime catalog", () => {
     ).toThrow(/unknown game id/);
   });
 
-  it("loads and normalizes both playable runtimes by game id", async () => {
+  it("loads and normalizes all three playable runtimes by game id", async () => {
     for (const gameId of playableGameIds) {
       const fetcher = vi
         .fn<RuntimeFetch>()
@@ -77,7 +81,7 @@ describe("runtime catalog", () => {
   });
 
   it("fails when the selected manifest does not agree with its catalog identity", async () => {
-    const gameId = "tumbledrum";
+    const gameId = "crown-breaker";
     const disagreements = [
       {
         value: {

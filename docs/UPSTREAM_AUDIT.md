@@ -1,6 +1,6 @@
 # 三个上游游戏实现审计
 
-审计日期：2026-08-01。证据来自三个仓库 `main` 的浅克隆、GitHub API 与源码逐文件检查。GameYard 已导入三个项目的固定历史；生产 artifact 当前只登记 PulseLinkOverdrive 与 TUMBLEDRUM 的 runtime adapter，CrownBreaker 仍在完成 Hub 适配。
+审计日期：2026-08-01；Issue #11 runtime 结论更新于 2026-08-02。证据来自三个仓库 `main` 的浅克隆、GitHub API、源码逐文件检查与当前生产 artifact。GameYard 已导入三个项目的固定历史，三款游戏均通过各自 adapter 进入同一个 Hub runtime catalog。
 
 ## 快速对照
 
@@ -51,9 +51,9 @@ Issue #7 将该 revision 作为非 squash subtree 第二父提交导入 `games/t
 
 Issue #10 以非 squash subtree 导入该 revision，纯导入提交保留上游提交为第二父；MIT `LICENSE.txt`、50 个最终 SVG、素材风格指南和逐项哈希均随固定历史保留。旧 `QA_REPORT.md` 属于 v3.7.0，不能代表固定的 v3.7.1；GameYard 因此两次运行 seed base 1000 的 100 局 greedy 模拟，均得到 64 胜、36 负且原始 JSON 字节完全一致。完整摘要与 canonical JSON SHA-256 `4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44` 固定在新的 fixture 中。
 
-当前生产 standalone builder 会 exact-once 剔除整个写 QA hook、QA 激活行和 Service Worker 注册，并在任何禁止标记残留时失败。真实浏览器黑盒门使用 `?qa` 打开该产物，仍要求没有 `window.__CB_TEST__`，随后通过真实点击启动游戏、切换三种语言并检查 Canvas、网络、console 和 SW 状态。源代码中的上游 QA seam 暂时只服务于行为基线；Issue #11 才会建立 INIT/MessageChannel adapter 与独立 testkit，并让 CrownBreaker 进入 Hub artifact。
+Issue #11 已将生产入口改为 INIT/MessageChannel guest：公共 locale、master/music/sfx、reduced motion 与 screen shake 只消费 Host 快照；save/run 和 flashes/hints 使用严格 `gameyard.game.crown-breaker.*` envelope，不读取旧键。Host pause 会停止 RAF 与 50 ms audio scheduler 并释放输入，dispose 进一步清理 timers/global listeners、关闭 AudioContext 与 MessagePort。生产构建不含 game Service Worker、旧 standalone boot 或写 QA surface；确定性场景仅保留在显式 testkit/baseline 边界。
 
-它最后迁移：先用 iframe 保住单体的玩法与完整 run，再把 QA 接口接入 testkit；不要为了共享而先拆规则闭包。
+CrownBreaker 仍以独立 iframe 保住单体玩法、run/save schema、资源与音频语义；没有为了共享而拆分规则闭包。Issue #11 的 root E2E 只固定一条真实 Hub 生命周期，完整三视口与三游戏长循环属于后续发布门。
 
 ## 上移与保留边界
 

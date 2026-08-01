@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 if (process.argv.length !== 2) {
-  throw new Error('Usage: pnpm render:assets (this command accepts no arguments)');
+  throw new Error('Usage: vp run crown-breaker#render:assets (this command accepts no arguments)');
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

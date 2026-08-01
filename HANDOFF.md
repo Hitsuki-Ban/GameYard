@@ -1,23 +1,21 @@
 # Handoff
 
-- source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-10-crownbreaker-baseline` | base `d053b2358685a7fa50ebc4f932bd070c87d23434` | import commit `b79ceeaefccf1cc4b59b5c4e085b9ccb1da33b45` | clean: no
-- goal: Close Issue #10 by merging the pinned CrownBreaker history and trustworthy standalone behavior baseline, then return to clean synchronized `main` before Issue #11.
-- verified:
-  - `vp run crown-breaker#baseline` PASS; 50 assets, three locales, static/stage/enemy/trait broad gates, production black-box, and fixed 100-run simulation.
-  - two independent 100-run reports were byte-identical: 64 wins / 36 losses; canonical SHA-256 `4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44`.
-  - `vp run ready` PASS after serializing workspace browser tests; artifact `gameyard@15ba4c8335a62438`, 14 files, 2 production games.
-  - owner review and independent test verification PASS; verifier reproduced the full baseline in 440 seconds.
+- source: Codex Issue #11 implementation, 2026-08-02
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-11-crownbreaker-runtime` | HEAD `c640128c505265ebc539447ea321fa9623394fb5` | clean: no
+- goal: Merge Issue #11 with CrownBreaker as the third strict INIT/MessageChannel guest, then return to clean synchronized `main` before Issue #12.
+- verified: `vp run ready` -> PASS, 44/44 tasks, artifact `gameyard@450e664173f7677c`, 19 files / 3 games @ `c640128c505265ebc539447ea321fa9623394fb5`
+  - Crown stages, enemies, 15 traits × 100 seeds, production DCE scan, and fixed 100-run simulation PASS; canonical SHA-256 remains `4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44` with 64 wins / 36 losses.
+  - focused desktop Playwright PASS: real Crown INIT, three locales, public audio/motion settings, New Run, diagnostics, pause/resume, dispose resource return, and exact three-game production metadata.
+  - independent owner review PASS after reproducing reward and promotion pause/resume/dispose through the real testkit MessageChannel; stage, modal, storage, and cleanup remain correct.
 - done-this-thread:
-  - Issue #9 follow-up PR #25 merged and closed the landscape comfort finding.
-  - CrownBreaker revision `1f7b911926c786043ba793e16c4f25cd5f523b21` imported as a non-squash subtree; pure import tree remains `f70585e43b1246a7a9a9ede8aad6f024b21583f3`.
-  - Crown is a root-pinned Vite+ workspace with no nested package-manager authority or lockfile.
-  - production standalone exact-once strips the complete QA mutation hook, QA activation, and game Service Worker registration; browser verification uses real input and three locales.
-  - TUMBLEDRUM audio verification now waits for the existing strict gain targets instead of relying on a fixed 250 ms sleep; root workspace tests run one task at a time.
-- next: receive independent verifier PASS, commit the baseline layer, push, open an exact-head PR with `Closes #10`, merge with a merge commit to preserve subtree ancestry, sync/delete branches, update roadmap #1, then start Issue #11 from clean `main`.
-- gate: exact-head-merge-and-clean
+  - Crown now boots only after valid INIT, consumes Host locale/settings/lifecycle/input, and persists only strict `gameyard.game.crown-breaker.*.v1` envelopes.
+  - ManagedRuntime and AudioEngine pause/resume/dispose all owned scheduling, frames, listeners, sources, and context; the Hub remains the only visibility/focus policy owner.
+  - mutation hooks exist only in the explicit testkit build, whose Host performs the real protocol handshake and ACK sequence; production contains no testkit, old storage keys, game Service Worker, manifests, or standalone path.
+  - Hub catalog/dev proxy/root build/assembler and production metadata now cover exactly PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker; the Crown favicon participates in the content-derived build ID.
+- next: commit the verified tree, push, open an exact-head PR with `Closes #11`, merge it, synchronize `main`, delete local/remote topic branches, update roadmap #1, then start Issue #12 from the clean merge.
+- gate: run-git-commit-first
 - risks:
-  - Crown remains queued and absent from `site.assembly.json`/production catalog until Issue #11 completes INIT-only boot and runtime adaptation.
+  - Issue #12 still owns Crown three-viewport visual parity and the long three-game switching matrix.
   - TUMBLEDRUM distribution remains limited by `provenance/tumbledrum/distribution-record.json`.
-- authority: constraints -> `AGENTS.md`; plan -> `docs/PROJECT_PLAN.md` and Issues #1/#10/#11; commands -> `docs/DEVELOPMENT.md`; Crown baseline -> `games/crown-breaker/GAMEYARD.md`.
-- stale-first: repo/HEAD/clean state expires at the Issue #10 merge; re-derive with `git status`, `git rev-parse HEAD`, and `gh issue view 10`.
+- authority: constraints -> `AGENTS.md`; plan -> `docs/PROJECT_PLAN.md` and Issues #1/#11/#12; commands -> `docs/DEVELOPMENT.md`; Crown runtime -> `games/crown-breaker/GAMEYARD.md`.
+- stale-first: repo/HEAD/clean state expires at the Issue #11 commit or merge; re-derive with `git status`, `git rev-parse HEAD`, and `gh issue view 11`.

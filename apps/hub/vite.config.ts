@@ -8,6 +8,7 @@ const artifactBuildId = await createArtifactBuildId();
 const devRuntimes = [
   { id: "pulse-link-overdrive", origin: "http://127.0.0.1:5174" },
   { id: "tumbledrum", origin: "http://127.0.0.1:5175" },
+  { id: "crown-breaker", origin: "http://127.0.0.1:5176" },
 ] as const;
 const hubStageManifest = `${JSON.stringify(
   { schemaVersion: 1, buildId: artifactBuildId, entry: "index.html" },

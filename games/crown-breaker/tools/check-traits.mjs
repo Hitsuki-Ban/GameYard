@@ -4,7 +4,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { chromium } from 'playwright';
 
-const root = resolve(import.meta.dirname, '..');
+const root = resolve(import.meta.dirname, '../../../.gameyard/testkit/games/crown-breaker');
 const rootReal = await realpath(root);
 const cliArguments = process.argv.slice(2);
 if (cliArguments[0] === '--') cliArguments.shift();
@@ -17,17 +17,9 @@ const mime = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
-  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png'
 };
-const webAssets = new Set([
-  'index.html', 'styles.css', 'i18n.js', 'game.js', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest',
-  'assets/acts/outer.svg', 'assets/acts/outer-particles.svg',
-  'assets/acts/gallery.svg', 'assets/acts/gallery-particles.svg',
-  'assets/acts/throne.svg', 'assets/acts/throne-particles.svg'
-]);
 let expectedHost = null;
 
 const server = createServer(async (request, response) => {
@@ -44,7 +36,6 @@ const server = createServer(async (request, response) => {
     }
     const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
     const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
-    if (!webAssets.has(relative)) throw new Error('Asset is not in the QA allowlist.');
     const file = resolve(root, relative);
     if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error('Path escapes project root.');
     const fileReal = await realpath(file);
@@ -67,7 +58,7 @@ await new Promise((resolveListen, reject) => {
 
 const address = server.address();
 expectedHost = `127.0.0.1:${address.port}`;
-const url = `http://127.0.0.1:${address.port}/?qa`;
+const url = `http://127.0.0.1:${address.port}/`;
 const expectedOrigin = new URL(url).origin;
 const externalRequests = [];
 const browser = await chromium.launch({ headless: true });
@@ -88,7 +79,6 @@ const installFastTimers = () => {
   const nativeSetTimeout = window.setTimeout.bind(window);
   window.setTimeout = (callback, delay = 0, ...args) => nativeSetTimeout(callback, Math.min(Number(delay) || 0, 12), ...args);
 };
-await context.addInitScript(installFastTimers);
 const page = await context.newPage();
 page.on('pageerror', error => { throw error; });
 const expectedTraits = [
@@ -690,7 +680,6 @@ async function runSeedSmoke() {
   await Promise.all(shards.map(async (shard, workerIndex) => {
     const workerContext = await browser.newContext({ serviceWorkers: 'block' });
     await blockExternalRequests(workerContext);
-    await workerContext.addInitScript(installFastTimers);
     const workerPage = await workerContext.newPage();
     let pageError = null;
     workerPage.on('pageerror', error => { pageError ||= error; });
@@ -702,7 +691,8 @@ async function runSeedSmoke() {
     }, null, { timeout: 3000 });
     try {
       await workerPage.goto(url, { waitUntil: 'domcontentloaded' });
-      await workerPage.waitForFunction(() => Boolean(window.__CB_TEST__));
+      await workerPage.waitForFunction(() => window.__CB_HOST__?.ready === true && Boolean(window.__CB_TEST__));
+      await workerPage.evaluate(installFastTimers);
       assert.deepEqual(await workerQA('traits'), expectedTraits);
       for (const { trait, seed } of shard) {
         if (pageError) throw pageError;
@@ -738,7 +728,8 @@ async function runSeedSmoke() {
 
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => Boolean(window.__CB_TEST__));
+  await page.waitForFunction(() => window.__CB_HOST__?.ready === true && Boolean(window.__CB_TEST__));
+  await page.evaluate(installFastTimers);
   assert.deepEqual(await qa('traits'), expectedTraits, 'product trait registry must match the explicit 15-trait QA contract');
   await runTargetedScenarios();
   if (!targetedOnly) {

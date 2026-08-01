@@ -8,7 +8,8 @@ import { chromium } from 'playwright';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '..');
-const REAL_PROJECT_ROOT = realpathSync(PROJECT_ROOT);
+const TESTKIT_ROOT = path.resolve(PROJECT_ROOT, '../../.gameyard/testkit/games/crown-breaker');
+const REAL_TESTKIT_ROOT = realpathSync(TESTKIT_ROOT);
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'reports');
 const MAX_RUNS = 10000;
 const POLICIES = new Set(['greedy', 'random']);
@@ -264,8 +265,8 @@ function markdownReport(report) {
 }
 
 function createStaticServer() {
-  const rootPrefix = `${PROJECT_ROOT}${path.sep}`;
-  const realRootPrefix = `${REAL_PROJECT_ROOT}${path.sep}`;
+  const rootPrefix = `${TESTKIT_ROOT}${path.sep}`;
+  const realRootPrefix = `${REAL_TESTKIT_ROOT}${path.sep}`;
   return createServer((request, response) => {
     if (!['GET', 'HEAD'].includes(request.method)) {
       response.writeHead(405, { Allow: 'GET, HEAD' });
@@ -281,9 +282,9 @@ function createStaticServer() {
       return;
     }
     const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-    const target = path.resolve(PROJECT_ROOT, relative);
+    const target = path.resolve(TESTKIT_ROOT, relative);
     const hiddenSegment = relative.split(/[\\/]/).some(segment => segment.startsWith('.'));
-    if (hiddenSegment || (target !== PROJECT_ROOT && !target.startsWith(rootPrefix))) {
+    if (hiddenSegment || (target !== TESTKIT_ROOT && !target.startsWith(rootPrefix))) {
       response.writeHead(403);
       response.end('Forbidden');
       return;
@@ -298,7 +299,7 @@ function createStaticServer() {
       response.end('Not found');
       return;
     }
-    if (realTarget !== REAL_PROJECT_ROOT && !realTarget.startsWith(realRootPrefix)) {
+    if (realTarget !== REAL_TESTKIT_ROOT && !realTarget.startsWith(realRootPrefix)) {
       response.writeHead(403);
       response.end('Forbidden');
       return;
@@ -324,7 +325,7 @@ async function listen(server) {
   });
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Static server did not bind to a TCP port.');
-  return `http://127.0.0.1:${address.port}/?qa`;
+  return `http://127.0.0.1:${address.port}/`;
 }
 
 async function closeServer(server) {
@@ -332,7 +333,11 @@ async function closeServer(server) {
 }
 
 async function waitForHook(page) {
-  await page.waitForFunction(() => Boolean(globalThis.__CB_TEST__), null, { timeout: 10000, polling: 10 });
+  await page.waitForFunction(
+    () => globalThis.__CB_HOST__?.ready === true && Boolean(globalThis.__CB_TEST__),
+    null,
+    { timeout: 10000, polling: 10 }
+  );
 }
 
 async function readState(page) {
@@ -496,13 +501,13 @@ async function runSimulation(config) {
       const context = await browser.newContext({ serviceWorkers: 'block' });
       try {
         const page = await context.newPage();
-        await page.addInitScript(() => {
-          const nativeSetTimeout = globalThis.setTimeout.bind(globalThis);
-          globalThis.setTimeout = (callback, delay = 0, ...args) => nativeSetTimeout(callback, Math.min(Math.max(Number(delay) || 0, 0), 4), ...args);
-          localStorage.clear();
-        });
+        await page.addInitScript(() => localStorage.clear());
         await page.goto(url, { waitUntil: 'domcontentloaded' });
         await waitForHook(page);
+        await page.evaluate(() => {
+          const nativeSetTimeout = globalThis.setTimeout.bind(globalThis);
+          globalThis.setTimeout = (callback, delay = 0, ...args) => nativeSetTimeout(callback, Math.min(Math.max(Number(delay) || 0, 0), 4), ...args);
+        });
         for (let index = workerIndex; index < config.runs; index += workerCount) {
           const seed = runSeedAt(config.seedBase, index);
           try {

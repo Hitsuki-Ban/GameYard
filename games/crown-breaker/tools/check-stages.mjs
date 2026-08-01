@@ -5,7 +5,8 @@ import { extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
-const root = resolve(import.meta.dirname, '..');
+const projectRoot = resolve(import.meta.dirname, '..');
+const root = resolve(import.meta.dirname, '../../../.gameyard/testkit/games/crown-breaker');
 const rootReal = await realpath(root);
 const actAssets = Object.freeze([
   'assets/acts/outer.svg',
@@ -15,19 +16,12 @@ const actAssets = Object.freeze([
   'assets/acts/throne.svg',
   'assets/acts/throne-particles.svg',
 ]);
-const webAssets = new Set([
-  'index.html', 'styles.css', 'i18n.js', 'game.js', 'sw.js',
-  'icon.svg', 'icon-192.png', 'icon-512.png',
-  'manifest.webmanifest', 'manifest.zh-CN.webmanifest', 'manifest.ja.webmanifest',
-  ...actAssets,
-]);
 const contentTypes = Object.freeze({
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
-  '.webmanifest': 'application/manifest+json; charset=utf-8',
 });
 const stages = Object.freeze([
   { act: 'outer', depth: 3, seeds: [0x13572468, 0x24681357] },
@@ -65,12 +59,6 @@ function createStaticServer() {
         return;
       }
       const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
-      if (!webAssets.has(relative)) {
-        response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-        response.end('Not found');
-        return;
-      }
-
       const file = resolve(root, relative);
       if (file !== root && !file.startsWith(`${root}${sep}`)) throw new Error('Path escapes project root.');
       const fileReal = await realpath(file);
@@ -149,8 +137,12 @@ export async function runStageChecks({ writeScreenshots }) {
       }
     });
 
-    await page.goto(`${origin}/?qa`, { waitUntil: 'networkidle' });
-    await page.waitForFunction(() => Boolean(window.__CB_TEST__), null, { timeout: 5000 });
+    await page.goto(`${origin}/`, { waitUntil: 'networkidle' });
+    try {
+      await page.waitForFunction(() => window.__CB_HOST__?.ready === true && Boolean(window.__CB_TEST__), null, { timeout: 5000 });
+    } catch (error) {
+      throw new Error(`CrownBreaker testkit did not initialize. ${diagnostics.join(' | ')}`, { cause: error });
+    }
     const hookShape = await page.evaluate(() => ({
       startSetpiece: typeof window.__CB_TEST__.startSetpiece,
       materializeSetpiece: typeof window.__CB_TEST__.materializeSetpiece,
@@ -210,7 +202,7 @@ export async function runStageChecks({ writeScreenshots }) {
     assert.ok(retryMessages.some(message => message.seenFlag === 'intent'), 'retry lost the queued intent tutorial');
 
     await page.reload({ waitUntil: 'networkidle' });
-    await page.waitForFunction(() => Boolean(window.__CB_TEST__), null, { timeout: 5000 });
+    await page.waitForFunction(() => window.__CB_HOST__?.ready === true && Boolean(window.__CB_TEST__), null, { timeout: 5000 });
     await page.locator('#btn-continue').click();
     await page.waitForFunction(() => window.__CB_TEST__.state().screen === 'playing', null, { timeout: 5000 });
     const refreshedTutorials = await page.evaluate(() => window.__CB_TEST__.tutorial());
@@ -220,7 +212,7 @@ export async function runStageChecks({ writeScreenshots }) {
     assert.ok(refreshedMessages.some(message => message.key === 'tutorial.select'), 'refresh lost the first-selection tutorial');
     assert.ok(refreshedMessages.some(message => message.seenFlag === 'intent'), 'refresh lost the queued intent tutorial');
 
-    if (writeScreenshots) await mkdir(resolve(root, 'previews'), { recursive: true });
+    if (writeScreenshots) await mkdir(resolve(projectRoot, 'previews'), { recursive: true });
     for (const stage of stages) {
       const snapshots = [];
       for (const [seedIndex, seed] of stage.seeds.entries()) {
@@ -281,8 +273,8 @@ export async function runStageChecks({ writeScreenshots }) {
           };
         });
         assert.equal(reducedMotion.matches, true, `${stage.act}: reduced-motion media query is not active`);
-        assert.ok(reducedMotion.backdropImage.includes(`/assets/acts/${stage.act}.svg`), `${stage.act}: backdrop asset is not active`);
-        assert.ok(reducedMotion.particleImage.includes(`/assets/acts/${stage.act}-particles.svg`), `${stage.act}: particle asset is not active`);
+        assert.notEqual(reducedMotion.backdropImage, 'none none none', `${stage.act}: bundled backdrop asset is not active`);
+        assert.notEqual(reducedMotion.particleImage, 'none none none', `${stage.act}: bundled particle asset is not active`);
         assert.notEqual(reducedMotion.particleDisplay, 'none', `${stage.act}: particle layer is removed under reduced motion`);
         assert.notEqual(reducedMotion.particleVisibility, 'hidden', `${stage.act}: particle layer is hidden under reduced motion`);
         assert.ok(reducedMotion.particleOpacity > 0, `${stage.act}: particle layer is transparent under reduced motion`);
@@ -293,7 +285,7 @@ export async function runStageChecks({ writeScreenshots }) {
           await page.waitForTimeout(1000);
           await page.evaluate(() => new Promise(resolveFrame => requestAnimationFrame(() => requestAnimationFrame(resolveFrame))));
           await page.screenshot({
-            path: resolve(root, 'previews', `stage-${stage.act}.png`),
+            path: resolve(projectRoot, 'previews', `stage-${stage.act}.png`),
             type: 'png',
           });
         }
@@ -314,6 +306,6 @@ export async function runStageChecks({ writeScreenshots }) {
 
 const directEntry = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 if (directEntry) {
-  if (process.argv.length !== 2) throw new RangeError('Usage: pnpm check:stages (this command accepts no arguments)');
+  if (process.argv.length !== 2) throw new RangeError('Usage: vp run crown-breaker#check:stages (this command accepts no arguments)');
   await runStageChecks({ writeScreenshots: false });
 }
