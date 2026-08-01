@@ -5,10 +5,14 @@ export const PROTOCOL_VERSION = 1 as const;
 const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const diagnosticCodePattern = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
-export const GameIdSchema = z.string().min(1).max(128).regex(identifierPattern);
+export const GameIdSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 export type GameId = z.infer<typeof GameIdSchema>;
 
-export const BuildIdSchema = z.string().min(1).max(128).regex(identifierPattern);
+export const BuildIdSchema = z.string().regex(/^gameyard@[0-9a-f]{16}$/);
 export type BuildId = z.infer<typeof BuildIdSchema>;
 
 export const InstanceIdSchema = z.string().min(1).max(128).regex(identifierPattern);
@@ -94,38 +98,185 @@ export const DiagnosticSnapshotSchema = z.strictObject({
 });
 export type DiagnosticSnapshot = z.infer<typeof DiagnosticSnapshotSchema>;
 
+function isPrefixSafeRelativeDirectory(value: string): boolean {
+  if (
+    !value.startsWith("./") ||
+    !value.endsWith("/") ||
+    value.includes("\\") ||
+    value.includes(":") ||
+    value.includes("%") ||
+    value.includes("?") ||
+    value.includes("#")
+  ) {
+    return false;
+  }
+  const path = value.slice(2, -1);
+  return (
+    path.length > 0 &&
+    path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
+  );
+}
+
+export const HostBaseUrlSchema = z
+  .string()
+  .refine(isPrefixSafeRelativeDirectory, "Expected a prefix-safe relative directory URL");
+export type HostBaseUrl = z.infer<typeof HostBaseUrlSchema>;
+
 export const HostContextSchema = z.strictObject({
   protocol: z.literal(PROTOCOL_VERSION),
   buildId: BuildIdSchema,
   gameId: GameIdSchema,
   instanceId: InstanceIdSchema,
-  baseUrl: z.string().min(1),
+  baseUrl: HostBaseUrlSchema,
   locale: LocaleContextSchema,
   settings: HostSettingsSchema,
   diagnostics: DiagnosticsSchema,
 });
 export type HostContext = z.infer<typeof HostContextSchema>;
 
-export const GameHelloSchema = z.strictObject({
-  type: z.literal("hello"),
+export const ReadyForInitSchema = z.strictObject({
+  type: z.literal("gameyard:ready-for-init"),
   protocol: z.literal(PROTOCOL_VERSION),
   buildId: BuildIdSchema,
   gameId: GameIdSchema,
-  instanceId: InstanceIdSchema,
 });
-export type GameHello = z.infer<typeof GameHelloSchema>;
+export type ReadyForInit = z.infer<typeof ReadyForInitSchema>;
 
-export const HostConnectSchema = z.strictObject({
-  type: z.literal("connect"),
+export const InitMessageSchema = z.strictObject({
+  type: z.literal("gameyard:init"),
   context: HostContextSchema,
 });
-export type HostConnect = z.infer<typeof HostConnectSchema>;
+export type InitMessage = z.infer<typeof InitMessageSchema>;
 
 export const WindowMessageSchema = z.discriminatedUnion("type", [
-  GameHelloSchema,
-  HostConnectSchema,
+  ReadyForInitSchema,
+  InitMessageSchema,
 ]);
 export type WindowMessage = z.infer<typeof WindowMessageSchema>;
+
+const strictSemverPattern =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+
+export const GameVersionSchema = z.string().regex(strictSemverPattern);
+export type GameVersion = z.infer<typeof GameVersionSchema>;
+
+function isCanonicalPosixRelativeFilePath(value: string): boolean {
+  if (
+    value.length === 0 ||
+    value.startsWith("/") ||
+    value.endsWith("/") ||
+    value.includes("\\") ||
+    value.includes("?") ||
+    value.includes("#") ||
+    /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value)
+  ) {
+    return false;
+  }
+
+  return value.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
+}
+
+export const PosixRelativeFilePathSchema = z
+  .string()
+  .refine(isCanonicalPosixRelativeFilePath, "Expected a canonical POSIX relative file path");
+export type PosixRelativeFilePath = z.infer<typeof PosixRelativeFilePathSchema>;
+
+export const GameLocalesSchema = z
+  .strictObject({
+    source: ResolvedLocaleSchema,
+    supported: z.array(ResolvedLocaleSchema).min(1),
+  })
+  .superRefine((locales, context) => {
+    if (new Set(locales.supported).size !== locales.supported.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Supported locales must be unique",
+        path: ["supported"],
+      });
+    }
+    if (!locales.supported.includes(locales.source)) {
+      context.addIssue({
+        code: "custom",
+        message: "Source locale must be included in supported locales",
+        path: ["source"],
+      });
+    }
+  });
+export type GameLocales = z.infer<typeof GameLocalesSchema>;
+
+export const GameCapabilitySchema = z.enum([
+  "audio",
+  "fullscreen",
+  "keyboard",
+  "pointer",
+  "touch",
+  "gamepad",
+]);
+export type GameCapability = z.infer<typeof GameCapabilitySchema>;
+
+export const GameProvenanceSchema = z.strictObject({
+  repository: z.string().superRefine((repository, context) => {
+    let url: URL;
+    try {
+      url = new URL(repository);
+    } catch {
+      context.addIssue({ code: "custom", message: "Repository must be a valid HTTPS URL" });
+      return;
+    }
+    if (url.protocol !== "https:") {
+      context.addIssue({ code: "custom", message: "Repository must use HTTPS" });
+    }
+  }),
+  revision: z.string().regex(/^[0-9a-f]{40}$/),
+  license: z
+    .string()
+    .min(1)
+    .refine((license) => license.trim() === license && license.length > 0, {
+      message: "License must be an explicit non-empty string",
+    }),
+});
+export type GameProvenance = z.infer<typeof GameProvenanceSchema>;
+
+export const GameManifestSchema = z
+  .strictObject({
+    schemaVersion: z.literal(1),
+    protocol: z.literal(PROTOCOL_VERSION),
+    id: GameIdSchema,
+    version: GameVersionSchema,
+    buildId: BuildIdSchema,
+    entry: PosixRelativeFilePathSchema,
+    locales: GameLocalesSchema,
+    capabilities: z.array(GameCapabilitySchema),
+    provenance: GameProvenanceSchema,
+    files: z.array(PosixRelativeFilePathSchema).min(1),
+  })
+  .superRefine((manifest, context) => {
+    if (new Set(manifest.capabilities).size !== manifest.capabilities.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Capabilities must be unique",
+        path: ["capabilities"],
+      });
+    }
+    if (new Set(manifest.files).size !== manifest.files.length) {
+      context.addIssue({ code: "custom", message: "Files must be unique", path: ["files"] });
+    }
+    if (!manifest.files.includes("game.manifest.json")) {
+      context.addIssue({
+        code: "custom",
+        message: "Files must include game.manifest.json",
+        path: ["files"],
+      });
+    }
+    if (!manifest.files.includes(manifest.entry)) {
+      context.addIssue({
+        code: "custom",
+        message: "Files must include the entry file",
+        path: ["entry"],
+      });
+    }
+  });
+export type GameManifest = z.infer<typeof GameManifestSchema>;
 
 export const SettingsApplyCommandSchema = z.strictObject({
   type: z.literal("settings.apply"),

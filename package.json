@@ -5,17 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vp run hub#dev",
-    "build": "vp run hub#build",
-    "preview": "vp run hub#preview",
+    "build": "vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
+    "preview": "vp run artifact:verify && vp preview --config tooling/preview.vite.config.mjs",
     "check": "vp check",
     "test": "vp run -r test",
     "tooling:test": "vp exec node --test tooling/*.test.mjs",
     "artifact:verify": "vp exec node tooling/verify-production.mjs",
     "e2e:install": "vp exec playwright install chromium",
     "e2e:lab": "vp exec playwright test --config playwright.dev.config.ts",
-    "e2e": "vp run hub#build && vp run artifact:verify && vp exec playwright test",
-    "ready": "vp run tooling:test && vp check && vp run -r test && vp run hub#build && vp run artifact:verify",
-    "deploy:dry-run": "vp exec wrangler deploy --dry-run"
+    "e2e": "vp run build && vp exec playwright test",
+    "ready": "vp run tooling:test && vp check && vp run -r test && vp run build",
+    "deploy:dry-run": "vp run build && vp exec wrangler deploy --dry-run"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

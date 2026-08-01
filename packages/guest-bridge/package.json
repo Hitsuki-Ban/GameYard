@@ -1,5 +1,5 @@
 {
-  "name": "@gameyard/host-bridge",
+  "name": "@gameyard/guest-bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",

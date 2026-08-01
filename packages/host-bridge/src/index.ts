@@ -1,10 +1,10 @@
 import {
-  GameHelloSchema,
   GuestEventSchema,
   HostCommandSchema,
-  HostConnectSchema,
   HostContextSchema,
+  InitMessageSchema,
   ReadyEventSchema,
+  ReadyForInitSchema,
   type AckEvent,
   type CommandId,
   type GuestEvent,
@@ -15,6 +15,7 @@ import {
 export interface ConnectIframeOptions {
   readonly iframe: HTMLIFrameElement;
   readonly context: HostContext;
+  readonly entryUrl: string;
   readonly targetOrigin: string;
   readonly handshakeTimeoutMs: number;
   readonly commandTimeoutMs: number;
@@ -87,6 +88,31 @@ function assertTargetOrigin(targetOrigin: string, hostWindow: Window): void {
   }
   if (parsed.origin !== hostWindow.location.origin) {
     throw new BridgeConfigurationError("targetOrigin must match the host window origin");
+  }
+}
+
+function assertEntryUrl(entryUrl: string, baseUrl: string): void {
+  if (
+    typeof entryUrl !== "string" ||
+    !entryUrl.startsWith("./") ||
+    entryUrl.endsWith("/") ||
+    entryUrl.includes("\\") ||
+    entryUrl.includes(":") ||
+    entryUrl.includes("%") ||
+    entryUrl.includes("?") ||
+    entryUrl.includes("#")
+  ) {
+    throw new BridgeConfigurationError("entryUrl must be a prefix-safe relative file URL");
+  }
+  const path = entryUrl.slice(2);
+  if (
+    path.length === 0 ||
+    path.split("/").some((segment) => segment === "" || segment === "." || segment === "..")
+  ) {
+    throw new BridgeConfigurationError("entryUrl must be a prefix-safe relative file URL");
+  }
+  if (!entryUrl.startsWith(baseUrl) || entryUrl.length === baseUrl.length) {
+    throw new BridgeConfigurationError("entryUrl must be located under context.baseUrl");
   }
 }
 
@@ -168,9 +194,7 @@ export class PortHostBridge implements HostBridge {
       try {
         this.#port.postMessage(parsed.data);
       } catch (error) {
-        clearTimeout(timer);
-        this.#pending.delete(parsed.data.commandId);
-        reject(
+        this.#terminate(
           error instanceof Error ? error : new PortProtocolError("Command could not be posted"),
         );
       }
@@ -219,21 +243,18 @@ export class PortHostBridge implements HostBridge {
   }
 }
 
-function assertHelloMatchesContext(
-  hello: ReturnType<typeof GameHelloSchema.parse>,
+function assertReadyForInitMatchesContext(
+  readyForInit: ReturnType<typeof ReadyForInitSchema.parse>,
   context: HostContext,
 ): void {
-  if (hello.protocol !== context.protocol) {
+  if (readyForInit.protocol !== context.protocol) {
     throw new HandshakeMismatchError("Protocol version does not match");
   }
-  if (hello.gameId !== context.gameId) {
+  if (readyForInit.gameId !== context.gameId) {
     throw new HandshakeMismatchError("Game id does not match");
   }
-  if (hello.buildId !== context.buildId) {
+  if (readyForInit.buildId !== context.buildId) {
     throw new HandshakeMismatchError("Build id does not match");
-  }
-  if (hello.instanceId !== context.instanceId) {
-    throw new HandshakeMismatchError("Instance id does not match");
   }
 }
 
@@ -246,6 +267,12 @@ export function connectIframe(options: ConnectIframeOptions): Promise<HostBridge
     throw new BridgeConfigurationError("context must satisfy the strict v1 HostContext schema");
   }
   const context = contextResult.data;
+  assertEntryUrl(options.entryUrl, context.baseUrl);
+  if (options.iframe.hasAttribute("src") || options.iframe.hasAttribute("srcdoc")) {
+    throw new BridgeConfigurationError(
+      "iframe must not have a src or srcdoc attribute before connection",
+    );
+  }
 
   if (typeof window === "undefined") {
     throw new BridgeConfigurationError("connectIframe requires a Window");
@@ -265,11 +292,15 @@ export function connectIframe(options: ConnectIframeOptions): Promise<HostBridge
     let settled = false;
     let channel: MessageChannel | undefined;
     let readyListener: ((event: MessageEvent<unknown>) => void) | undefined;
+    let readyErrorListener: (() => void) | undefined;
 
     const cleanup = (): void => {
       window.removeEventListener("message", handleWindowMessage);
       if (channel !== undefined && readyListener !== undefined) {
         channel.port1.removeEventListener("message", readyListener);
+      }
+      if (channel !== undefined && readyErrorListener !== undefined) {
+        channel.port1.removeEventListener("messageerror", readyErrorListener);
       }
       clearTimeout(timeout);
     };
@@ -299,14 +330,14 @@ export function connectIframe(options: ConnectIframeOptions): Promise<HostBridge
         return;
       }
 
-      const helloResult = GameHelloSchema.safeParse(event.data);
-      if (!helloResult.success) {
-        fail(new HandshakeProtocolError("Target iframe sent an invalid v1 hello message"));
+      const readyForInitResult = ReadyForInitSchema.safeParse(event.data);
+      if (!readyForInitResult.success) {
+        fail(new HandshakeProtocolError("Target iframe sent an invalid ready-for-init message"));
         return;
       }
 
       try {
-        assertHelloMatchesContext(helloResult.data, context);
+        assertReadyForInitMatchesContext(readyForInitResult.data, context);
       } catch (error) {
         fail(
           error instanceof Error
@@ -335,20 +366,24 @@ export function connectIframe(options: ConnectIframeOptions): Promise<HostBridge
         }
         succeed();
       };
+      readyErrorListener = (): void => {
+        fail(new HandshakeProtocolError("Target iframe ready message could not be decoded"));
+      };
       channel.port1.addEventListener("message", readyListener);
+      channel.port1.addEventListener("messageerror", readyErrorListener);
       channel.port1.start();
 
-      const connectMessage = HostConnectSchema.parse({
-        type: "connect",
+      const initMessage = InitMessageSchema.parse({
+        type: "gameyard:init",
         context,
       });
       try {
-        targetWindow.postMessage(connectMessage, options.targetOrigin, [channel.port2]);
+        targetWindow.postMessage(initMessage, options.targetOrigin, [channel.port2]);
       } catch (error) {
         fail(
           error instanceof Error
             ? error
-            : new HandshakeProtocolError("Connect message could not be posted"),
+            : new HandshakeProtocolError("Init message could not be posted"),
         );
       }
     }
@@ -358,5 +393,14 @@ export function connectIframe(options: ConnectIframeOptions): Promise<HostBridge
     }, options.handshakeTimeoutMs);
 
     window.addEventListener("message", handleWindowMessage);
+    try {
+      options.iframe.setAttribute("src", options.entryUrl);
+    } catch (error) {
+      fail(
+        error instanceof Error
+          ? error
+          : new BridgeConfigurationError("iframe entry navigation failed"),
+      );
+    }
   });
 }

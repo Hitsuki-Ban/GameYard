@@ -4,7 +4,7 @@
 
 一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-当前里程碑只初始化 Hub、契约、工具链与迁移门，不伪装成已经迁移游戏。
+Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 的精确上游历史与独立逻辑基线也已进入仓库。生产 catalog 仍为空，直到 Pulse adapter 在下一迁移 slice 中完成，不伪装成已经可从 Hub 启动游戏。
 
 ## 架构结论
 
@@ -19,7 +19,7 @@ Catalog / Settings / Diagnostics (React Hub)
 ```
 
 - iframe 是长期 DOM/CSS/global/RAF 边界，不是临时兼容层，也不声称隔离恶意代码。
-- Hub 不读取 iframe DOM；初始 `postMessage` 只负责校验 source/origin/game/build/instance 并转移 `MessagePort`，之后业务只走 port。[postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
+- Hub 不读取 iframe DOM；Host bridge 先对无 `src`/`srcdoc` iframe 注册 listener，再设置严格相对 entry URL。Guest 随后发送不含实例号的 `gameyard:ready-for-init`，Hub 校验 source/origin/protocol/game/build 后，以唯一 `gameyard:init` 发送完整 context、分配 instance 并转移 `MessagePort`，之后业务只走 port。[postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 - 同时最多一个 frame。离开游戏时发送 dispose，收到 ACK 后移除；超时也移除并记录失败。
 - Hub/game 属于同一个 buildId 和原子 artifact。协议或 build 不一致直接显示缓存/部署混合错误，不做版本协商。
 - 初期无 Service Worker。运行边界稳定后才引入一个根 Hub SW；game SW 永不注册。重叠 scope 不宜存在。[Service Worker scope](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register)
@@ -31,10 +31,10 @@ apps/hub/                   React 展览与诊断管理面
 games/<id>/                 各游戏独立 HTML 入口、adapter、玩法代码与素材
 packages/game-contract/     零 DOM 的 schema/types
 packages/host-bridge/       frame + MessageChannel 生命周期
-packages/guest-bridge/      后续迁移 slice 添加
+packages/guest-bridge/      guest INIT、命令 ACK 与终止清理
 packages/diagnostics/       后续提炼结构化事件与导出
-packages/testkit/           后续封装确定性 QA 场景
-tooling/assemble-site/      多游戏加入后白名单合并 staging artifact
+packages/testkit/           确定性 window/port/clock 与资源探针
+tooling/*assembler*         严格配置、artifact inspector 与事务装配
 docs/adr/                   不可逆决策
 provenance/                 上游 URL/revision/license/素材来源
 ```
@@ -46,10 +46,26 @@ dist/index.html
 dist/assets/**
 dist/games/<id>/index.html
 dist/games/<id>/assets/**
+dist/games/<id>/game.manifest.json
+dist/games/catalog.json
 dist/build-info.json
 ```
 
-各包不得并行写同一个 `dist`；游戏加入后先写互斥 staging 目录，再由 assembler 检查路径冲突与根绝对 URL 后合并。
+各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 明确为空。
+
+最终 `games/` 命名空间只属于 assembler。Hub stage 不得写入任何 `games` 路径，production verifier 也拒绝 catalog 与已登记 game manifest 之外的 game 文件。
+
+## INIT 与 game manifest v1
+
+唯一握手顺序为：
+
+```text
+guest window: gameyard:ready-for-init { protocol, gameId, buildId }
+host window:  gameyard:init { context } + MessagePort
+guest port:   ready
+```
+
+Host 必须在 frame 导航之前开始握手，`connectIframe` 因此拒绝预带 `src`/`srcdoc` 的 iframe，并亲自设置属于 `context.baseUrl` 的 entry URL。Build ID 精确为 `gameyard@<16 lowercase hex>`。`game.manifest.json` 是 strict schema，必填 `schemaVersion`、`protocol`、小写稳定 ID、SemVer、build ID、相对 entry、source/supported locales、capabilities、repository/revision/license provenance 与完整 files 白名单。未知字段、旧握手或旧 build ID 不协商、不降级。
 
 ## 公共 API v1
 
@@ -106,7 +122,7 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`settings.changeRequest`�
 
 ## 里程碑与完成门
 
-### M0 — 初始化（当前）
+### M0 — 初始化（已完成）
 
 - Vite+ / pnpm / Node 精确固定并能 fresh install。
 - Hub 展示三个真实项目、三语公共设置、URL 选择、只读诊断和 dev-only lab。
@@ -114,12 +130,13 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`settings.changeRequest`�
 - Cloudflare Workers Static Assets dry-run 成功。
 - 上游 revision/license 进入 provenance。
 
-### M1 — Pulse vertical slice
+### M1 — Pulse vertical slice（进行中）
 
-1. 非 squash 导入上游历史到 `games/pulse-link-overdrive`，新 monorepo 成为唯一事实源。
-2. 禁止其 Service Worker；增加明确 boot adapter，在 INIT 后才启动。
-3. 公共 locale/audio/motion 只从 HostContext/setting revision 获取；游戏专属 glyphs/haptics 保留。
-4. 保留纯 model、logic smoke 与游戏 action mapping。
+1. 已非 squash 导入上游历史到 `games/pulse-link-overdrive`，并固定 36 assertions / 293 locks 的独立基线。
+2. 已完成 strict guest bridge、manifest、testkit 与原子 assembler；production catalog 仍为空。
+3. 下一步禁止 Pulse Service Worker，增加明确 boot adapter，只在 INIT 后启动。
+4. 公共 locale/audio/motion 只从 HostContext/setting revision 获取；游戏专属 glyphs/haptics 保留。
+5. 保留纯 model、logic smoke 与游戏 action mapping。
 
 完成门：现有 logic smoke 全过；root 与 repository-style prefix 均能直达；三语/audio/motion 即时同步；50 次进入/退出仅一个 frame、无悬挂消息；生产无写型 QA。
 
@@ -133,9 +150,9 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`settings.changeRequest`�
 
 保持 run/save schema 的游戏所有权；停止 game SW 注册；把 `?qa` 能力封装进 testkit 并在生产剔除；adapter 负责 audio scheduler pause 与 dispose。完成门包括 static/i18n/assets/simulator、相同 seed 报告一致、三游戏连续切换和三视口视觉基线。
 
-### M4 — Artifact、离线与上线
+### M4 — 离线与上线
 
-加入 staging assembler、路径/资源/license 白名单、`build-info.json` 与一个 Hub PWA。先只预缓存 shell；游戏离线包按用户选择处理，不一次下载全部游戏。发布到 Workers Static Assets，CI 验证真实 preview URL。
+复用已完成的 staging assembler、路径/资源白名单与 `build-info.json`，加入一个根 Hub PWA。先只预缓存 shell；游戏离线包按用户选择处理，不一次下载全部游戏。发布到 Workers Static Assets，CI 验证真实 preview URL。
 
 ## 风险与暂不处理
 

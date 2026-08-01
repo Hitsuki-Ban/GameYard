@@ -1,20 +1,21 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | branch `main` | HEAD unborn (no commit) | clean: no; initialized files are untracked | remote: none
-- goal: Ship M1 PulseLinkOverdrive as the first same-origin iframe slice, with upstream behavior retained and the v1 bridge/settings lifecycle passing root, prefix, and repeated enter/exit gates.
-- verified: `vp run ready` -> 21 tooling fixtures + 37 unit/contract + check + build + artifact gate passed; `vp run e2e:lab` -> 1/1 passed; `vp run e2e` -> 15/15 passed; `vp run deploy:dry-run` -> 4 static assets accepted @ unborn HEAD
-- done-this-thread:
-  - Audited all three pinned upstream revisions; provenance and the TUMBLEDRUM license gate are recorded.
-  - Initialized the exact Vite+ / pnpm / Node workspace, React Hub, strict settings/i18n/diagnostics, and dev-only Tweakpane Lab.
-  - Added strict v1 game contract and host MessageChannel bridge: ACKed locale/audio/motion snapshots, safe revisions, terminal timeouts, and no empty patches.
-  - Selected one same-origin iframe at a time and Cloudflare Workers Static Assets; rejected direct DOM mounting, game Service Workers, legacy storage import, and silent compatibility paths.
-  - Added content-derived build IDs, fixture-backed artifact gates, and three-viewport Playwright/visual checks for diagnostics, motion, focus, Lab, and the three-channel audio UI.
-- next: Import the pinned PulseLinkOverdrive history under `games/pulse-link-overdrive`, preserve its upstream logic baseline, then add the explicit guest boot adapter without carrying its Service Worker or old public settings ownership.
-- gate: start-slice-1
-- risks:
-  - No game code is in this repository yet; the current cards intentionally link to upstream originals.
-  - TUMBLEDRUM remains blocked from the public artifact until `provenance/upstreams.json` records distributable rights.
-  - This repository has no initial commit or remote; establish them before relying on SHA-based handoff freshness.
-- authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; stack/hosting -> `docs/DEPENDENCY_DECISIONS.md`; decisions -> `docs/adr/`; dev commands -> `docs/DEVELOPMENT.md`
-- stale-first: `verified` expires after any source, dependency, or deployment-config change; re-derive with `vp run ready`, `vp run e2e:lab`, `vp run e2e`, and `vp run deploy:dry-run`.
+- repo: `F:\WorkSpace\GameYard` | remote: `Hitsuki-Ban/GameYard` | delivery target: `main` through Issue #3
+- goal: Complete Issue #4 by replacing PulseLinkOverdrive's standalone boot/settings/storage/Service Worker path with the exact GameYard guest adapter and making it the first playable Hub iframe.
+- verified: Issue #3 `vp check`; tooling 39/39; workspace tests 59/59 including Pulse 36 assertions / 293 locks; `vp run ready`; production E2E 18/18; `vp run deploy:dry-run`; artifact `gameyard@54bc998d3fe45e36`, 5 files, 0 games.
+- done-this-task:
+  - Published the full roadmap as Issues #1–#16 and completed Issue #2 through merged PR #17.
+  - Preserved the exact Pulse upstream ancestry and deterministic standalone baseline without adding it to the public artifact.
+  - Replaced the circular hello/connect handshake with one exact `ready-for-init`/`init`/MessagePort path.
+  - Added strict game manifests, production guest disposal, deterministic bridge testkit, isolated stages, transactional assembly, structural artifact verification, and site-level build IDs.
+  - Made root build, preview, E2E, and Wrangler dry-run consume the same newly assembled `dist`; no game or game Service Worker is present yet.
+- next:
+  - Start from a clean, synchronized `main` after Issue #3 merges.
+  - Open Issue #4's isolated branch and preserve Pulse's 36 assertions / 293 locks while replacing the standalone runtime in one cutover.
+  - Add Pulse production inputs and stage to `site.assembly.json`, then prove root/prefix loading, locale/settings updates, focus/lifecycle, and terminal exit cleanup.
+- gates:
+  - Do not copy TUMBLEDRUM source/assets into the public artifact before Issue #6 records distributable rights.
+  - Do not retain Pulse's old Pages manifest, Service Worker, public settings ownership, storage keys, or standalone smoke path after the Issue #4 cutover.
+- authority: constraints -> `AGENTS.md`; plan/gates -> `docs/PROJECT_PLAN.md`; upstream facts -> `docs/UPSTREAM_AUDIT.md`; decisions -> `docs/adr/`; commands -> `docs/DEVELOPMENT.md`.
+- stale-first: rerun `vp run ready`, `vp run e2e:lab`, `vp run e2e`, and `vp run deploy:dry-run` after source, dependency, artifact-config, or deployment changes.
