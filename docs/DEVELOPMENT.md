@@ -23,7 +23,7 @@ vp run artifact:verify
 vp run e2e:lab
 vp run e2e
 vp run e2e:release
-vp run release:pulse
+vp run release:tumbledrum
 vp run deploy:dry-run
 vp run tumbledrum#browser:install
 vp run tumbledrum#build
@@ -44,7 +44,7 @@ vp run tumbledrum#test
 
 首次在本机运行浏览器测试前执行一次 `vp run e2e:install`。它先安装根 Node Playwright 锁定的 Chromium，再调用 `vp run tumbledrum#browser:install` 安装上游 Python `playwright==1.61.0` 锁定的独立 revision；不会假定两套 Playwright 共用浏览器。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 Pulse 启动、三语与公共设置实时同步、暂停/恢复/重载/关闭、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。三个 Canvas 视口由单 worker 顺序运行，使负载与“一次一个活动游戏”的产品边界一致，也避免并行渲染争用掩盖协议结果。
 
-`vp run e2e:release` 在 `/GameYard/` repository prefix 下执行 Pulse 发布门：一条矩阵覆盖 desktop、portrait、landscape 与 en/ja/zh-Hans 的 9 张 viewport 视觉基线，并保留一张暂停后的真实 gameplay 基线，同时走 pointer 启动与触控键按下/释放、keyboard 暂停的可观察结果链并下载有界诊断 JSON；另一条连续执行 50 次进入/退出，每 5 次重载 Guest，统一拒绝残留 iframe、Host MessagePort、全局 runtime listener、失败请求和 console/page error。`vp run release:pulse` 将 ready、root E2E、Lab、prefix release gate 与 Cloudflare dry-run 串成 Issue #5 的完整关闭门。
+`vp run e2e:release` 在 `/GameYard/` repository prefix 下执行双游戏发布门：Pulse 保留 desktop、portrait、landscape × en/ja/zh-Hans 的 9 张 shell 视觉基线和一张暂停后的真实 gameplay 基线，并走 pointer、touch、keyboard 与有界诊断导出；TUMBLEDRUM 以固定随机序列和帧时钟生成同样 3 × 3 的完整游戏视觉基线，并通过真实 pointer、touch、keyboard 验证 Campaign 启动、暂停/恢复以及三路音频与 motion policy。另一条测试交替执行 50 次 Pulse/TUMBLEDRUM 进入/退出，每 5 次重载当前 Guest，统一拒绝残留 iframe、Host MessagePort、全局 runtime listener、失败请求和 console/page error。`vp run release:tumbledrum` 将 ready、root E2E、Lab、prefix release gate 与 Cloudflare dry-run 串成 Issue #9 的完整关闭门。
 
 `vp run tumbledrum#build` 构建唯一 Vite guest stage；`vp run tumbledrum#test` 通过 test-only 同源 Host harness 对该 stage 执行 exact INIT/MessageChannel，再顺序运行 smoke/integration/regression/full-run。测试覆盖 desktop、portrait touch、landscape touch；每个视口通过真实 mouse/touch 启动 Campaign，并从实际 RAF loop 观察每次 simulation update 都是 1/120、每帧后 accumulator 小于一个固定步。所有程序固定使用 `playwright==1.61.0` 所属的 Chromium；外部 `CHROMIUM_EXECUTABLE` 覆盖或缺失的项目浏览器都会直接失败，不改用系统 Chrome。完整流程时间受未 seeded RNG 影响，不锁偶然秒数；1/120 step、13 关、Campaign victory 与 Endless wave 12 才是稳定门。测试 Host 与调试实例不会进入 production stage。
 

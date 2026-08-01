@@ -462,7 +462,11 @@
         for (const ball of this.balls || []) ball.trail.length = 0;
       }
       this.audio.setSettings(settings.audio);
-      this.record('info', 'settings.applied', `Applied Host settings revision ${settings.revision}.`);
+      this.record(
+        'info',
+        'settings.applied',
+        `Applied Host settings revision ${settings.revision}: master=${settings.audio.master}, music=${settings.audio.music}, sfx=${settings.audio.sfx}, reduced=${settings.motion.reduced}, shake=${settings.motion.screenShake}.`
+      );
     }
 
     applyHostLocale(locale) {

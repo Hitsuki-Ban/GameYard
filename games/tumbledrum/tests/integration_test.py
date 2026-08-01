@@ -70,6 +70,42 @@ def main() -> None:
         assert page.evaluate("window.__TUMBLEDRUM__.state") == "playing"
         assert page.evaluate("window.__TUMBLEDRUM__.audio.ready") is True
 
+        page.host_evaluate(
+            """window.gameyardTestHost.applySettings({
+              audio:{master:0.5,music:0.25,sfx:0.75},
+              motion:{reduced:true,screenShake:false}
+            })"""
+        )
+        page.wait_for_timeout(250)
+        comfort_policy = page.evaluate(
+            """() => {
+              const g = window.__TUMBLEDRUM__;
+              g.shake = 20;
+              g.updateAmbient(1/120);
+              return {
+                master:g.audio.master.gain.value,
+                music:g.audio.musicGain.gain.value,
+                sfx:g.audio.sfxGain.gain.value,
+                motion:g.settings.motion,
+                shake:g.settings.shake,
+                shakeX:g.shakeX,
+                shakeY:g.shakeY,
+              };
+            }"""
+        )
+        assert abs(comfort_policy["master"] - 0.36) < 0.002, comfort_policy
+        assert abs(comfort_policy["music"] - 0.08) < 0.002, comfort_policy
+        assert abs(comfort_policy["sfx"] - 0.525) < 0.002, comfort_policy
+        assert comfort_policy["motion"] is False and comfort_policy["shake"] is False
+        assert comfort_policy["shakeX"] == 0 and comfort_policy["shakeY"] == 0
+        report["comfortPolicy"] = comfort_policy
+        page.host_evaluate(
+            """window.gameyardTestHost.applySettings({
+              audio:{master:1,music:1,sfx:1},
+              motion:{reduced:false,screenShake:true}
+            })"""
+        )
+
         # Render every authored stage and validate content bounds/required targets.
         shot_dir = args.shots
         if shot_dir:
