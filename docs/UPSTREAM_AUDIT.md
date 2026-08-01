@@ -1,6 +1,6 @@
 # 三个上游游戏实现审计
 
-审计日期：2026-08-01。证据来自三个仓库 `main` 的浅克隆、GitHub API 与源码逐文件检查。GameYard 当前只包含已完成迁移的 PulseLinkOverdrive；TUMBLEDRUM 与 CrownBreaker 尚未导入。
+审计日期：2026-08-01。证据来自三个仓库 `main` 的浅克隆、GitHub API 与源码逐文件检查。GameYard 当前已导入 PulseLinkOverdrive 与 TUMBLEDRUM 的固定历史；生产 artifact 仍只登记已完成 runtime 适配的 PulseLinkOverdrive，CrownBreaker 尚未导入。
 
 ## 快速对照
 
@@ -25,6 +25,8 @@
 - Site assembler 在读取 stage 前校验严格 upstream index、项目专用记录、授权文本哈希与 revision/tree；记录缺失、不完整、被篡改或禁止公开时整站 artifact 直接失败。权利记录本身也进入内容派生 build ID。
 
 可保留：内容/关卡模型、程序化音频、严格翻译目录、现有完整浏览器测试。需要改造：显式 boot、pause/resume、设置映射、音频数值增益和 bridge 事件。无需实现同页 destroy，因为卸载由移除 iframe 完成。
+
+Issue #7 已将该 revision 作为非 squash subtree 第二父提交导入 `games/tumbledrum`。固定 tree 有 37 个 blob；`SHA256SUMS.txt` 覆盖除自身外的 36 个文件，GameYard baseline 会在构建前后逐一核验。原 smoke/integration/regression/full-run 均原样运行，另覆盖源码与单文件在 1050×1300、390×844、844×390 的六种组合。上游 full-run 使用未 seeded `Math.random`，所以 `TEST_REPORT.md` 的 728.01 秒只作为观测值；稳定锁是字节一致源码、`FIXED_DT = 1 / 120`、13 个 authored stages、Campaign victory 与 Endless wave 12。
 
 ## PulseLinkOverdrive
 
