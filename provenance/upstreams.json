@@ -18,7 +18,7 @@
       "originsFile": "games/pulse-link-overdrive/docs/ORIGINS.md",
       "importedPath": "games/pulse-link-overdrive",
       "assetRights": "The upstream README licenses the code and original assets under MIT.",
-      "assetGeneration": "The upstream repository does not record how the PNG icons were generated from the readable SVG source.",
+      "assetGeneration": "The upstream repository contains readable SVG and PNG icons but does not record whether or how the PNG files were derived from the SVG.",
       "publicImportAllowed": true
     },
     {
