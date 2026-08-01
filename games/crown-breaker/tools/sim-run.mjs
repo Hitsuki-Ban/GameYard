@@ -32,7 +32,7 @@ const MIME_TYPES = new Map([
 ]);
 
 function fail(message) {
-  throw new Error(`${message}\nUsage: pnpm sim -- --runs <1-${MAX_RUNS}> --policy <greedy|random> --seed-base <1-4294967295>`);
+  throw new Error(`${message}\nUsage: vp run crown-breaker#sim -- --runs <1-${MAX_RUNS}> --policy <greedy|random> --seed-base <1-4294967295>`);
 }
 
 function parseUnsignedInteger(flag, raw, min, max) {
@@ -488,7 +488,7 @@ async function runSimulation(config) {
     try {
       browser = await chromium.launch({ headless: true });
     } catch (error) {
-      throw new Error(`Chromium could not start. Install it with \"pnpm exec playwright install chromium\".\n${error.message}`);
+      throw new Error(`Chromium could not start. Install it with \"vp run crown-breaker#browser:install\".\n${error.message}`);
     }
     const results = new Array(config.runs);
     const workerCount = Math.min(config.runs, 3);

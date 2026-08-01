@@ -2,7 +2,7 @@
 
 GameYard is a Vite+ workspace for presenting experimental HTML games through one exhibition Hub. The Hub owns navigation, shared comfort settings, locale selection, lifecycle coordination, diagnostics, and deployment. Each game keeps its own simulation, renderer, input semantics, audio design, saves, and text catalog inside one same-origin iframe at a time.
 
-PulseLinkOverdrive and TUMBLEDRUM are playable exhibits. Both use the same INIT-gated guest contract, Hub-owned public locale/settings, ACKed lifecycle commands, bounded diagnostics, fullscreen requests, and deterministic cleanup. Their simulations, renderers, input semantics, audio graphs, translations, and game-specific saves remain game-owned. Standalone product builds, per-game Service Workers, legacy public-setting storage, and production mutation surfaces are not part of GameYard. CrownBreaker has not been imported.
+PulseLinkOverdrive and TUMBLEDRUM are playable exhibits. Both use the same INIT-gated guest contract, Hub-owned public locale/settings, ACKed lifecycle commands, bounded diagnostics, fullscreen requests, and deterministic cleanup. Their simulations, renderers, input semantics, audio graphs, translations, and game-specific saves remain game-owned. Standalone product builds, per-game Service Workers, legacy public-setting storage, and production mutation surfaces are not part of GameYard. CrownBreaker is imported at its pinned upstream revision and has a standalone behavior baseline; it remains queued until its Hub adapter is complete.
 
 The production runtime/build boundary is active:
 

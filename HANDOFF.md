@@ -1,17 +1,23 @@
 # Handoff
 
 - source: Codex task `019fbbb1-910c-7652-9cb5-f27d8150dd88`, 2026-08-01
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-9-landscape-comfort` | base `609f40678c9c41ad399fd47486d3be1bbe08c780` + pending Issue #9 follow-up | clean: no
-- goal: Close Issue #9's landscape comfort finding, merge it, return to clean synchronized main, then start Issue #10 CrownBreaker provenance and behavior baseline.
-- verified: `vp run release:tumbledrum` PASS after the layout fix; owner delta review PASS; artifact `gameyard@338d94759bfa7869`, 14 files, 2 games.
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-10-crownbreaker-baseline` | base `d053b2358685a7fa50ebc4f932bd070c87d23434` | import commit `b79ceeaefccf1cc4b59b5c4e085b9ccb1da33b45` | clean: no
+- goal: Close Issue #10 by merging the pinned CrownBreaker history and trustworthy standalone behavior baseline, then return to clean synchronized `main` before Issue #11.
+- verified:
+  - `vp run crown-breaker#baseline` PASS; 50 assets, three locales, static/stage/enemy/trait broad gates, production black-box, and fixed 100-run simulation.
+  - two independent 100-run reports were byte-identical: 64 wins / 36 losses; canonical SHA-256 `4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44`.
+  - `vp run ready` PASS after serializing workspace browser tests; artifact `gameyard@15ba4c8335a62438`, 14 files, 2 production games.
+  - owner review and independent test verification PASS; verifier reproduced the full baseline in 440 seconds.
 - done-this-thread:
-  - PR #24 merged the original Issue #9 release matrix and closed the six acceptance gates.
-  - Delayed owner review found that the 844×390 baseline clipped the lower TUMBLEDRUM Canvas; Issue #9 was reopened before #10 began.
-  - Low-height landscape now gives the complete runtime one viewport and removes the iframe 520px floor.
-  - The existing three-locale release matrix now rejects any toolbar or TUMBLEDRUM Canvas clipping.
-- next: Merge the follow-up PR, clean branches, update roadmap #1, then start #10.
+  - Issue #9 follow-up PR #25 merged and closed the landscape comfort finding.
+  - CrownBreaker revision `1f7b911926c786043ba793e16c4f25cd5f523b21` imported as a non-squash subtree; pure import tree remains `f70585e43b1246a7a9a9ede8aad6f024b21583f3`.
+  - Crown is a root-pinned Vite+ workspace with no nested package-manager authority or lockfile.
+  - production standalone exact-once strips the complete QA mutation hook, QA activation, and game Service Worker registration; browser verification uses real input and three locales.
+  - TUMBLEDRUM audio verification now waits for the existing strict gain targets instead of relying on a fixed 250 ms sleep; root workspace tests run one task at a time.
+- next: receive independent verifier PASS, commit the baseline layer, push, open an exact-head PR with `Closes #10`, merge with a merge commit to preserve subtree ancestry, sync/delete branches, update roadmap #1, then start Issue #11 from clean `main`.
 - gate: exact-head-merge-and-clean
 - risks:
+  - Crown remains queued and absent from `site.assembly.json`/production catalog until Issue #11 completes INIT-only boot and runtime adaptation.
   - TUMBLEDRUM distribution remains limited by `provenance/tumbledrum/distribution-record.json`.
-- authority: constraints -> `AGENTS.md`; plan -> `docs/PROJECT_PLAN.md` and Issues #1/#9/#10; runtime decision -> `docs/adr/0005-tumbledrum-single-runtime.md`; commands -> `docs/DEVELOPMENT.md`.
-- stale-first: repo/HEAD/clean state expires at the Issue #9 follow-up commit; re-derive with `git status`, `git rev-parse HEAD`, and `gh issue view 9`.
+- authority: constraints -> `AGENTS.md`; plan -> `docs/PROJECT_PLAN.md` and Issues #1/#10/#11; commands -> `docs/DEVELOPMENT.md`; Crown baseline -> `games/crown-breaker/GAMEYARD.md`.
+- stale-first: repo/HEAD/clean state expires at the Issue #10 merge; re-derive with `git status`, `git rev-parse HEAD`, and `gh issue view 10`.

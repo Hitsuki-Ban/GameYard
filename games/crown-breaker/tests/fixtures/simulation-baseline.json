@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "config": {
+    "runs": 100,
+    "policy": "greedy",
+    "seedBase": 1000
+  },
+  "summary": {
+    "runs": 100,
+    "wins": 64,
+    "losses": 36,
+    "winRate": 0.64,
+    "depth": {
+      "mean": 6.41,
+      "max": 8,
+      "distribution": {
+        "1": 1,
+        "2": 6,
+        "3": 11,
+        "4": 7,
+        "5": 11,
+        "8": 64
+      }
+    },
+    "failureCodes": {
+      "crown_broken": 22,
+      "no_legal_moves": 0,
+      "qa": 0,
+      "simulation_error": 0,
+      "simulation_timeout": 0,
+      "turns_exhausted": 14
+    },
+    "score": {
+      "min": 1056,
+      "p25": 28938.25,
+      "median": 88114.5,
+      "p75": 104868.5,
+      "p90": 115460.7,
+      "max": 140349,
+      "mean": 73227.55
+    },
+    "routes": {
+      "normal": {
+        "encounters": 216,
+        "battleWins": 203,
+        "runSelections": 95,
+        "runWins": 64,
+        "battleWinRate": 0.9398,
+        "runWinRate": 0.6737
+      },
+      "elite": {
+        "encounters": 261,
+        "battleWins": 239,
+        "runSelections": 97,
+        "runWins": 64,
+        "battleWinRate": 0.9157,
+        "runWinRate": 0.6598
+      }
+    },
+    "traits": {
+      "berserk": { "encounters": 81, "battleWins": 80, "winRate": 0.9877 },
+      "chains": { "encounters": 14, "battleWins": 13, "winRate": 0.9286 },
+      "echo": { "encounters": 18, "battleWins": 18, "winRate": 1 },
+      "gravity": { "encounters": 1, "battleWins": 1, "winRate": 1 },
+      "guarded": { "encounters": 114, "battleWins": 99, "winRate": 0.8684 },
+      "hex": { "encounters": 31, "battleWins": 30, "winRate": 0.9677 },
+      "lockstep": { "encounters": 18, "battleWins": 15, "winRate": 0.8333 },
+      "mist": { "encounters": 116, "battleWins": 104, "winRate": 0.8966 },
+      "phantom": { "encounters": 30, "battleWins": 30, "winRate": 1 },
+      "possession": { "encounters": 14, "battleWins": 14, "winRate": 1 },
+      "rampart": { "encounters": 17, "battleWins": 16, "winRate": 0.9412 },
+      "summoner": { "encounters": 44, "battleWins": 43, "winRate": 0.9773 },
+      "swift": { "encounters": 12, "battleWins": 12, "winRate": 1 },
+      "thorns": { "encounters": 18, "battleWins": 18, "winRate": 1 },
+      "tithe": { "encounters": 13, "battleWins": 13, "winRate": 1 }
+    },
+    "formations": {
+      "fortress": { "encounters": 134, "battleWins": 121, "winRate": 0.903 },
+      "lance": { "encounters": 64, "battleWins": 62, "winRate": 0.9688 },
+      "phalanx": { "encounters": 38, "battleWins": 37, "winRate": 0.9737 },
+      "pincer": { "encounters": 140, "battleWins": 126, "winRate": 0.9 },
+      "scatter": { "encounters": 139, "battleWins": 137, "winRate": 0.9856 },
+      "vanguard": { "encounters": 126, "battleWins": 122, "winRate": 0.9683 }
+    },
+    "mods": {
+      "armor": { "encounters": 52, "battleWins": 51, "winRate": 0.9808 },
+      "cavalry": { "encounters": 157, "battleWins": 142, "winRate": 0.9045 },
+      "diagonals": { "encounters": 64, "battleWins": 58, "winRate": 0.9063 },
+      "executioner": { "encounters": 102, "battleWins": 100, "winRate": 0.9804 },
+      "mirror": { "encounters": 38, "battleWins": 37, "winRate": 0.9737 },
+      "promoted": { "encounters": 92, "battleWins": 90, "winRate": 0.9783 },
+      "queen": { "encounters": 56, "battleWins": 53, "winRate": 0.9464 },
+      "race": { "encounters": 52, "battleWins": 51, "winRate": 0.9808 },
+      "shortClock": { "encounters": 43, "battleWins": 41, "winRate": 0.9535 },
+      "swarm": { "encounters": 71, "battleWins": 68, "winRate": 0.9577 },
+      "veteran": { "encounters": 32, "battleWins": 31, "winRate": 0.9688 },
+      "walls": { "encounters": 57, "battleWins": 52, "winRate": 0.9123 }
+    },
+    "aiProfiles": {
+      "aggressive": { "encounters": 271, "battleWins": 258, "winRate": 0.952 },
+      "crownGuard": { "encounters": 186, "battleWins": 172, "winRate": 0.9247 },
+      "defensive": { "encounters": 184, "battleWins": 175, "winRate": 0.9511 }
+    }
+  },
+  "reportSha256": "4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44"
+}

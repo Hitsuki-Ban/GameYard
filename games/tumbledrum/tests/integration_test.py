@@ -76,7 +76,15 @@ def main() -> None:
               motion:{reduced:true,screenShake:false}
             })"""
         )
-        page.wait_for_timeout(250)
+        page.wait_for_function(
+            """() => {
+              const audio = window.__TUMBLEDRUM__.audio;
+              return Math.abs(audio.master.gain.value - 0.36) < 0.002
+                && Math.abs(audio.musicGain.gain.value - 0.08) < 0.002
+                && Math.abs(audio.sfxGain.gain.value - 0.525) < 0.002;
+            }""",
+            timeout=2_000,
+        )
         comfort_policy = page.evaluate(
             """() => {
               const g = window.__TUMBLEDRUM__;
