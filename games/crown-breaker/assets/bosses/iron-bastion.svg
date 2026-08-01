@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">Iron Bastion</title>
+  <g id="crown-base" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path d="M14 103V31h15V17h15v14h32V17h15v14h15v72H14Zm14-57v43h17V70h30v19h17V46H28Z" fill-rule="evenodd"/>
+    <path d="m10 103 12-13h76l12 13-13 7H23l-13-7Z"/>
+  </g>
+  <g id="decor" fill="var(--asset-accent)" stroke="var(--asset-accent)" stroke-width="2" stroke-linejoin="round">
+    <path d="m60 38 15 15-15 15-15-15 15-15Zm-8 39h16v26H52V77Z"/>
+    <path d="M20 50h8v31h-8V50Zm72 0h8v31h-8V50Z"/>
+  </g>
+</svg>

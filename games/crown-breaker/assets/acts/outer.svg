@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" fill="none">
+  <path d="M0 650c180-42 310-44 470-8 150 34 278 21 430-20 182-49 341-50 505-9 179 45 324 45 515 2v465H0V650Z" fill="currentColor" opacity=".05"/>
+  <path d="M0 420c130 26 216 95 304 188L0 720V420Zm1920 0c-130 26-216 95-304 188l304 112V420Z" fill="currentColor" opacity=".08"/>
+  <path d="M209 660c0-104 38-199 94-275 55 75 94 171 94 275M150 690h306M1523 660c0-104 38-199 94-275 55 75 94 171 94 275m-153 30h306" stroke="currentColor" stroke-width="12" opacity=".2"/>
+  <path d="m310 350 29 49-36 58-36-58 43-49Zm1300 0 43 49-36 58-36-58 29-49Z" fill="currentColor" opacity=".18"/>
+  <path d="M650 672V426l88-52v298m444 0V426l-88-52v298M738 412h444M773 412l19-102 38 45 42-97 48 80 40-122 40 122 48-80 42 97 38-45 19 102" stroke="currentColor" stroke-width="12" stroke-linejoin="round" opacity=".18"/>
+  <path d="M800 672V486h320v186M850 486V382h220v104M913 382l47-106 47 106" stroke="currentColor" stroke-width="14" opacity=".22"/>
+  <path d="M470 1000h980l-102-82H572l-102 82Zm147-128h686l-91-72H708l-91 72Zm136-116h414l-72-56H825l-72 56Z" fill="currentColor" opacity=".1"/>
+  <path d="M0 730c288-76 524 58 800 8 315-57 545-130 1120-20M0 820c286-55 504 37 773 13 409-37 700-111 1147-25M0 918c330-45 559 23 887 4 385-22 662-71 1033-36" stroke="currentColor" stroke-width="22" stroke-linecap="round" opacity=".09"/>
+</svg>

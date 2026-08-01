@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">Black pawn</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M50 11a16 16 0 1 1 0 32 16 16 0 0 1 0-32ZM39 41h22l8 35H54L45 64l-8 12H28l11-35ZM28 76h41l17 15H15l13-15Zm27-35h8L44 67h-8l19-26Z" fill-rule="evenodd"/>
+</svg>

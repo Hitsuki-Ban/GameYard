@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" fill="none">
+  <path d="M0 690 190 522l135 124 150-188 167 164 160-246 158 166 158-166 160 246 167-164 150 188 135-124 190 168v390H0V690Z" fill="currentColor" opacity=".055"/>
+  <path d="M0 268h230v812H0m1920-812h-230v812h230M230 326h250v754H230m1460-754h-250v754h250" stroke="currentColor" stroke-width="20" opacity=".16"/>
+  <path d="M260 0v326m180-326v326M1480 0v326m180-326v326M230 252h250m960 0h250" stroke="currentColor" stroke-width="16" opacity=".18"/>
+  <path d="M694 838V362l102-134 74 78 90-202 90 202 74-78 102 134v476" stroke="currentColor" stroke-width="18" stroke-linejoin="round" opacity=".22"/>
+  <path d="M824 796V474h272v322M872 474l88-184 88 184" stroke="currentColor" stroke-width="16" opacity=".25"/>
+  <path d="m960 180 50 82-50 88-50-88 50-82Z" fill="currentColor" opacity=".24"/>
+  <path d="M754 906h412l-48-110H802l-48 110Zm-112 88h636l-112-88H754l-112 88Zm-180 86h996l-180-86H642l-180 86Z" fill="currentColor" opacity=".1"/>
+  <path d="M340 800c-55-98-38-190 46-270-14 79 72 101 44 181-13 37-44 64-90 89Zm1240 0c55-98 38-190-46-270 14 79-72 101-44 181 13 37 44 64 90 89ZM545 834c-43-77-30-150 36-213-11 62 56 79 34 142-10 29-35 50-70 71Zm830 0c43-77 30-150-36-213 11 62-56 79-34 142 10 29 35 50 70 71Z" fill="currentColor" opacity=".18"/>
+  <path d="M0 930h460M1460 930h460M0 1010h326m1268 0h326" stroke="currentColor" stroke-width="14" opacity=".12"/>
+</svg>

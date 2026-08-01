@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" fill="none">
+  <path d="M0 0h1920v1080H0z" fill="currentColor" opacity=".025"/>
+  <path d="M0 1080V0h180v1080m1560 0V0h180v1080M180 126h1560M180 802h1560" stroke="currentColor" stroke-width="20" opacity=".17"/>
+  <path d="M180 0h270l-68 146v656l68 278H180V0Zm1290 0h270v1080h-270l68-278V146l-68-146ZM494 0h196l-51 192v520l51 368H494V0Zm736 0h196v1080h-196l51-368V192L1230 0Z" fill="currentColor" opacity=".075"/>
+  <path d="M382 146h257M382 802h257m643-656h256m-256 656h256" stroke="currentColor" stroke-width="16" opacity=".24"/>
+  <path d="M706 0h508l-74 222v452l74 406H706l74-406V222L706 0Z" stroke="currentColor" stroke-width="14" opacity=".15"/>
+  <path d="M816 684V286h288v398M860 286c0-111 45-185 100-238 55 53 100 127 100 238" stroke="currentColor" stroke-width="14" opacity=".22"/>
+  <path d="m960 118 40 61-40 71-40-71 40-61Z" fill="currentColor" opacity=".25"/>
+  <path d="M288 738c-28-94-8-181 58-242l47 56-31 54 45 132h-119Zm1344 0c28-94 8-181-58-242l-47 56 31 54-45 132h119Z" stroke="currentColor" stroke-width="14" stroke-linejoin="round" opacity=".19"/>
+  <path d="M0 1080 780 674h360l780 406M350 1080l502-406m718 406-502-406M723 1080l184-406m290 406-184-406" stroke="currentColor" stroke-width="10" opacity=".13"/>
+  <path d="M0 944h1920M0 1012h1920" stroke="currentColor" stroke-width="12" opacity=".08"/>
+</svg>

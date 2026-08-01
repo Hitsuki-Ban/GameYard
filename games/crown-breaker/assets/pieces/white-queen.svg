@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">White queen</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 19l12 13 18-22 18 22 12-13-6 29H26l-6-29Zm8 29h44l-7 25H35l-7-25Zm3 25h38l6 8H25l6-8Zm-6 8h50l7 10H18l7-10Z"/>
+</svg>
