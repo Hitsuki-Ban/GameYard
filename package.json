@@ -15,7 +15,7 @@
     "e2e:lab": "vp exec playwright test --config playwright.dev.config.ts",
     "e2e": "vp run build && vp exec playwright test",
     "e2e:release": "vp run build && vp exec playwright test --config playwright.release.config.ts",
-    "release:tumbledrum": "vp run ready && vp run e2e && vp run e2e:lab && vp run e2e:release && vp run deploy:dry-run",
+    "release": "vp run ready && vp run e2e && vp run e2e:lab && vp run e2e:release && vp run deploy:dry-run",
     "ready": "vp run tooling:test && vp check && vp run -r --concurrency-limit 1 test && vp run build",
     "deploy:dry-run": "vp run build && vp exec wrangler deploy --dry-run"
   },
