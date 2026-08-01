@@ -1,0 +1,68 @@
+{
+  "product": "TUMBLEDRUM",
+  "version": "1.1.0",
+  "build_date": "2026-07-24",
+  "runtime": "HTML5 Canvas 2D + WebAudio + vanilla JavaScript",
+  "pages_entry": "index.html",
+  "offline_single_file": "TUMBLEDRUM_PLAY.html",
+  "single_file_bytes": 178899,
+  "tooling": {
+    "python": "3.12.13",
+    "uv": "0.11.19",
+    "playwright": "1.61.0"
+  },
+  "browser_tested": "Google Chrome 150.0.7871.130 on Windows 11 Pro 10.0.26200",
+  "checks": {
+    "node_syntax_files": [
+      "src/i18n.js",
+      "src/content.js",
+      "src/audio.js",
+      "src/game.js"
+    ],
+    "source_smoke": true,
+    "single_file_smoke": true,
+    "single_file_external_runtime_references": 0,
+    "locales": [
+      "ja",
+      "zh-Hans",
+      "en"
+    ],
+    "system_locale_matrix": {
+      "ja-JP": "ja",
+      "zh-CN": "zh-Hans",
+      "en-US": "en",
+      "fr-FR": "en"
+    },
+    "manual_language_persistence": true,
+    "runtime_status_relocalization": true,
+    "keyboard_menu_navigation": true,
+    "gamepad_dpad": true,
+    "gamepad_pause_resume_cycle": true,
+    "mobile_portrait_touch": true,
+    "mobile_landscape_layout": true,
+    "authored_stages_rendered": 13,
+    "brick_effect_types_exercised": [
+      "paper",
+      "clay",
+      "wood",
+      "bomb",
+      "spinner",
+      "bell",
+      "anchor",
+      "gift"
+    ],
+    "oriented_collision_regression": true,
+    "maxed_upgrade_regression": true,
+    "reduced_motion_particle_count": {
+      "normal": 100,
+      "reduced": 30
+    },
+    "campaign_full_run_state": "victory",
+    "campaign_full_run_game_seconds": 728.01,
+    "endless_wave_reached": 12,
+    "endless_stamp_unlocked": true,
+    "page_errors": [],
+    "console_errors": []
+  },
+  "known_consideration": "Procedural WebAudio is fully functional; bespoke studio recording/mastering remains the clearest optional pre-store polish area."
+}
