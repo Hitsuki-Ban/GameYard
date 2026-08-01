@@ -1,36 +1,42 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#241b17">
-  <meta name="color-scheme" content="dark">
-  <title>TUMBLEDRUM — Festival Breaker</title>
-  <meta name="description" content="A tactile brick breaker crafted from paper, wood, clay, rope, and brass.">
-  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyNDFiMTciLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyMyIgZmlsbD0iI2QzYTIzYSIgc3Ryb2tlPSIjMjExYzFhIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIxNCIgZmlsbD0iI2ZmZjNjZiIgc3Ryb2tlPSIjYmQ0NjM0IiBzdHJva2Utd2lkdGg9IjUiLz48cGF0aCBkPSJNMjQgMjRsMTYgMTZNNDAgMjRMMjQgNDAiIHN0cm9rZT0iIzIxMWMxYSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <main class="stage" aria-label="TUMBLEDRUM game">
-    <canvas
-      id="game"
-      width="900"
-      height="1200"
-      tabindex="0"
-      role="application"
-      aria-describedby="status"
-      aria-label="TUMBLEDRUM. Move left and right to return the brass ball. White knot stamps mark required targets."
-    ></canvas>
-    <p id="status" class="visually-hidden" aria-live="polite"></p>
-    <noscript>
-      <span lang="en">This game requires JavaScript.</span>
-      <span lang="ja">このゲームを遊ぶにはJavaScriptが必要です。</span>
-      <span lang="zh-Hans">本游戏需要启用JavaScript。</span>
-    </noscript>
-  </main>
-  <script src="src/i18n.js"></script>
-  <script src="src/content.js"></script>
-  <script src="src/audio.js"></script>
-  <script src="src/game.js"></script>
-</body>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#241b17" />
+    <meta name="color-scheme" content="dark" />
+    <title>TUMBLEDRUM — Festival Breaker</title>
+    <meta
+      name="description"
+      content="A tactile brick breaker crafted from paper, wood, clay, rope, and brass."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyNDFiMTciLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyMyIgZmlsbD0iI2QzYTIzYSIgc3Ryb2tlPSIjMjExYzFhIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIxNCIgZmlsbD0iI2ZmZjNjZiIgc3Ryb2tlPSIjYmQ0NjM0IiBzdHJva2Utd2lkdGg9IjUiLz48cGF0aCBkPSJNMjQgMjRsMTYgMTZNNDAgMjRMMjQgNDAiIHN0cm9rZT0iIzIxMWMxYSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="stage" aria-label="TUMBLEDRUM game">
+      <canvas
+        id="game"
+        width="900"
+        height="1200"
+        tabindex="0"
+        role="application"
+        aria-describedby="status"
+        aria-label="TUMBLEDRUM. Move left and right to return the brass ball. White knot stamps mark required targets."
+      ></canvas>
+      <p id="status" class="visually-hidden" aria-live="polite"></p>
+      <noscript>
+        <span lang="en">This game requires JavaScript.</span>
+        <span lang="ja">このゲームを遊ぶにはJavaScriptが必要です。</span>
+        <span lang="zh-Hans">本游戏需要启用JavaScript。</span>
+      </noscript>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>

@@ -5,9 +5,10 @@ import { defineConfig } from "vite-plus";
 import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
 
 const artifactBuildId = await createArtifactBuildId();
-const pulseId = "pulse-link-overdrive";
-const pulseDevOrigin = "http://127.0.0.1:5174";
-const pulseDevManifestUrl = `${pulseDevOrigin}/games/${pulseId}/game.manifest.json`;
+const devRuntimes = [
+  { id: "pulse-link-overdrive", origin: "http://127.0.0.1:5174" },
+  { id: "tumbledrum", origin: "http://127.0.0.1:5175" },
+] as const;
 const hubStageManifest = `${JSON.stringify(
   { schemaVersion: 1, buildId: artifactBuildId, entry: "index.html" },
   null,
@@ -18,13 +19,11 @@ const devCatalog = `${JSON.stringify(
   {
     schemaVersion: 1,
     buildId: artifactBuildId,
-    games: [
-      {
-        id: pulseId,
-        entry: `./${pulseId}/index.html`,
-        manifest: `./${pulseId}/game.manifest.json`,
-      },
-    ],
+    games: devRuntimes.map(({ id }) => ({
+      id,
+      entry: `./${id}/index.html`,
+      manifest: `./${id}/game.manifest.json`,
+    })),
   },
   null,
   2,
@@ -40,12 +39,13 @@ type DevMiddleware = (
   next: () => void,
 ) => void | Promise<void>;
 
-async function waitForPulseDevRuntime(): Promise<void> {
+async function waitForDevRuntime(runtime: (typeof devRuntimes)[number]): Promise<void> {
+  const manifestUrl = `${runtime.origin}/games/${runtime.id}/game.manifest.json`;
   const deadline = Date.now() + 10_000;
-  let lastFailure = "Pulse dev server did not respond";
+  let lastFailure = `${runtime.id} dev server did not respond`;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(pulseDevManifestUrl, {
+      const response = await fetch(manifestUrl, {
         cache: "no-store",
         signal: AbortSignal.timeout(500),
       });
@@ -53,21 +53,25 @@ async function waitForPulseDevRuntime(): Promise<void> {
         const manifest = GameManifestSchema.safeParse(await response.json());
         if (
           manifest.success &&
-          manifest.data.id === pulseId &&
+          manifest.data.id === runtime.id &&
           manifest.data.buildId === artifactBuildId
         ) {
           return;
         }
-        lastFailure = "Pulse dev manifest does not match the Hub runtime identity";
+        lastFailure = `${runtime.id} dev manifest does not match the Hub runtime identity`;
       } else {
-        lastFailure = `Pulse dev manifest returned HTTP ${response.status}`;
+        lastFailure = `${runtime.id} dev manifest returned HTTP ${response.status}`;
       }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
   }
-  throw new Error(`Pulse dev runtime was not ready after 10000ms: ${lastFailure}`);
+  throw new Error(`${runtime.id} dev runtime was not ready after 10000ms: ${lastFailure}`);
+}
+
+async function waitForDevRuntimes(): Promise<void> {
+  await Promise.all(devRuntimes.map((runtime) => waitForDevRuntime(runtime)));
 }
 
 function devRuntimeProxyPlugin() {
@@ -75,7 +79,7 @@ function devRuntimeProxyPlugin() {
     name: "gameyard-dev-runtime-proxy",
     apply: "serve" as const,
     async configureServer(server: { middlewares: { use(handler: DevMiddleware): void } }) {
-      await waitForPulseDevRuntime();
+      await waitForDevRuntimes();
       server.middlewares.use(
         (
           request: { url?: string },
@@ -121,12 +125,15 @@ export default defineConfig({
     __GAMEYARD_BUILD__: JSON.stringify(artifactBuildId),
   },
   server: {
-    proxy: {
-      [`/games/${pulseId}`]: {
-        target: pulseDevOrigin,
-        ws: true,
-      },
-    },
+    proxy: Object.fromEntries(
+      devRuntimes.map(({ id, origin }) => [
+        `/games/${id}`,
+        {
+          target: origin,
+          ws: true,
+        },
+      ]),
+    ),
   },
   build: {
     outDir: "../../.gameyard/stage/hub",

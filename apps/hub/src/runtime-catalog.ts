@@ -1,5 +1,7 @@
 import { BuildIdSchema, GameManifestSchema, type GameManifest } from "@gameyard/game-contract";
 
+import { isGameId, type GameId } from "./catalog";
+
 export interface RuntimeFetchResponse {
   readonly ok: boolean;
   readonly status: number;
@@ -9,7 +11,7 @@ export interface RuntimeFetchResponse {
 export type RuntimeFetch = (url: string) => Promise<RuntimeFetchResponse>;
 
 interface RuntimeCatalogGame {
-  readonly id: string;
+  readonly id: GameId;
   readonly entry: string;
   readonly manifest: string;
 }
@@ -21,14 +23,13 @@ interface RuntimeCatalog {
 }
 
 export interface PlayableRuntime {
-  readonly id: "pulse-link-overdrive";
+  readonly id: GameId;
   readonly buildId: string;
   readonly entryUrl: string;
   readonly baseUrl: string;
   readonly manifest: GameManifest;
 }
 
-const PULSE_ID = "pulse-link-overdrive" as const;
 const CATALOG_URL = "./games/catalog.json";
 
 export class RuntimeCatalogError extends Error {
@@ -88,8 +89,19 @@ export function parseRuntimeCatalog(value: unknown, expectedBuildId: string): Ru
     ) {
       throw new RuntimeCatalogError(`runtime catalog games[${index}] fields must be strings`);
     }
+    if (!isGameId(game.id)) {
+      throw new RuntimeCatalogError(
+        `runtime catalog games[${index}] has unknown game id: ${game.id}`,
+      );
+    }
     if (ids.has(game.id)) {
       throw new RuntimeCatalogError(`runtime catalog contains duplicate game id: ${game.id}`);
+    }
+    const expectedManifestPath = `./${game.id}/game.manifest.json`;
+    if (game.manifest !== expectedManifestPath) {
+      throw new RuntimeCatalogError(
+        `${game.id} manifest path mismatch: expected ${expectedManifestPath}, received ${game.manifest}`,
+      );
     }
     ids.add(game.id);
     return { id: game.id, entry: game.entry, manifest: game.manifest };
@@ -119,55 +131,49 @@ async function fetchJson(fetcher: RuntimeFetch, url: string, label: string): Pro
   }
 }
 
-export async function loadPulseRuntime(
+export async function loadGameRuntime(
   fetcher: RuntimeFetch,
   expectedBuildId: string,
+  gameId: GameId,
 ): Promise<PlayableRuntime> {
   const catalog = parseRuntimeCatalog(
     await fetchJson(fetcher, CATALOG_URL, "runtime catalog"),
     expectedBuildId,
   );
-  const pulse = catalog.games.find((game) => game.id === PULSE_ID);
-  if (!pulse) {
-    throw new RuntimeCatalogError(`runtime catalog is missing required game: ${PULSE_ID}`);
+  const game = catalog.games.find((candidate) => candidate.id === gameId);
+  if (!game) {
+    throw new RuntimeCatalogError(`runtime catalog is missing required game: ${gameId}`);
   }
 
-  const expectedManifestPath = `./${PULSE_ID}/game.manifest.json`;
-  if (pulse.manifest !== expectedManifestPath) {
-    throw new RuntimeCatalogError(
-      `${PULSE_ID} manifest path mismatch: expected ${expectedManifestPath}, received ${pulse.manifest}`,
-    );
-  }
-
-  const manifestUrl = `./games/${pulse.manifest.slice(2)}`;
+  const manifestUrl = `./games/${game.manifest.slice(2)}`;
   const parsedManifest = GameManifestSchema.safeParse(
-    await fetchJson(fetcher, manifestUrl, `${PULSE_ID} manifest`),
+    await fetchJson(fetcher, manifestUrl, `${gameId} manifest`),
   );
   if (!parsedManifest.success) {
-    throw new RuntimeCatalogError(`${PULSE_ID} manifest failed schema validation`);
+    throw new RuntimeCatalogError(`${gameId} manifest failed schema validation`);
   }
   const manifest = parsedManifest.data;
-  if (manifest.id !== PULSE_ID) {
-    throw new RuntimeCatalogError(`${PULSE_ID} manifest id mismatch: received ${manifest.id}`);
+  if (manifest.id !== gameId) {
+    throw new RuntimeCatalogError(`${gameId} manifest id mismatch: received ${manifest.id}`);
   }
   if (manifest.buildId !== catalog.buildId) {
     throw new RuntimeCatalogError(
-      `${PULSE_ID} manifest build mismatch: expected ${catalog.buildId}, received ${manifest.buildId}`,
+      `${gameId} manifest build mismatch: expected ${catalog.buildId}, received ${manifest.buildId}`,
     );
   }
 
-  const catalogEntry = `./${PULSE_ID}/${manifest.entry}`;
-  if (pulse.entry !== catalogEntry) {
+  const catalogEntry = `./${gameId}/${manifest.entry}`;
+  if (game.entry !== catalogEntry) {
     throw new RuntimeCatalogError(
-      `${PULSE_ID} entry mismatch: expected ${catalogEntry}, received ${pulse.entry}`,
+      `${gameId} entry mismatch: expected ${catalogEntry}, received ${game.entry}`,
     );
   }
 
   return {
-    id: PULSE_ID,
+    id: gameId,
     buildId: catalog.buildId,
-    entryUrl: `./games/${PULSE_ID}/${manifest.entry}`,
-    baseUrl: `./games/${PULSE_ID}/`,
+    entryUrl: `./games/${gameId}/${manifest.entry}`,
+    baseUrl: `./games/${gameId}/`,
     manifest,
   };
 }

@@ -2,7 +2,7 @@
   'use strict';
 
   const TD = (window.TD = window.TD || {});
-  const preferences = Object.freeze(['system', 'ja', 'zh-Hans', 'en']);
+  const supportedLocales = Object.freeze(['en', 'ja', 'zh-Hans']);
   const listeners = new Set();
   const numberFormats = new Map();
   const catalogKeys = Object.freeze([
@@ -48,8 +48,7 @@
     'zh-Hans': '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, Georgia, serif'
   });
 
-  let preference = 'system';
-  let locale = resolveSystemLocale();
+  let locale = null;
 
   function number(value) {
     return formatNumber(value);
@@ -66,7 +65,7 @@
       'status.title': 'TUMBLEDRUM title screen. Choose Campaign, Endless, or Settings.',
       'status.paused': 'Game paused.',
       'status.resumed': 'Game resumed.',
-      'status.settings': 'Settings. Choose a language or adjust sound, motion, contrast, and fullscreen.',
+      'status.settings': 'Settings. Adjust contrast or request fullscreen.',
       'status.campaignStage': ({ current, total }) =>
         `Campaign stage ${number(current)} of ${number(total)}. Move left and right to return the ball. White knot stamps mark required targets.`,
       'status.endlessWave': ({ wave }) => `Endless wave ${number(wave)}.`,
@@ -106,7 +105,7 @@
       'status.title': 'TUMBLEDRUMのタイトル画面です。キャンペーン、エンドレス、設定から選びます。',
       'status.paused': '一時停止しました。',
       'status.resumed': 'ゲームを再開しました。',
-      'status.settings': '設定です。言語、音、動き、コントラスト、全画面を変更できます。',
+      'status.settings': '設定です。コントラストを変更するか、全画面表示をリクエストできます。',
       'status.campaignStage': ({ current, total }) =>
         `キャンペーン ${number(current)}／${number(total)}ステージ。左右に動いてボールを打ち返します。白い結び目の印が必須ターゲットです。`,
       'status.endlessWave': ({ wave }) => `エンドレス 第${number(wave)}ウェーブ。`,
@@ -146,7 +145,7 @@
       'status.title': 'TUMBLEDRUM 标题画面。请选择战役、无尽模式或设置。',
       'status.paused': '游戏已暂停。',
       'status.resumed': '游戏已继续。',
-      'status.settings': '设置。可选择语言，并调整音效、动态、对比度与全屏。',
+      'status.settings': '设置。可调整对比度或请求全屏显示。',
       'status.campaignStage': ({ current, total }) =>
         `战役第 ${number(current)} 关，共 ${number(total)} 关。左右移动并击回球，白色绳结印记代表必须击中的目标。`,
       'status.endlessWave': ({ wave }) => `无尽模式第 ${number(wave)} 波。`,
@@ -180,19 +179,9 @@
 
   validateCatalogs();
 
-  function resolveSystemLocale() {
-    for (const requestedLocale of navigator.languages) {
-      const normalized = requestedLocale.toLowerCase();
-      if (normalized.startsWith('zh')) return 'zh-Hans';
-      if (normalized.startsWith('ja')) return 'ja';
-      if (normalized.startsWith('en')) return 'en';
-    }
-    return 'en';
-  }
-
   function validateCatalogs() {
     const referenceKeys = [...catalogKeys].sort();
-    for (const catalogLocale of preferences.slice(1)) {
+    for (const catalogLocale of supportedLocales) {
       const candidateKeys = Object.keys(catalogs[catalogLocale]).sort();
       if (
         candidateKeys.length !== referenceKeys.length ||
@@ -224,18 +213,15 @@
     canvas.setAttribute('aria-label', t('page.canvasAria'));
   }
 
-  function setPreference(nextPreference) {
-    if (!preferences.includes(nextPreference)) {
-      throw new RangeError(`Unsupported language preference: ${String(nextPreference)}`);
+  function setLocale(nextLocale) {
+    if (!supportedLocales.includes(nextLocale)) {
+      throw new RangeError(`Unsupported Host locale: ${String(nextLocale)}`);
     }
-
-    const nextLocale = nextPreference === 'system' ? resolveSystemLocale() : nextPreference;
-    if (nextPreference === preference && nextLocale === locale) return;
-
-    preference = nextPreference;
+    if (nextLocale === locale) return false;
     locale = nextLocale;
     syncDocument();
     notifyListeners();
+    return true;
   }
 
   function t(key, params) {
@@ -271,8 +257,8 @@
   }
 
   const I18N = {
-    preferences,
-    setPreference,
+    supportedLocales,
+    setLocale,
     t,
     formatNumber,
     onChange,
@@ -280,10 +266,6 @@
   };
 
   Object.defineProperties(I18N, {
-    preference: {
-      enumerable: true,
-      get: () => preference
-    },
     locale: {
       enumerable: true,
       get: () => locale
@@ -297,14 +279,4 @@
   Object.freeze(I18N);
   TD.I18N = I18N;
 
-  window.addEventListener('languagechange', () => {
-    if (preference !== 'system') return;
-    const nextLocale = resolveSystemLocale();
-    if (nextLocale === locale) return;
-    locale = nextLocale;
-    syncDocument();
-    notifyListeners();
-  });
-
-  syncDocument();
 })();

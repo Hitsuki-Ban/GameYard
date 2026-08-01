@@ -5,7 +5,7 @@
 
   class AudioEngine {
     constructor(settings) {
-      this.settings = settings || { audio: true, music: true };
+      this.settings = { ...settings };
       this.ctx = null;
       this.master = null;
       this.musicGain = null;
@@ -16,14 +16,20 @@
       this.step = 0;
       this.lastMusicState = '';
       this.musicSeed = 0;
+      this.disposed = false;
     }
 
-    unlock() {
-      if (!this.settings.audio) return;
+    async unlock() {
+      if (this.disposed) return false;
       if (!this.ctx) this._create();
       if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
+        try {
+          await this.ctx.resume();
+        } catch (_) {
+          return false;
+        }
       }
+      return this.ctx?.state === 'running';
     }
 
     _create() {
@@ -40,9 +46,9 @@
         compressor.ratio.value = 6;
         compressor.attack.value = 0.003;
         compressor.release.value = 0.14;
-        this.musicGain.gain.value = 0.32;
-        this.sfxGain.gain.value = 0.7;
-        this.master.gain.value = this.settings.audio ? 0.72 : 0;
+        this.musicGain.gain.value = this.settings.music * 0.32;
+        this.sfxGain.gain.value = this.settings.sfx * 0.7;
+        this.master.gain.value = this.settings.master * 0.72;
         this.musicGain.connect(compressor);
         this.sfxGain.connect(compressor);
         compressor.connect(this.master);
@@ -69,18 +75,25 @@
     }
 
     setSettings(settings) {
-      this.settings = settings;
-      if (!this.ctx && settings.audio) this.unlock();
+      this.settings = { ...settings };
       if (this.master && this.ctx) {
         const now = this.ctx.currentTime;
-        this.master.gain.cancelScheduledValues(now);
-        this.master.gain.linearRampToValueAtTime(settings.audio ? 0.72 : 0, now + 0.04);
+        this.master.gain.setTargetAtTime(settings.master * 0.72, now, 0.02);
+        this.musicGain.gain.setTargetAtTime(settings.music * 0.32, now, 0.04);
+        this.sfxGain.gain.setTargetAtTime(settings.sfx * 0.7, now, 0.02);
       }
     }
 
+    async setPaused(paused) {
+      if (!this.ctx || this.ctx.state === 'closed') return;
+      if (paused && this.ctx.state === 'running') await this.ctx.suspend();
+      if (!paused && this.ctx.state === 'suspended') await this.ctx.resume();
+    }
+
     tone(freq, duration, options) {
-      if (!this.ready || !this.settings.audio) return;
+      if (!this.ready || this.settings.master <= 0) return;
       const opts = options || {};
+      if (opts.bus === 'music' ? this.settings.music <= 0 : this.settings.sfx <= 0) return;
       const now = this.ctx.currentTime + (opts.delay || 0);
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -105,8 +118,9 @@
     }
 
     noise(duration, options) {
-      if (!this.ready || !this.settings.audio || !this.noiseBuffer) return;
+      if (!this.ready || this.settings.master <= 0 || !this.noiseBuffer) return;
       const opts = options || {};
+      if (opts.bus === 'music' ? this.settings.music <= 0 : this.settings.sfx <= 0) return;
       const now = this.ctx.currentTime + (opts.delay || 0);
       const source = this.ctx.createBufferSource();
       const gain = this.ctx.createGain();
@@ -128,8 +142,7 @@
 
     sfx(name, power) {
       const p = Math.max(0, Math.min(1.8, power == null ? 1 : power));
-      if (!this.settings.audio) return;
-      this.unlock();
+      if (this.settings.master <= 0 || this.settings.sfx <= 0) return;
       switch (name) {
         case 'paper':
           this.noise(0.08, { filter: 2400 + p * 900, q: 0.6, volume: 0.025 + p * 0.016 });
@@ -212,7 +225,7 @@
     }
 
     update(dt, game) {
-      if (!this.ready || !this.settings.audio || !this.settings.music) return;
+      if (!this.ready || this.settings.master <= 0 || this.settings.music <= 0) return;
       if (!game || game.state !== 'playing' || game.paused) return;
       const parade = game.paradeTimer > 0;
       const combo = game.comboCount || 0;
@@ -249,6 +262,18 @@
         this.tone(root * 2, 0.22, { type: 'sine', volume: 0.026, bus: 'music' });
       }
       this.step = (this.step + 1) % 16;
+    }
+
+    async dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      this.ready = false;
+      if (this.ctx && this.ctx.state !== 'closed') await this.ctx.close();
+      this.ctx = null;
+      this.master = null;
+      this.musicGain = null;
+      this.sfxGain = null;
+      this.noiseBuffer = null;
     }
   }
 

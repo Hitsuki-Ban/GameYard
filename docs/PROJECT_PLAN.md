@@ -4,7 +4,7 @@
 
 一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 的精确上游历史、独立逻辑基线和 guest adapter 已进入仓库。生产 catalog 现在精确登记 Pulse，它能由 Hub 启动、调节、暂停、重载和关闭；其余游戏仍保持排队状态。
+Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 与 TUMBLEDRUM 的固定上游历史、行为基线和 guest adapter 已进入仓库。生产 catalog 精确登记两者，它们都由同一个 Hub runtime 启动、调节、暂停、重载和关闭；CrownBreaker 仍保持排队状态。
 
 ## 架构结论
 
@@ -51,7 +51,7 @@ dist/games/catalog.json
 dist/build-info.json
 ```
 
-各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 只有 `pulse-link-overdrive`。
+各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 为 `pulse-link-overdrive` 与 `tumbledrum`。
 
 最终 `games/` 命名空间只属于 assembler。Hub stage 不得写入任何 `games` 路径，production verifier 也拒绝 catalog 与已登记 game manifest 之外的 game 文件。
 
@@ -140,13 +140,13 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 6. Issue #5 的发布门已收口：root 与 repository-style prefix 均能直达；三视口 × 三语言 viewport 基线、暂停后的真实 gameplay 基线、可观察结果的 pointer/keyboard、只读有界诊断通过；50 次进入/退出与周期性重载仅保留当前 frame，Host port 与 runtime listener 回到基线，且无失败请求或 console/page error。
 
-### M2 — TUMBLEDRUM
+### M2 — TUMBLEDRUM（adapter 完成，发布验收进行中）
 
 前置已完成：`provenance/tumbledrum/` 记录了绑定固定 revision/tree、GameYard 仓库、GitHub Pages 与 Cloudflare 的项目专用分发方向，并逐类审计源代码、程序化视听内容、截图、构建元数据及未随包分发的第三方边界。Assembler 会在任何 stage/build ID 检查之前 fail closed；该记录不是 standalone 仓库的通用许可证。
 
-固定上游历史与 standalone baseline 已完成：非 squash subtree 精确指向 `ba6fc680626ac59db793175122600369d48f9834`；36 条上游 checksum、120 Hz 固定步长、原 smoke/integration/regression/full-run、13 关、Campaign/Endless 结果，以及源码/单文件的 desktop/portrait/landscape 冒烟均可执行。TUMBLEDRUM 尚未进入 `site.assembly.json` 或生产 artifact。
+固定上游历史与原始行为证据已完成：非 squash subtree 精确指向 `ba6fc680626ac59db793175122600369d48f9834`，上游 checksum 保留在 provenance 历史中。当前唯一生产源码通过 test-only 同源 Host harness 继续执行 smoke/integration/regression/full-run，锁定 120 Hz 固定步长、13 关、Campaign/Endless 结果和 desktop/portrait/landscape 输入路径。
 
-下一步保留 Canvas、内容与程序音频，加入 boot/bridge，公共布尔设置映射到数值 audio policy，不读取旧键。M2 完成门还包括三语言、3:4 desktop/mobile 截图和退出 frame 清理。
+Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio policy、Host locale/motion、严格 namespaced save 与确定性 dispose；TUMBLEDRUM 已进入 `site.assembly.json` 和双游戏 production artifact。下一步 Issue #9 收口三语言、三视口视觉基线、游戏切换与退出 frame 清理。
 
 ### M3 — CrownBreaker
 

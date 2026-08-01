@@ -9,20 +9,17 @@
   const H = CONTENT.H;
   const TAU = Math.PI * 2;
   const FIXED_DT = 1 / 120;
-  const LANGUAGE_OPTIONS = ['system', 'ja', 'zh-Hans', 'en'];
+  const SAVE_KEY = 'gameyard.game.tumbledrum.save.v1';
+  const SAVE_SCHEMA_VERSION = 1;
+  const STAMP_IDS = ['sweet', 'combo', 'parade', 'perfect', 'boss', 'endless'];
   const TITLE_ACTIONS = [
     { id: 'campaign', x: 450, y: 960, radius: 112 },
     { id: 'endless', x: 700, y: 1000, radius: 80 },
     { id: 'settings', x: 815, y: 88, radius: 58 }
   ];
   const SETTINGS_ROWS = [
-    { key: 'language', y: 260, icon: 'language', type: 'language' },
-    { key: 'audio', y: 385, icon: 'speaker', type: 'toggle' },
-    { key: 'music', y: 510, icon: 'music', type: 'toggle' },
-    { key: 'shake', y: 635, icon: 'shake', type: 'toggle' },
-    { key: 'motion', y: 760, icon: 'motion', type: 'toggle' },
-    { key: 'contrast', y: 885, icon: 'contrast', type: 'toggle' },
-    { key: 'fullscreen', y: 1010, icon: 'fullscreen', type: 'action' }
+    { key: 'contrast', y: 510, icon: 'contrast', type: 'toggle' },
+    { key: 'fullscreen', y: 760, icon: 'fullscreen', type: 'action' }
   ];
 
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -68,13 +65,61 @@
     }
   }
 
-  function safeParse(value, fallback) {
+  function defaultSave() {
+    return {
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      bestCampaign: 0,
+      bestEndless: 0,
+      cleared: false,
+      contrast: false,
+      stamps: Object.fromEntries(STAMP_IDS.map((id) => [id, false]))
+    };
+  }
+
+  function parseSave(value) {
+    if (value === null) return defaultSave();
+    let parsed;
     try {
-      const parsed = JSON.parse(value);
-      return parsed && typeof parsed === 'object' ? parsed : fallback;
-    } catch (_) {
-      return fallback;
+      parsed = JSON.parse(value);
+    } catch (error) {
+      throw new TypeError(`TUMBLEDRUM save is not valid JSON: ${error.message}`);
     }
+    const expectedKeys = ['bestCampaign', 'bestEndless', 'cleared', 'contrast', 'schemaVersion', 'stamps'];
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new TypeError('TUMBLEDRUM save must be an object.');
+    }
+    const actualKeys = Object.keys(parsed).sort();
+    if (
+      actualKeys.length !== expectedKeys.length ||
+      actualKeys.some((key, index) => key !== expectedKeys[index])
+    ) {
+      throw new TypeError(`TUMBLEDRUM save must contain exactly: ${expectedKeys.join(', ')}.`);
+    }
+    if (parsed.schemaVersion !== SAVE_SCHEMA_VERSION) {
+      throw new RangeError(`Unsupported TUMBLEDRUM save schema: ${String(parsed.schemaVersion)}.`);
+    }
+    if (!Number.isSafeInteger(parsed.bestCampaign) || parsed.bestCampaign < 0) {
+      throw new TypeError('TUMBLEDRUM bestCampaign must be a non-negative safe integer.');
+    }
+    if (!Number.isSafeInteger(parsed.bestEndless) || parsed.bestEndless < 0) {
+      throw new TypeError('TUMBLEDRUM bestEndless must be a non-negative safe integer.');
+    }
+    if (typeof parsed.cleared !== 'boolean' || typeof parsed.contrast !== 'boolean') {
+      throw new TypeError('TUMBLEDRUM cleared and contrast fields must be booleans.');
+    }
+    if (!parsed.stamps || typeof parsed.stamps !== 'object' || Array.isArray(parsed.stamps)) {
+      throw new TypeError('TUMBLEDRUM stamps must be an object.');
+    }
+    const stampKeys = Object.keys(parsed.stamps).sort();
+    const expectedStampKeys = [...STAMP_IDS].sort();
+    if (
+      stampKeys.length !== expectedStampKeys.length ||
+      stampKeys.some((key, index) => key !== expectedStampKeys[index]) ||
+      expectedStampKeys.some((key) => typeof parsed.stamps[key] !== 'boolean')
+    ) {
+      throw new TypeError(`TUMBLEDRUM stamps must contain exactly: ${expectedStampKeys.join(', ')}.`);
+    }
+    return parsed;
   }
 
   function circleRectCollision(ball, rect, padding) {
@@ -182,10 +227,21 @@
   }
 
   class Game {
-    constructor(canvas, statusEl) {
+    constructor(canvas, statusEl, context, bridge) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
       this.statusEl = statusEl;
+      this.context = context;
+      this.bridge = bridge;
+      this.resources = bridge.resources;
+      this.lifecycle = 'booting';
+      this.disposed = false;
+      this.hostPaused = true;
+      this.hostInputEnabled = false;
+      this.inputEnabled = false;
+      this.cancelFrame = null;
+      this.cancelOrientationTimer = null;
+      this.events = [];
       this.dpr = 1;
       this.scale = 1;
       this.lastFrame = performance.now();
@@ -219,45 +275,18 @@
       this.stitches = [];
       this._makeBackdropData();
 
-      const defaultSettings = {
-        audio: true,
-        music: true,
-        shake: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        motion: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        contrast: false,
-        language: 'system'
-      };
-      const storedSettings = safeParse(localStorage.getItem('tumbledrum-settings-v1'), {});
       this.settings = {
-        audio: typeof storedSettings.audio === 'boolean' ? storedSettings.audio : defaultSettings.audio,
-        music: typeof storedSettings.music === 'boolean' ? storedSettings.music : defaultSettings.music,
-        shake: typeof storedSettings.shake === 'boolean' ? storedSettings.shake : defaultSettings.shake,
-        motion: typeof storedSettings.motion === 'boolean' ? storedSettings.motion : defaultSettings.motion,
-        contrast: typeof storedSettings.contrast === 'boolean' ? storedSettings.contrast : defaultSettings.contrast,
-        language: LANGUAGE_OPTIONS.includes(storedSettings.language) ? storedSettings.language : defaultSettings.language
+        audio: context.settings.audio.master > 0 && context.settings.audio.sfx > 0,
+        music: context.settings.audio.master > 0 && context.settings.audio.music > 0,
+        shake: context.settings.motion.screenShake,
+        motion: !context.settings.motion.reduced,
+        contrast: false
       };
-      I18N.setPreference(this.settings.language);
-      this.save = Object.assign(
-        {
-          bestCampaign: 0,
-          bestEndless: 0,
-          cleared: false,
-          stamps: {
-            sweet: false,
-            combo: false,
-            parade: false,
-            perfect: false,
-            boss: false,
-            endless: false
-          }
-        },
-        safeParse(localStorage.getItem('tumbledrum-save-v1'), {})
-      );
-      this.save.stamps = Object.assign(
-        { sweet: false, combo: false, parade: false, perfect: false, boss: false, endless: false },
-        this.save.stamps || {}
-      );
-      this.audio = new TD.AudioEngine(this.settings);
+      I18N.setLocale(context.locale.resolved);
+      this.save = parseSave(localStorage.getItem(SAVE_KEY));
+      this.settings.contrast = this.save.contrast;
+      this.audio = new TD.AudioEngine(context.settings.audio);
+      this.resources.register(() => this.terminateResources());
       this.currentStatus = null;
       this.removeLocaleListener = I18N.onChange(() => this.handleLocaleChange());
 
@@ -273,7 +302,7 @@
       this.installEvents();
       this.resize();
       this.setStatus('status.title');
-      requestAnimationFrame((t) => this.loop(t));
+      this.draw();
     }
 
     _makeBackdropData() {
@@ -305,29 +334,39 @@
         this.pointer.movedAt = performance.now();
       };
 
-      this.canvas.addEventListener('pointermove', (event) => {
+      this.resources.listen(this.canvas, 'pointermove', (event) => {
+        if (!this.inputEnabled) return;
         map(event);
         this.keyboardNavigationActive = false;
         if (event.pointerType === 'touch') event.preventDefault();
-      }, { passive: false });
+      });
 
-      this.canvas.addEventListener('pointerdown', (event) => {
+      this.resources.listen(this.canvas, 'pointerdown', (event) => {
+        if (!this.inputEnabled) return;
         map(event);
         this.keyboardNavigationActive = false;
         this.pointer.down = true;
         this.canvas.focus({ preventScroll: true });
-        this.audio.unlock();
-        this.actionAt(this.pointer.x, this.pointer.y);
+        this.canvas.setPointerCapture?.(event.pointerId);
         event.preventDefault();
-      }, { passive: false });
-
-      window.addEventListener('pointerup', () => {
-        this.pointer.down = false;
       });
 
-      this.canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+      this.resources.listen(this.canvas, 'pointerup', (event) => {
+        if (!this.inputEnabled) return;
+        map(event);
+        const shouldActivate = this.pointer.down;
+        this.pointer.down = false;
+        void this.audio.unlock();
+        if (shouldActivate) this.actionAt(this.pointer.x, this.pointer.y);
+        event.preventDefault();
+      });
 
-      window.addEventListener('keydown', (event) => {
+      this.resources.listen(this.canvas, 'pointercancel', () => this.releaseAllInput());
+      this.resources.listen(this.canvas, 'lostpointercapture', () => this.releaseAllInput());
+      this.resources.listen(this.canvas, 'contextmenu', (event) => event.preventDefault());
+
+      this.resources.listen(window, 'keydown', (event) => {
+        if (!this.inputEnabled) return;
         const key = event.key.toLowerCase();
         this.keys[key] = true;
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' ', 'enter', 'a', 'd', 'p', 'escape', 'f'].includes(key)) {
@@ -371,14 +410,18 @@
         }
       });
 
-      window.addEventListener('keyup', (event) => {
+      this.resources.listen(window, 'keyup', (event) => {
         this.keys[event.key.toLowerCase()] = false;
       });
 
-      window.addEventListener('resize', () => this.resize());
-      window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 120));
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && ['playing', 'stageClear'].includes(this.state)) this.paused = true;
+      this.resources.listen(window, 'blur', () => this.releaseAllInput());
+      this.resources.listen(window, 'resize', () => this.resize());
+      this.resources.listen(window, 'orientationchange', () => {
+        this.cancelOrientationTimer?.();
+        this.cancelOrientationTimer = this.resources.timeout(() => {
+          this.cancelOrientationTimer = null;
+          this.resize();
+        }, 120);
       });
     }
 
@@ -394,7 +437,140 @@
       this.ctx.imageSmoothingEnabled = true;
     }
 
+    markReady() {
+      this.lifecycle = 'ready';
+    }
+
+    scheduleFrame() {
+      if (this.cancelFrame || this.disposed || this.hostPaused) return;
+      this.cancelFrame = this.resources.animationFrame((timestamp) => this.loop(timestamp));
+    }
+
+    stopFrameLoop() {
+      this.cancelFrame?.();
+      this.cancelFrame = null;
+    }
+
+    applyHostSettings(settings) {
+      this.context = { ...this.context, settings };
+      this.settings.audio = settings.audio.master > 0 && settings.audio.sfx > 0;
+      this.settings.music = settings.audio.master > 0 && settings.audio.music > 0;
+      this.settings.shake = settings.motion.screenShake;
+      this.settings.motion = !settings.motion.reduced;
+      if (!this.settings.motion) {
+        this.streamers.length = 0;
+        for (const ball of this.balls || []) ball.trail.length = 0;
+      }
+      this.audio.setSettings(settings.audio);
+      this.record('info', 'settings.applied', `Applied Host settings revision ${settings.revision}.`);
+    }
+
+    applyHostLocale(locale) {
+      this.context = { ...this.context, locale };
+      I18N.setLocale(locale.resolved);
+      this.record('info', 'locale.applied', `Applied Host locale ${locale.resolved}.`);
+    }
+
+    setInputEnabled(enabled) {
+      this.hostInputEnabled = enabled;
+      this.syncInputState();
+    }
+
+    syncInputState() {
+      const enabled = this.hostInputEnabled && !this.hostPaused && !this.disposed;
+      if (this.inputEnabled === enabled) return;
+      this.inputEnabled = enabled;
+      if (!enabled) this.releaseAllInput();
+    }
+
+    releaseAllInput() {
+      this.keys = Object.create(null);
+      this.pointer.active = false;
+      this.pointer.down = false;
+      Object.assign(this.gamepad, {
+        axis: 0,
+        action: false,
+        pause: false,
+        prevAction: false,
+        prevPause: false,
+        navX: 0,
+        navY: 0,
+        prevNavX: 0,
+        prevNavY: 0
+      });
+    }
+
+    async hostPause() {
+      this.hostPaused = true;
+      this.paused = true;
+      this.stopFrameLoop();
+      this.syncInputState();
+      this.releaseAllInput();
+      await this.audio.setPaused(true);
+      this.lifecycle = 'paused';
+      this.bridge.emitLifecycleState('paused');
+      this.setStatus('status.paused');
+    }
+
+    async hostResume() {
+      if (this.disposed) return;
+      this.hostPaused = false;
+      this.paused = false;
+      this.syncInputState();
+      await this.audio.setPaused(false);
+      this.lastFrame = performance.now();
+      this.lifecycle = 'active';
+      this.bridge.emitLifecycleState('active');
+      this.scheduleFrame();
+      this.setStatus(this.state === 'title' ? 'status.title' : 'status.resumed');
+    }
+
+    record(level, code, message) {
+      const event = { timestampMs: Date.now(), level, code, message };
+      this.events.push(event);
+      if (this.events.length > 32) this.events.shift();
+      this.bridge.emitDiagnostic(event);
+    }
+
+    diagnosticSnapshot() {
+      return {
+        lifecycle: this.lifecycle,
+        settingsRevision: this.context.settings.revision,
+        inputEnabled: this.inputEnabled,
+        events: [...this.events]
+      };
+    }
+
+    async dispose() {
+      if (this.disposed) return;
+      this.lifecycle = 'disposing';
+      this.bridge.emitLifecycleState('disposing');
+      this.disposed = true;
+      this.stopFrameLoop();
+      this.cancelOrientationTimer?.();
+      this.cancelOrientationTimer = null;
+      this.releaseAllInput();
+      this.removeLocaleListener();
+      await this.audio.dispose();
+      this.lifecycle = 'disposed';
+      this.bridge.emitLifecycleState('disposed');
+    }
+
+    terminateResources() {
+      if (this.disposed) return;
+      this.disposed = true;
+      this.lifecycle = 'disposed';
+      this.stopFrameLoop();
+      this.cancelOrientationTimer?.();
+      this.cancelOrientationTimer = null;
+      this.releaseAllInput();
+      this.removeLocaleListener();
+      void this.audio.dispose();
+    }
+
     loop(now) {
+      this.cancelFrame = null;
+      if (this.disposed || this.hostPaused) return;
       const raw = (now - this.lastFrame) / 1000;
       const dt = clamp(raw, 0, 0.05);
       this.lastFrame = now;
@@ -411,7 +587,7 @@
         this.updateAmbient(dt);
       }
       this.draw();
-      requestAnimationFrame((t) => this.loop(t));
+      this.scheduleFrame();
     }
 
     update(dt) {
@@ -456,7 +632,7 @@
     updateAmbient(dt) {
       this.shake *= Math.exp(-dt * 15);
       if (this.shake < 0.01) this.shake = 0;
-      const shakeAmount = this.settings.shake ? this.shake : 0;
+      const shakeAmount = this.settings.shake && this.settings.motion ? this.shake : 0;
       this.shakeX = (Math.random() * 2 - 1) * shakeAmount;
       this.shakeY = (Math.random() * 2 - 1) * shakeAmount;
 
@@ -508,6 +684,10 @@
     }
 
     pollGamepad() {
+      if (!this.inputEnabled) {
+        this.releaseAllInput();
+        return;
+      }
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       let pad = null;
       for (let i = 0; i < pads.length; i += 1) {
@@ -579,21 +759,14 @@
 
     adjustSelectedSetting(direction) {
       const row = SETTINGS_ROWS[this.settingsIndex];
-      if (row.type === 'language') {
-        const current = LANGUAGE_OPTIONS.indexOf(this.settings.language);
-        const next = (current + direction + LANGUAGE_OPTIONS.length) % LANGUAGE_OPTIONS.length;
-        this.setLanguagePreference(LANGUAGE_OPTIONS[next]);
-      } else if (row.type === 'toggle') {
+      if (row.type === 'toggle') {
         this.setSetting(row.key, direction > 0);
       }
     }
 
     activateSelectedSetting() {
       const row = SETTINGS_ROWS[this.settingsIndex];
-      if (row.type === 'language') {
-        const current = LANGUAGE_OPTIONS.indexOf(this.settings.language);
-        this.setLanguagePreference(LANGUAGE_OPTIONS[(current + 1) % LANGUAGE_OPTIONS.length]);
-      } else if (row.type === 'toggle') {
+      if (row.type === 'toggle') {
         this.toggleSetting(row.key);
       } else if (row.key === 'fullscreen') {
         this.toggleFullscreen();
@@ -619,14 +792,11 @@
 
     togglePause() {
       if (!['playing', 'stageClear'].includes(this.state)) return;
-      this.paused = !this.paused;
-      this.setStatus(this.paused ? 'status.paused' : 'status.resumed');
+      this.bridge.requestLifecycleChange(this.hostPaused ? 'resume' : 'pause');
     }
 
     resumeFromPause() {
-      if (!this.paused) return;
-      this.paused = false;
-      this.setStatus('status.resumed');
+      if (this.hostPaused) this.bridge.requestLifecycleChange('resume');
     }
 
     returnToTitle() {
@@ -637,15 +807,7 @@
     }
 
     toggleFullscreen() {
-      try {
-        if (!document.fullscreenElement) {
-          this.canvas.requestFullscreen && this.canvas.requestFullscreen();
-        } else {
-          document.exitFullscreen && document.exitFullscreen();
-        }
-      } catch (_) {
-        // Fullscreen is optional.
-      }
+      this.bridge.requestHostAction('fullscreen.enter');
     }
 
     actionKeyboard() {
@@ -706,19 +868,7 @@
         if (index < 0) return;
         this.settingsIndex = index;
         const row = SETTINGS_ROWS[index];
-        if (row.type === 'language') {
-          const centers = [315, 405, 495, 585];
-          let option = 0;
-          let best = Infinity;
-          centers.forEach((center, optionIndex) => {
-            const delta = Math.abs(x - center);
-            if (delta < best) {
-              best = delta;
-              option = optionIndex;
-            }
-          });
-          this.setLanguagePreference(LANGUAGE_OPTIONS[option]);
-        } else if (row.type === 'toggle') {
+        if (row.type === 'toggle') {
           this.toggleSetting(row.key);
         } else {
           this.toggleFullscreen();
@@ -766,34 +916,15 @@
     setSetting(key, value) {
       const row = SETTINGS_ROWS.find((item) => item.key === key);
       if (!row || row.type !== 'toggle') throw new Error(`Unknown toggle setting: ${key}`);
-      this.settings[key] = !!value;
-      if (key === 'audio' && !this.settings.audio) this.settings.music = false;
-      if (key === 'music' && this.settings.music) this.settings.audio = true;
-      if (key === 'motion' && !this.settings.motion) {
-        this.streamers.length = 0;
-        for (const ball of this.balls || []) ball.trail.length = 0;
-      }
-      this.persistSettings();
-      this.audio.setSettings(this.settings);
+      const enabled = !!value;
+      this.settings.contrast = enabled;
+      this.save.contrast = enabled;
+      this.persistSave();
       this.setStatus('status.settingSelection', {
         settingKey: key,
-        enabled: this.settings[key]
+        enabled
       });
       this.audio.sfx('stamp');
-    }
-
-    setLanguagePreference(preference) {
-      if (!LANGUAGE_OPTIONS.includes(preference)) throw new RangeError(`Unsupported language preference: ${preference}`);
-      this.settings.language = preference;
-      this.persistSettings();
-      I18N.setPreference(preference);
-      const key = preference === 'zh-Hans' ? 'zhHans' : preference;
-      this.setStatus('status.languageChanged', { language: I18N.t(`language.${key}`) });
-      this.audio.sfx('stamp');
-    }
-
-    persistSettings() {
-      localStorage.setItem('tumbledrum-settings-v1', JSON.stringify(this.settings));
     }
 
     handleLocaleChange() {
@@ -2005,7 +2136,7 @@
     }
 
     persistSave() {
-      localStorage.setItem('tumbledrum-save-v1', JSON.stringify(this.save));
+      localStorage.setItem(SAVE_KEY, JSON.stringify(this.save));
     }
 
     unlockStamp(id) {
@@ -2235,7 +2366,7 @@
     }
 
     addShake(amount) {
-      if (!this.settings.shake) return;
+      if (!this.settings.shake || !this.settings.motion) return;
       this.shake = Math.min(28, Math.max(this.shake, amount));
     }
 
@@ -3547,17 +3678,13 @@
       for (let i = 0; i < SETTINGS_ROWS.length; i += 1) {
         const row = SETTINGS_ROWS[i];
         const selected = this.keyboardNavigationActive && this.settingsIndex === i;
-        if (row.type === 'language') {
-          this.drawLanguageSettingRow(ctx, row.y, selected);
-        } else {
-          this.drawSettingRow(
-            ctx,
-            row.y,
-            row.icon,
-            row.type === 'action' ? null : !!this.settings[row.key],
-            selected
-          );
-        }
+        this.drawSettingRow(
+          ctx,
+          row.y,
+          row.icon,
+          row.type === 'action' ? null : !!this.settings[row.key],
+          selected
+        );
       }
     }
 
@@ -3603,48 +3730,6 @@
         ctx.lineWidth = 4;
         ctx.stroke();
         this.drawKnotStamp(ctx, x, 0, 14, false, true);
-      }
-      ctx.restore();
-    }
-
-    drawLanguageSettingRow(ctx, y, selected) {
-      ctx.save();
-      ctx.translate(450, y);
-      if (selected) this.drawSettingFocus(ctx, y);
-      ctx.strokeStyle = this.palette.rope;
-      ctx.lineWidth = 7;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-180, 0);
-      ctx.lineTo(180, 0);
-      ctx.stroke();
-      ctx.fillStyle = this.palette.cream;
-      ctx.beginPath();
-      ctx.arc(-245, 0, 42, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = this.palette.ink;
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      this.drawIcon(ctx, 'language', -245, 0, 24, this.palette.ink);
-
-      const centers = [-135, -45, 45, 135];
-      const keys = ['system', 'ja', 'zhHans', 'en'];
-      for (let i = 0; i < centers.length; i += 1) {
-        const active = this.settings.language === LANGUAGE_OPTIONS[i];
-        ctx.save();
-        ctx.translate(centers[i], 0);
-        ctx.fillStyle = active ? this.palette.gold : this.palette.paper;
-        this.roughRectPath(ctx, 78, 52, y + i * 13, 3);
-        ctx.fill();
-        ctx.strokeStyle = active ? this.palette.red2 : this.palette.ink;
-        ctx.lineWidth = active ? 4 : 2;
-        ctx.stroke();
-        ctx.fillStyle = this.palette.ink;
-        ctx.font = `700 14px ${I18N.fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(I18N.t(`language.short.${keys[i]}`), 0, 1);
-        ctx.restore();
       }
       ctx.restore();
     }
@@ -4089,17 +4174,11 @@
         required: this.bricks ? this.requiredRemaining() : 0,
         audioReady: !!this.audio.ready,
         locale: I18N.locale,
-        languagePreference: this.settings.language,
         assist: this.assist || 0,
         skillEstimate: this.skillEstimate || 0
       };
     }
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('game');
-    const status = document.getElementById('status');
-    const game = new Game(canvas, status);
-    window.__TUMBLEDRUM__ = game;
-  });
+  TD.Game = Game;
 })();

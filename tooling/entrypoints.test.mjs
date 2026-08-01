@@ -4,10 +4,10 @@ import { test } from "node:test";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 
-await test("build creates both owned stages before the sole assembler", () => {
+await test("build creates every owned stage before the sole assembler", () => {
   assert.equal(
     packageJson.scripts.build,
-    "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
+    "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache tumbledrum#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
   );
 });
 

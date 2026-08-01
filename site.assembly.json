@@ -14,6 +14,17 @@
         "games/pulse-link-overdrive/tsconfig.json",
         "games/pulse-link-overdrive/vite.config.ts"
       ]
+    },
+    {
+      "id": "tumbledrum",
+      "stage": ".gameyard/stage/games/tumbledrum",
+      "productionInputs": [
+        "games/tumbledrum/index.html",
+        "games/tumbledrum/package.json",
+        "games/tumbledrum/src",
+        "games/tumbledrum/styles.css",
+        "games/tumbledrum/vite.config.ts"
+      ]
     }
   ]
 }
