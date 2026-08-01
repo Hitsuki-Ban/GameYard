@@ -1516,6 +1516,22 @@ html[data-reduced-motion="true"] *::after {
     min-height: 430px;
   }
 
+  .stage--runtime {
+    top: 0;
+    height: 100svh;
+    min-height: 0;
+  }
+
+  .runtime-toolbar {
+    gap: 8px;
+    padding: 7px 10px;
+  }
+
+  .runtime-frame,
+  .runtime-frame iframe {
+    min-height: 0;
+  }
+
   .poster,
   .stage__poster-wrap {
     min-height: 400px;
