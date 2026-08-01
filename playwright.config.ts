@@ -19,7 +19,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: `vp preview apps/hub --host 127.0.0.1 --port ${hubPort} --strictPort`,
+    command: `vp preview --config tooling/preview.vite.config.mjs --host 127.0.0.1 --port ${hubPort} --strictPort`,
     url: hubUrl,
     reuseExistingServer: false,
     timeout: 30_000,

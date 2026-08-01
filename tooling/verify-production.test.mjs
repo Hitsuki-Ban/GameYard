@@ -1,18 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, test } from "node:test";
+import { test } from "node:test";
 
-import { inspectArtifactText, verifyProductionArtifact } from "./verify-production.mjs";
-
-const temporaryRoots = [];
-
-afterEach(async () => {
-  await Promise.all(
-    temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
-  );
-});
+import { inspectArtifactText } from "./verify-production.mjs";
 
 const rejectedFixtures = [
   ["index.html", '<script src="/assets/app.js"></script>', "HTML src"],
@@ -54,26 +43,10 @@ for (const [file, content] of allowedFixtures) {
   });
 }
 
-await test("artifact verification reports root-absolute references from nested output files", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gameyard-artifact-"));
-  temporaryRoots.push(root);
-  await mkdir(join(root, "assets"), { recursive: true });
-  await writeFile(join(root, "index.html"), '<script src="./assets/app.js"></script>');
-  await writeFile(join(root, "assets/app.js"), 'fetch("/catalog.json")');
-
-  await assert.rejects(
-    verifyProductionArtifact(root, root),
-    /assets[\\/]app\.js contains JavaScript URL call/,
+await test("rejects a Service Worker by artifact filename", () => {
+  assert.ok(
+    inspectArtifactText("games/demo/sw.js", "self.addEventListener('install', () => {})").includes(
+      "forbidden Service Worker file",
+    ),
   );
-});
-
-await test("artifact verification accepts a relative-path production fixture", async () => {
-  const root = await mkdtemp(join(tmpdir(), "gameyard-artifact-"));
-  temporaryRoots.push(root);
-  await mkdir(join(root, "assets"), { recursive: true });
-  await writeFile(join(root, "index.html"), '<script src="./assets/app.js"></script>');
-  await writeFile(join(root, "assets/app.js"), 'fetch("./catalog.json")');
-  await writeFile(join(root, "catalog.json"), '{"game":"./games/pulse/"}');
-
-  assert.deepEqual(await verifyProductionArtifact(root, root), { fileCount: 3 });
 });

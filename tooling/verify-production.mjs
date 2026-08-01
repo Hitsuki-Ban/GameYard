@@ -1,186 +1,215 @@
-import { readdir, readFile } from "node:fs/promises";
-import { extname, relative, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { GameManifestSchema } from "../packages/game-contract/src/index.ts";
+import { parseAssemblyConfig } from "./assembly-config.mjs";
+import { createArtifactBuildId } from "./artifact-build-id.mjs";
+import {
+  inspectArtifactFiles,
+  inspectArtifactText,
+  listArtifactFiles,
+} from "./artifact-inspector.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const productionDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
+const buildIdPattern = /^gameyard@[a-f0-9]{16}$/u;
 
-const textExtensions = new Set([
-  ".css",
-  ".html",
-  ".js",
-  ".json",
-  ".map",
-  ".mjs",
-  ".svg",
-  ".txt",
-  ".webmanifest",
-]);
-const jsonExtensions = new Set([".json", ".webmanifest"]);
-const forbiddenMarkers = [
-  "open lab",
-  "session lab",
-  "tweakpane",
-  "lab-overlay",
-  "lab-accent",
-  "navigator.serviceworker",
-  "serviceworker.register",
-  "sw.js",
-];
-
-function isRootAbsoluteUrl(value) {
-  return /^\s*\/(?!\/)/.test(value);
+function compareStrings(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function findHtmlReferences(content) {
-  const failures = [];
-  const attributePattern =
-    /\b(src|href|poster|srcset)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/giu;
+function assertExactKeys(value, expected, label) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
+  }
+  const keys = Object.keys(value).sort(compareStrings);
+  const expectedKeys = [...expected].sort(compareStrings);
+  if (
+    keys.length !== expectedKeys.length ||
+    keys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(`${label} fields must be exactly: ${expectedKeys.join(", ")}.`);
+  }
+}
 
-  for (const match of content.matchAll(attributePattern)) {
-    const attribute = match[1].toLowerCase();
-    const value = match[2] ?? match[3] ?? match[4] ?? "";
-    if (attribute === "srcset") {
-      const candidates = value
-        .split(",")
-        .map((candidate) => candidate.trim().split(/\s+/u)[0] ?? "");
-      if (candidates.some(isRootAbsoluteUrl)) failures.push("HTML srcset");
-    } else if (isRootAbsoluteUrl(value)) {
-      failures.push(`HTML ${attribute}`);
+function assertRelativeFileList(files, label) {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new Error(`${label} must be a non-empty array.`);
+  }
+  const unique = new Set();
+  for (const file of files) {
+    if (
+      typeof file !== "string" ||
+      file.length === 0 ||
+      file.includes("\\") ||
+      file.startsWith("/") ||
+      file.split("/").some((part) => part === "" || part === "." || part === "..")
+    ) {
+      throw new Error(`${label} contains an invalid relative file path: ${String(file)}`);
     }
+    const folded = file.toLowerCase();
+    if (unique.has(folded)) throw new Error(`${label} contains a case collision: ${file}`);
+    unique.add(folded);
   }
-
-  return failures;
 }
 
-function findCssReferences(content) {
-  const failures = [];
-  const urlPattern = /\burl\(\s*(?:"([^"]*)"|'([^']*)'|([^\s)'";]+))\s*\)/giu;
-  const importPattern = /@import\s+(?:"([^"]*)"|'([^']*)')/giu;
-
-  for (const match of content.matchAll(urlPattern)) {
-    const value = match[1] ?? match[2] ?? match[3] ?? "";
-    if (isRootAbsoluteUrl(value)) failures.push("CSS url()");
-  }
-  for (const match of content.matchAll(importPattern)) {
-    const value = match[1] ?? match[2] ?? "";
-    if (isRootAbsoluteUrl(value)) failures.push("CSS @import");
-  }
-
-  return failures;
-}
-
-function findJsonReferences(value, location = "$") {
-  if (typeof value === "string") {
-    return isRootAbsoluteUrl(value) ? [`JSON value at ${location}`] : [];
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry, index) => findJsonReferences(entry, `${location}[${index}]`));
-  }
-  if (value !== null && typeof value === "object") {
-    return Object.entries(value).flatMap(([key, entry]) =>
-      findJsonReferences(entry, `${location}.${key}`),
-    );
-  }
-  return [];
-}
-
-function findJavaScriptReferences(content) {
-  const failures = [];
-  const callPattern =
-    /\b(?:(?:new\s+)?(?:URL|Worker|SharedWorker|EventSource)|fetch|import|navigator\.sendBeacon|(?:window\.)?open|(?:window\.)?location\.(?:assign|replace))\s*\(\s*(["'`])\s*(\/(?!\/)[^"'`\r\n]*)\1/gu;
-  const modulePattern =
-    /\b(?:import|export)\s+(?:[^;"'`]*?\s+from\s+)?(["'])\s*\/(?!\/)[^"'`\r\n]*\1/gu;
-
-  for (const match of content.matchAll(callPattern)) {
-    failures.push(`JavaScript URL call (${match[0].slice(0, 32)})`);
-  }
-  for (const match of content.matchAll(modulePattern)) {
-    failures.push(`JavaScript module URL (${match[0].slice(0, 32)})`);
-  }
-
-  return failures;
-}
-
-export function inspectArtifactText(file, content) {
-  const extension = extname(file).toLowerCase();
-  const failures = [];
-  const normalized = content.toLowerCase();
-
-  for (const marker of forbiddenMarkers) {
-    if (normalized.includes(marker)) failures.push(`forbidden marker "${marker}"`);
-  }
-
-  if (extension === ".html" || extension === ".svg") {
-    failures.push(...findHtmlReferences(content));
-  }
-  if (extension === ".css") failures.push(...findCssReferences(content));
-  if (extension === ".js" || extension === ".mjs") {
-    failures.push(...findJavaScriptReferences(content));
-  }
-  if (jsonExtensions.has(extension)) {
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch (error) {
-      throw new Error(`Invalid JSON production artifact ${file}: ${error.message}`);
-    }
-    failures.push(...findJsonReferences(parsed));
-  }
-
-  return failures;
-}
-
-async function walk(directory) {
-  let entries;
+async function readJson(file, label) {
+  let content;
   try {
-    entries = await readdir(directory, { withFileTypes: true });
+    content = await readFile(file, "utf8");
   } catch (error) {
-    if (error?.code === "ENOENT") {
-      throw new Error(`Production artifact directory is missing: ${directory}`);
-    }
+    if (error?.code === "ENOENT") throw new Error(`${label} is missing: ${file}`);
     throw error;
   }
-
-  const files = [];
-  for (const entry of entries) {
-    const entryPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await walk(entryPath)));
-    else if (entry.isFile()) files.push(entryPath);
-    else throw new Error(`Unsupported production artifact entry: ${entryPath}`);
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    throw new Error(`${label} is not valid JSON: ${error.message}`);
   }
-  return files;
+}
+
+function assertExactFiles(actualFiles, declaredFiles, label) {
+  const actual = [...actualFiles].sort(compareStrings);
+  const declared = [...declaredFiles].sort(compareStrings);
+  if (actual.length !== declared.length || actual.some((file, index) => file !== declared[index])) {
+    throw new Error(`${label} files are not declared exactly.`);
+  }
 }
 
 export async function verifyProductionArtifact(
   directory = productionDirectory,
   reportRoot = projectRoot,
 ) {
-  const files = await walk(resolve(directory));
+  const root = resolve(directory);
+  const files = await listArtifactFiles(root);
   if (files.length === 0) throw new Error("Production artifact is empty.");
 
-  const failures = [];
-  for (const file of files) {
-    if (!textExtensions.has(extname(file).toLowerCase())) continue;
-    const content = await readFile(file, "utf8");
-    for (const failure of inspectArtifactText(file, content)) {
-      failures.push(`${relative(reportRoot, file)} contains ${failure}`);
-    }
-  }
-
+  const failures = await inspectArtifactFiles(files, reportRoot);
   if (failures.length > 0) {
     throw new Error(`Production artifact verification failed:\n- ${failures.join("\n- ")}`);
   }
 
-  return { fileCount: files.length };
+  const buildInfoPath = resolve(root, "build-info.json");
+  const catalogPath = resolve(root, "games/catalog.json");
+  const buildInfo = await readJson(buildInfoPath, "build-info.json");
+  const catalog = await readJson(catalogPath, "games/catalog.json");
+  const assemblyConfig = parseAssemblyConfig(
+    await readJson(resolve(reportRoot, "site.assembly.json"), "site.assembly.json"),
+  );
+
+  assertExactKeys(buildInfo, ["schemaVersion", "buildId", "files"], "build-info.json");
+  if (buildInfo.schemaVersion !== 1) throw new Error("build-info.json schemaVersion must be 1.");
+  if (!buildIdPattern.test(buildInfo.buildId)) {
+    throw new Error("build-info.json buildId must match gameyard@<16 lowercase hex>.");
+  }
+  assertRelativeFileList(buildInfo.files, "build-info.json files");
+  if (buildInfo.files.some((file, index) => index > 0 && buildInfo.files[index - 1] > file)) {
+    throw new Error("build-info.json files must be sorted.");
+  }
+
+  assertExactKeys(catalog, ["schemaVersion", "buildId", "games"], "games/catalog.json");
+  if (catalog.schemaVersion !== 1) throw new Error("games/catalog.json schemaVersion must be 1.");
+  if (catalog.buildId !== buildInfo.buildId) {
+    throw new Error("games/catalog.json buildId does not match build-info.json.");
+  }
+  if (!Array.isArray(catalog.games)) throw new Error("games/catalog.json games must be an array.");
+  if (catalog.games.length !== assemblyConfig.games.length) {
+    throw new Error("games/catalog.json games do not match site.assembly.json.");
+  }
+
+  const expectedBuildId = await createArtifactBuildId(reportRoot);
+  if (buildInfo.buildId !== expectedBuildId) {
+    throw new Error(
+      `Production artifact buildId mismatch: expected ${expectedBuildId}, received ${buildInfo.buildId}.`,
+    );
+  }
+
+  const actualFiles = files
+    .map((file) => relative(root, file).replaceAll("\\", "/"))
+    .sort(compareStrings);
+  const declaredFiles = [...buildInfo.files].sort(compareStrings);
+  if (
+    actualFiles.length !== declaredFiles.length ||
+    actualFiles.some((file, index) => file !== declaredFiles[index])
+  ) {
+    throw new Error("build-info.json files do not exactly declare the production artifact.");
+  }
+
+  if (!actualFiles.includes("index.html"))
+    throw new Error("Production Hub entry is missing: index.html");
+
+  const gameIds = new Set();
+  const allowedGameFiles = new Set(["games/catalog.json"]);
+  for (const [index, game] of catalog.games.entries()) {
+    assertExactKeys(game, ["id", "entry", "manifest"], `games/catalog.json games[${index}]`);
+    if (typeof game.id !== "string" || game.id.length === 0) {
+      throw new Error(`games/catalog.json games[${index}].id must be a non-empty string.`);
+    }
+    if (game.id !== assemblyConfig.games[index].id) {
+      throw new Error(`games/catalog.json games[${index}].id does not match site.assembly.json.`);
+    }
+    const foldedId = game.id.toLowerCase();
+    if (gameIds.has(foldedId))
+      throw new Error(`games/catalog.json has a game ID collision: ${game.id}`);
+    gameIds.add(foldedId);
+
+    const expectedManifestReference = `./${game.id}/game.manifest.json`;
+    if (game.manifest !== expectedManifestReference) {
+      throw new Error(
+        `games/catalog.json games[${index}].manifest must be ${expectedManifestReference}.`,
+      );
+    }
+    const manifestPath = resolve(root, "games", game.id, "game.manifest.json");
+    const parsedManifest = GameManifestSchema.safeParse(
+      await readJson(manifestPath, `Game ${game.id} manifest`),
+    );
+    if (!parsedManifest.success) {
+      throw new Error(
+        `Game ${game.id} manifest violates GameManifestSchema: ${parsedManifest.error.message}`,
+      );
+    }
+    const manifest = parsedManifest.data;
+    if (manifest.id !== game.id)
+      throw new Error(`Game ${game.id} manifest ID does not match catalog.`);
+    if (manifest.buildId !== buildInfo.buildId) {
+      throw new Error(`Game ${game.id} manifest buildId does not match build-info.json.`);
+    }
+    const expectedEntryReference = `./${game.id}/${manifest.entry}`;
+    if (game.entry !== expectedEntryReference) {
+      throw new Error(
+        `games/catalog.json games[${index}].entry must be ${expectedEntryReference}.`,
+      );
+    }
+
+    const gameRoot = resolve(root, "games", game.id);
+    const gameFiles = (await listArtifactFiles(gameRoot)).map((file) =>
+      relative(gameRoot, file).replaceAll("\\", "/"),
+    );
+    assertExactFiles(gameFiles, manifest.files, `Game ${game.id}`);
+    for (const file of manifest.files) allowedGameFiles.add(`games/${game.id}/${file}`);
+  }
+
+  const rogueGamePath = actualFiles.find(
+    (file) =>
+      (file.toLowerCase() === "games" || file.toLowerCase().startsWith("games/")) &&
+      !allowedGameFiles.has(file),
+  );
+  if (rogueGamePath) {
+    throw new Error(`Production artifact contains an unregistered games path: ${rogueGamePath}`);
+  }
+
+  return { buildId: buildInfo.buildId, fileCount: files.length, gameCount: catalog.games.length };
 }
 
 async function main() {
-  const { fileCount } = await verifyProductionArtifact();
+  const { buildId, fileCount, gameCount } = await verifyProductionArtifact();
   console.log(
-    `Production artifact verified: ${fileCount} files; no Lab runtime, game Service Worker, or repository-prefix-breaking root-absolute URLs.`,
+    `Production artifact verified: ${buildId}; ${fileCount} files; ${gameCount} games; no Lab runtime, game Service Worker, or repository-prefix-breaking root-absolute URLs.`,
   );
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : undefined;
 if (invokedPath === import.meta.url) await main();
+
+export { inspectArtifactText };

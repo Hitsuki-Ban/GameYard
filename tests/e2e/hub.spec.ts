@@ -99,3 +99,18 @@ test("unknown and duplicate game routes are rejected visibly", async ({ page }) 
   await expect(page.locator(".route-error__code")).toContainText("DUPLICATE-GAME");
   expect(runtimeErrors).toEqual([]);
 });
+
+test("production metadata matches the assembled Issue 3 artifact", async ({ request }) => {
+  const buildInfoResponse = await request.get("./build-info.json");
+  const catalogResponse = await request.get("./games/catalog.json");
+  expect(buildInfoResponse.ok()).toBe(true);
+  expect(catalogResponse.ok()).toBe(true);
+
+  const buildInfo = await buildInfoResponse.json();
+  const catalog = await catalogResponse.json();
+  expect(buildInfo).toMatchObject({ schemaVersion: 1 });
+  expect(buildInfo.buildId).toMatch(/^gameyard@[a-f0-9]{16}$/);
+  expect(buildInfo.files).toContain("build-info.json");
+  expect(buildInfo.files).toContain("games/catalog.json");
+  expect(catalog).toEqual({ schemaVersion: 1, buildId: buildInfo.buildId, games: [] });
+});

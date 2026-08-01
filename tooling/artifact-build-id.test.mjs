@@ -28,6 +28,10 @@ async function createFixture() {
       await writeFile(join(target, "entry.ts"), `fixture:${input.path}/entry.ts\n`);
     }
   }
+  await writeFile(
+    join(root, "site.assembly.json"),
+    `${JSON.stringify({ schemaVersion: 1, hubStage: ".gameyard/stage/hub", games: [] }, null, 2)}\n`,
+  );
 
   return root;
 }
@@ -38,7 +42,7 @@ await test("artifact build ID is deterministic for identical production inputs",
   const first = await createArtifactBuildId(root);
   const second = await createArtifactBuildId(root);
 
-  assert.match(first, /^hub@[a-f0-9]{16}$/);
+  assert.match(first, /^gameyard@[a-f0-9]{16}$/);
   assert.equal(second, first);
 });
 
@@ -57,6 +61,75 @@ await test("artifact build ID changes with source, lock, and configuration conte
   await writeFile(join(root, "apps/hub/vite.config.ts"), "changed config\n");
   const configChanged = await createArtifactBuildId(root);
   assert.notEqual(configChanged, lockChanged);
+});
+
+await test("artifact build ID covers runtime bridges, contract, assembler, and site config", async () => {
+  const root = await createFixture();
+  let previous = await createArtifactBuildId(root);
+  const changedInputs = [
+    "packages/game-contract/src/entry.ts",
+    "packages/host-bridge/src/entry.ts",
+    "packages/guest-bridge/src/entry.ts",
+    "tooling/site-assembler.mjs",
+  ];
+
+  for (const input of changedInputs) {
+    await writeFile(join(root, input), `changed:${input}\n`);
+    const next = await createArtifactBuildId(root);
+    assert.notEqual(next, previous, `${input} must affect the artifact build ID`);
+    previous = next;
+  }
+
+  await writeFile(
+    join(root, "site.assembly.json"),
+    `${JSON.stringify({ schemaVersion: 1, hubStage: ".gameyard/stage/hub", games: [] })}\n`,
+  );
+  assert.notEqual(await createArtifactBuildId(root), previous);
+});
+
+await test("artifact build ID includes each configured game's production inputs", async () => {
+  const root = await createFixture();
+  const gameSource = join(root, "games/demo/src");
+  await mkdir(gameSource, { recursive: true });
+  await writeFile(join(gameSource, "game.js"), "first build\n");
+  await writeFile(
+    join(root, "site.assembly.json"),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        hubStage: ".gameyard/stage/hub",
+        games: [
+          {
+            id: "demo",
+            stage: ".gameyard/stage/games/demo",
+            productionInputs: ["games/demo/src"],
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  const first = await createArtifactBuildId(root);
+  await writeFile(join(gameSource, "game.js"), "second build\n");
+
+  assert.notEqual(await createArtifactBuildId(root), first);
+});
+
+await test("artifact build ID ignores testkit, tests, and stale dist", async () => {
+  const root = await createFixture();
+  const original = await createArtifactBuildId(root);
+  for (const input of [
+    "packages/testkit/src/index.ts",
+    "tests/e2e/hub.spec.ts",
+    "dist/assets/stale.js",
+  ]) {
+    const target = join(root, input);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, `ignored:${input}\n`);
+  }
+
+  assert.equal(await createArtifactBuildId(root), original);
 });
 
 await test("artifact build ID fails when a required input is missing", async () => {

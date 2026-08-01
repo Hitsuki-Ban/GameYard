@@ -4,6 +4,8 @@
     { "path": "./apps/hub" },
     { "path": "./games/pulse-link-overdrive" },
     { "path": "./packages/game-contract" },
-    { "path": "./packages/host-bridge" }
+    { "path": "./packages/host-bridge" },
+    { "path": "./packages/guest-bridge" },
+    { "path": "./packages/testkit" }
   ]
 }

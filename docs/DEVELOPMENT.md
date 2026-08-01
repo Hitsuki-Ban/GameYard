@@ -35,11 +35,29 @@ vp run deploy:dry-run
 4. 修改构建/路由：生产 build、root/subpath preview、Wrangler dry-run。
 5. 关闭 milestone：`vp run ready`、三视口 E2E、固定视觉基线和独立 reviewer。
 
-首次在本机运行浏览器测试前执行一次 `vp run e2e:install`，它只安装项目固定 Playwright 版本所需的 Chromium。`vp run e2e` 会先生成 production Hub，再由根目录的 `playwright.config.ts` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 URL 选择、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除与横向溢出。
+首次在本机运行浏览器测试前执行一次 `vp run e2e:install`，它只安装项目固定 Playwright 版本所需的 Chromium。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 URL 选择、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。
 
-生产构建的 `hub@<sha256>` ID 由显式声明的 Hub 源码、contract/bridge 源码、workspace 配置和 lockfile 内容确定；这些输入缺失时构建直接失败，不读取 Git 状态或环境变量作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
+生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
-`vp run artifact:verify` 检查构建产物不含 Lab/Tweakpane、game Service Worker 注册，以及 HTML、CSS、manifest/JSON 和明确 JavaScript URL 调用中的根绝对路径；`//cdn.example/...` 这类 scheme-relative URL 不视为 repository-root 路径。该检查已包含在 `ready` 与 production E2E 中，后者仍严格按 build → artifact verify → Playwright 的顺序运行。`vp run e2e:lab` 单独启动严格端口的开发服务器，验证动态 Lab CSS、参数写入/还原和关闭流程；它不复用 production preview。
+`vp run build` 始终执行 Hub stage → site assembler → production verifier。Assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。新 artifact 安装成功后如旧 backup 清理失败，构建会报告残留 backup 的精确路径，但不会用可能已部分删除的旧 artifact 覆盖完整新产物。当前 games 数组为空，Pulse adapter 完成前不得把 standalone 目录加入配置。
+
+`vp run artifact:verify` 还会验证 `build-info.json`、`games/catalog.json`、每个 manifest、catalog 外 game 路径和完整文件集合，并检查产物不含 Lab/Tweakpane、game Service Worker 注册，以及 HTML、CSS、manifest/JSON 和明确 JavaScript URL 调用中的根绝对路径；`//cdn.example/...` 这类 scheme-relative URL 不视为 repository-root 路径。该检查已包含在根 build、preview、ready、production E2E 与 Wrangler dry-run 中，因此 direct preview 会拒绝与当前源码 build ID 不同的陈旧 `dist`。`vp run e2e:lab` 单独启动严格端口的开发服务器，验证动态 Lab CSS、参数写入/还原和关闭流程；它不复用 production preview。
+
+Host 创建运行 frame 时必须先插入一个没有 `src`/`srcdoc` 的 iframe，再调用 `connectIframe({ entryUrl, ... })`。Bridge 校验相对 entry 属于 `HostContext.baseUrl`，注册 timeout/window listener 后才设置 `src`；不要在 JSX/HTML 中预载文档，也不要在 bridge 外导航。这个单一顺序保证缓存命中或极速加载也不会早于 Host listener 发送一次性 `ready-for-init`。
+
+## 添加游戏 stage
+
+游戏构建只能写自己的 `.gameyard/stage/games/<id>`。随后在 `site.assembly.json` 添加严格对象：
+
+```json
+{
+  "id": "game-id",
+  "stage": ".gameyard/stage/games/game-id",
+  "productionInputs": ["games/game-id/package.json", "games/game-id/src"]
+}
+```
+
+stage 根必须包含 `game.manifest.json`，其 `files` 精确声明自身、入口和全部嵌套素材，且 build ID 必须与站点一致。不要把 stage、`dist`、测试或生成产物列为 production input；不要直接复制未迁移的 standalone 包。
 
 ## UI 调整
 
