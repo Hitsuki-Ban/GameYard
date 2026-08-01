@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">Twin Queens</title>
+  <g id="crown-base" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path d="M13 94 21 38l16 15 23-36 23 36 16-15 8 56-13 13H26L13 94Z"/>
+    <path d="m19 94 14 14h54l14-14-16 6H35l-16-6Z"/>
+  </g>
+  <g id="decor" fill="var(--asset-accent)" stroke="var(--asset-accent)" stroke-width="2" stroke-linejoin="round">
+    <path d="m60 24 8 14-8 14-8-14 8-14Zm-5 33-15 7-8 15 14 15 9-14V57Zm10 0 15 7 8 15-14 15-9-14V57Z"/>
+    <path d="M28 58h8v32h-8V58Zm56 0h8v32h-8V58Z"/>
+  </g>
+</svg>

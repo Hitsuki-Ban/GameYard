@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" data-maskable-safe-zone="80">
+  <title id="title">Crown Breaker app icon</title>
+  <path fill="var(--asset-background)" d="M0 0h100v100H0z"/>
+  <g data-maskable-core="true" transform="translate(12 12) scale(.76)" stroke-linejoin="round">
+    <path fill="none" stroke="currentColor" stroke-width="4" d="M13 80V28l13-13h48l13 13v52L74 87H26L13 80Z"/>
+    <path fill="var(--asset-primary)" stroke="var(--asset-primary)" stroke-width="2" d="m20 37 15 11 15-31 15 31 15-11-7 34H27l-7-34Zm7 34h46l8 12H19l8-12Z"/>
+    <path fill="var(--asset-accent)" stroke="var(--asset-accent)" stroke-width="2" d="m50 26 9 16-9 16-9-16 9-16Zm0 35 8 11-8 11-8-11 8-11Z"/>
+  </g>
+</svg>

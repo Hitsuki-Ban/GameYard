@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">Black bishop</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M50 7 66 28 55 43h11l8 33H55L45 63 37 76H25l10-33h10L34 28 50 7Zm-2 14-6 9 8 12 8-12-5-7-3 9-2-11ZM25 76h49l12 15H15l10-15Zm31-34h8L44 68h-8l20-26Z" fill-rule="evenodd"/>
+</svg>

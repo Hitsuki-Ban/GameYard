@@ -4,7 +4,7 @@
 
 一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-Hub、契约和原子构建边界已经初始化；PulseLinkOverdrive 与 TUMBLEDRUM 的固定上游历史、行为基线和 guest adapter 已进入仓库。生产 catalog 精确登记两者，它们都由同一个 Hub runtime 启动、调节、暂停、重载和关闭；CrownBreaker 仍保持排队状态。
+Hub、契约和原子构建边界已经初始化；三个游戏的固定上游历史都已进入仓库，PulseLinkOverdrive 与 TUMBLEDRUM 的 guest adapter 已进入生产 catalog。它们都由同一个 Hub runtime 启动、调节、暂停、重载和关闭；CrownBreaker 已锁定适配前的 standalone 行为基线，仍保持排队状态。
 
 ## 架构结论
 
@@ -150,7 +150,9 @@ Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio po
 
 ### M3 — CrownBreaker
 
-保持 run/save schema 的游戏所有权；停止 game SW 注册；把 `?qa` 能力封装进 testkit 并在生产剔除；adapter 负责 audio scheduler pause 与 dispose。完成门包括 static/i18n/assets/simulator、相同 seed 报告一致、三游戏连续切换和三视口视觉基线。
+Issue #10 已按固定 revision 非 squash 导入完整历史，并用 static/i18n/assets、三幕、敌人、traits、生产 standalone 黑盒与 seed base 1000 的 100 局确定性模拟锁定适配前基线；生产 standalone 不含写 QA API 或 Service Worker 注册，但尚不进入 Hub artifact。
+
+下一步保持 run/save schema 的游戏所有权；把源码中的 `?qa` 能力封装进 testkit；adapter 负责 INIT-only boot、公共 locale/audio/motion、audio scheduler pause 与确定性 dispose。完成门包括三游戏连续切换和三视口视觉基线。
 
 ### M4 — 离线与上线
 

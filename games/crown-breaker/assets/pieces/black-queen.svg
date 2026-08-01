@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">Black queen</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M17 18l15 14 18-23 18 23 15-14-9 31H26l-9-31Zm9 31h48l-9 27H51l-8-13-7 13H26l8-21-8-6Zm0 27h39l17 15H17l9-15Zm25-49h8L42 55h-8l17-28Z" fill-rule="evenodd"/>
+</svg>

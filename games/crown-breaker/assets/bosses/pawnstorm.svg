@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">Pawnstorm</title>
+  <g id="crown-base" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+    <path d="M13 101 21 59l15 11 10-31 14 18 14-18 10 31 15-11 8 42-13 9H26l-13-9Z"/>
+    <path d="m18 101 18-10h48l18 10-10 9H28l-10-9Z"/>
+  </g>
+  <g id="decor" fill="var(--asset-accent)" stroke="var(--asset-accent)" stroke-width="2" stroke-linejoin="round">
+    <path d="M60 14a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm-9 17h18l5 19H46l5-19Z"/>
+    <path d="M29 43a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm-7 13h14l4 16H18l4-16Zm69-13a7 7 0 1 1 0 14 7 7 0 0 1 0-14Zm-7 13h14l4 16H80l4-16Z"/>
+    <path d="M42 64a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-6 11h12l4 14H32l4-14Zm42-11a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-6 11h12l4 14H68l4-14Z"/>
+  </g>
+</svg>

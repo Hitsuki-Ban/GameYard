@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">White knight</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M27 72c2-22 11-34 25-40l-5-16 14 8 12-5-3 15c10 8 11 20 5 36l-8 4H27v-2Zm24-31-10 8 13 3 6-9-9-2ZM27 74h43l6 8H21l6-8Zm-6 8h55l7 9H14l7-9Z" fill-rule="evenodd"/>
+</svg>

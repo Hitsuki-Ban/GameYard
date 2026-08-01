@@ -1,0 +1,34 @@
+{
+  "name": "@gameyard/crown-breaker",
+  "version": "3.7.1",
+  "private": true,
+  "description": "A compact chess-movement board roguelite for the browser.",
+  "homepage": "https://hitsuki-ban.github.io/CrownBreaker/",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hitsuki-Ban/CrownBreaker.git"
+  },
+  "type": "module",
+  "scripts": {
+    "browser:install": "vp exec playwright install chromium",
+    "dev": "vp dev --host 127.0.0.1",
+    "build": "vp exec node tools/build-standalone.mjs dist/crown-breaker.html",
+    "check": "vp exec node --check i18n.js && vp exec node --check game.js && vp exec node --check sw.js && vp exec node --check previews/assets.js && vp exec node --check tools/svg-contract.mjs && vp exec node --check tools/build-art-assets.mjs && vp exec node --check tools/build-standalone.mjs && vp exec node --check tools/check-assets.mjs && vp exec node --check tools/check-i18n.mjs && vp exec node --check tools/check-static.mjs && vp exec node --check tools/check-traits.mjs && vp exec node --check tools/check-enemies.mjs && vp exec node --check tools/check-stages.mjs && vp exec node --check tools/render-asset-sheet.mjs && vp exec node --check tools/render-stages.mjs && vp exec node --check tools/sim-run.mjs && vp exec node --check tools/verify-simulation-fixture.mjs && vp exec node --check tools/verify-standalone.mjs && vp exec node tools/check-assets.mjs && vp exec node tools/check-i18n.mjs && vp exec node tools/check-static.mjs && vp exec node tools/check-stages.mjs && vp exec node tools/check-enemies.mjs && vp exec node tools/check-traits.mjs",
+    "baseline": "vp run check && vp run build && vp exec node tools/verify-standalone.mjs dist/crown-breaker.html && vp exec node tools/verify-simulation-fixture.mjs",
+    "test": "vp run baseline",
+    "build:assets": "vp exec node tools/build-art-assets.mjs",
+    "check:enemies": "vp exec node tools/check-enemies.mjs",
+    "check:assets": "vp exec node tools/check-assets.mjs",
+    "check:traits": "vp exec node tools/check-traits.mjs",
+    "check:stages": "vp exec node tools/check-stages.mjs",
+    "render:assets": "vp exec node tools/render-asset-sheet.mjs",
+    "render:stages": "vp exec node tools/render-stages.mjs",
+    "sim": "vp exec node tools/sim-run.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

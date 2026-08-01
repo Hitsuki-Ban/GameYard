@@ -28,6 +28,9 @@ vp run deploy:dry-run
 vp run tumbledrum#browser:install
 vp run tumbledrum#build
 vp run tumbledrum#test
+vp run crown-breaker#browser:install
+vp run crown-breaker#check
+vp run crown-breaker#baseline
 ```
 
 缺失 `vp`、根 `packageManager`、必需 schema 或构建输入时直接停止；不要回退到其他 manager 或静态服务器。
@@ -42,11 +45,15 @@ vp run tumbledrum#test
 4. 修改构建/路由：生产 build、root/subpath preview、Wrangler dry-run。
 5. 关闭 milestone：`vp run ready`、三视口 E2E、固定视觉基线和独立 reviewer。
 
-首次在本机运行浏览器测试前执行一次 `vp run e2e:install`。它先安装根 Node Playwright 锁定的 Chromium，再调用 `vp run tumbledrum#browser:install` 安装上游 Python `playwright==1.61.0` 锁定的独立 revision；不会假定两套 Playwright 共用浏览器。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 Pulse 启动、三语与公共设置实时同步、暂停/恢复/重载/关闭、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。三个 Canvas 视口由单 worker 顺序运行，使负载与“一次一个活动游戏”的产品边界一致，也避免并行渲染争用掩盖协议结果。
+首次在本机运行浏览器测试前执行一次 `vp run e2e:install`。它先安装根 Node Playwright 锁定的 Chromium，再分别安装 TUMBLEDRUM 的 Python `playwright==1.61.0` 与 CrownBreaker 的 Node `playwright==1.61.1` 所锁定的浏览器；不会假定三套 Playwright 共用浏览器。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。测试固定覆盖 1440×900、390×844、844×390 三个 Chromium 视口，并检查 Pulse 启动、三语与公共设置实时同步、暂停/恢复/重载/关闭、设置持久化、显式设置重置、只读诊断、严格路由、production Lab 剔除、artifact metadata 与横向溢出。三个 Canvas 视口由单 worker 顺序运行，使负载与“一次一个活动游戏”的产品边界一致，也避免并行渲染争用掩盖协议结果。
 
 `vp run e2e:release` 在 `/GameYard/` repository prefix 下执行双游戏发布门：Pulse 保留 desktop、portrait、landscape × en/ja/zh-Hans 的 9 张 shell 视觉基线和一张暂停后的真实 gameplay 基线，并走 pointer、touch、keyboard 与有界诊断导出；TUMBLEDRUM 以固定随机序列和帧时钟生成同样 3 × 3 的完整游戏视觉基线，要求工具栏与完整 Canvas 同时位于视口内，并通过真实 pointer、touch、keyboard 验证 Campaign 启动、暂停/恢复以及三路音频与 motion policy。另一条测试交替执行 50 次 Pulse/TUMBLEDRUM 进入/退出，每 5 次重载当前 Guest，统一拒绝残留 iframe、Host MessagePort、全局 runtime listener、失败请求和 console/page error。`vp run release:tumbledrum` 将 ready、root E2E、Lab、prefix release gate 与 Cloudflare dry-run 串成 Issue #9 的完整关闭门。
 
 `vp run tumbledrum#build` 构建唯一 Vite guest stage；`vp run tumbledrum#test` 通过 test-only 同源 Host harness 对该 stage 执行 exact INIT/MessageChannel，再顺序运行 smoke/integration/regression/full-run。测试覆盖 desktop、portrait touch、landscape touch；每个视口通过真实 mouse/touch 启动 Campaign，并从实际 RAF loop 观察每次 simulation update 都是 1/120、每帧后 accumulator 小于一个固定步。所有程序固定使用 `playwright==1.61.0` 所属的 Chromium；外部 `CHROMIUM_EXECUTABLE` 覆盖或缺失的项目浏览器都会直接失败，不改用系统 Chrome。完整流程时间受未 seeded RNG 影响，不锁偶然秒数；1/120 step、13 关、Campaign victory 与 Endless wave 12 才是稳定门。测试 Host 与调试实例不会进入 production stage。
+
+`vp run crown-breaker#baseline` 是 CrownBreaker 适配前的单一宽门：复用上游 static/i18n/assets、三幕、敌人和 traits 检查；构建剔除 QA mutation 与 Service Worker 的单文件生产包；再用真实 Chromium 验证三语、真实 New Run 点击、Canvas、网络和 console；最后重跑 seed base 1000 的 100 局 greedy 模拟并与提交的完整 summary/canonical JSON SHA-256 比较。不要用短局或局部规则测试替代这条门。该 standalone 暂不进入根 assembler，直到 Issue #11 完成 INIT-only boot、生命周期与设置适配。
+
+根 `vp run test` 与 `vp run ready` 将 workspace 测试按单任务串行调度。多个游戏的真实浏览器门不会争用渲染时钟或音频 ramp，这与“一次一个活动游戏”的产品边界一致；每个游戏内部仍可按自身固定策略使用 worker。
 
 生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、`provenance/`、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 

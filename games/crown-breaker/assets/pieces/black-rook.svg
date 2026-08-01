@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title id="title">Black rook</title>
+  <path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M14 12h13v13h10V12h14v13h11V12h24v29H72l5 35H55L45 64 36 76H23l6-35H14V12Zm10 64h53l11 15H13l11-15Zm31-35h9L45 66h-9l19-25Z" fill-rule="evenodd"/>
+</svg>
