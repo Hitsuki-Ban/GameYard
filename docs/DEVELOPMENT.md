@@ -58,7 +58,7 @@ vp run crown-breaker#test
 
 ## CI 与发布
 
-`.github/workflows/verify-and-publish.yml` 是唯一自动构建与生产部署路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json`，并把 `dist`、`deployment/`、`wrangler.jsonc` 与 metadata 作为一个 artifact 上传一次。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash、provenance hash 与部署 config/Worker hash。
+`.github/workflows/verify-and-publish.yml` 是唯一自动构建与生产部署路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json`，并把 `dist`、`deployment/`、`provenance/`、`wrangler.jsonc` 与 metadata 作为一个 artifact 上传一次。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash、provenance hash 与部署 config/Worker hash。消费者使用 artifact 内同一份 provenance 输入复验，不能依赖 checkout 的平台换行表示。
 
 Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。固定 Windows artifact consumer 直接运行现有视觉/三语言/50-switch 矩阵和单条 public accessibility journey，禁止调用会先 build 的 wrapper。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 deployment entry 与 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传下载的同一份 artifact。
 

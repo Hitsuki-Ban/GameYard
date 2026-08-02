@@ -89,6 +89,7 @@ jobs:
           path: |
             dist
             deployment
+            provenance
             wrangler.jsonc
             ${{ env.RELEASE_METADATA }}
           include-hidden-files: true
