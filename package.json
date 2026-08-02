@@ -17,7 +17,8 @@
     "e2e:release": "vp run build && vp exec playwright test --config playwright.release.config.ts",
     "release": "vp run ready && vp run e2e && vp run e2e:lab && vp run e2e:release && vp run deploy:dry-run",
     "ready": "vp run tooling:test && vp check && vp run -r --concurrency-limit 1 test && vp run build",
-    "deploy:dry-run": "vp run build && vp exec wrangler deploy --dry-run"
+    "deploy:dry-run": "vp run artifact:verify && vp exec wrangler deploy --env preview --dry-run",
+    "deploy:production": "vp run artifact:verify && vp exec wrangler deploy --env production --strict"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

@@ -1,0 +1,187 @@
+name: Verify and publish
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: gameyard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24.18.1
+  RELEASE_ARTIFACT: gameyard-site-${{ github.sha }}
+  RELEASE_METADATA: .gameyard/release-metadata.json
+
+jobs:
+  quality:
+    name: Quality and game baselines
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          working-directory: games/tumbledrum
+      - run: vp install --frozen-lockfile
+      - run: vp check
+      - run: vp run tooling:test
+      - name: Shared contract and Hub tests
+        run: |
+          vp run game-contract#test
+          vp run host-bridge#test
+          vp run guest-bridge#test
+          vp run testkit#test
+          vp run hub#test
+      - name: Install pinned browsers
+        run: vp run e2e:install
+      - name: Preserve game behavior baselines
+        run: |
+          vp run pulse-link-overdrive#test
+          vp run tumbledrum#build
+          vp run tumbledrum#test
+          vp run crown-breaker#test
+
+  artifact:
+    name: Build the immutable artifact
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run build
+      - name: Record release identity
+        run: >-
+          vp exec node tooling/release-metadata.mjs write
+          --source-sha "${{ github.sha }}"
+          --file "${{ env.RELEASE_METADATA }}"
+      - name: Verify release identity
+        run: >-
+          vp exec node tooling/release-metadata.mjs verify
+          --source-sha "${{ github.sha }}"
+          --file "${{ env.RELEASE_METADATA }}"
+      - name: Upload the verified artifact once
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.RELEASE_ARTIFACT }}
+          path: |
+            dist
+            ${{ env.RELEASE_METADATA }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish artifact evidence
+        run: |
+          echo "### GameYard release artifact" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Artifact ID: \`${{ steps.upload.outputs.artifact-id }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SHA-256: \`${{ steps.upload.outputs.artifact-digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  host-smoke:
+    name: Root and repository-prefix launch smoke
+    needs: artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.RELEASE_ARTIFACT }}
+          path: .
+      - name: Verify the downloaded artifact
+        run: |
+          vp run artifact:verify
+          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+      - run: vp exec playwright install chromium
+      - name: Root launch and PWA lifecycle
+        run: >-
+          vp exec playwright test
+          tests/e2e/guest-conformance.spec.ts tests/e2e/pwa.spec.ts
+          --config playwright.config.ts --project desktop-chromium
+      - name: Repository-prefix launch and PWA lifecycle
+        run: >-
+          vp exec playwright test tests/release/pwa-prefix.spec.ts
+          --config playwright.release.config.ts
+
+  cloudflare-dry-run:
+    name: Cloudflare dry-run from artifact
+    needs: artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.RELEASE_ARTIFACT }}
+          path: .
+      - name: Verify the downloaded artifact
+        run: |
+          vp run artifact:verify
+          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+      - run: vp exec wrangler deploy --env preview --dry-run
+
+  cloudflare-production:
+    name: Cloudflare production from artifact
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [artifact, host-smoke, cloudflare-dry-run]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: cloudflare-production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.RELEASE_ARTIFACT }}
+          path: .
+      - name: Require production credentials
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+      - name: Verify the downloaded artifact
+        run: |
+          vp run artifact:verify
+          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+      - name: Deploy without rebuilding
+        run: vp exec wrangler deploy --env production --strict --message "GameYard ${{ github.sha }} artifact ${{ needs.artifact.outputs.artifact-digest }}"
