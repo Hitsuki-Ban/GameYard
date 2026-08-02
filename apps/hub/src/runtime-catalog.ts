@@ -1,6 +1,13 @@
-import { BuildIdSchema, GameManifestSchema, type GameManifest } from "@gameyard/game-contract";
+import {
+  BuildIdSchema,
+  GameCatalogSchema,
+  GameManifestSchema,
+  type GameCatalog,
+  type GameManifest,
+  type GameManifestSource,
+} from "@gameyard/game-contract";
 
-import { isGameId, type GameId } from "./catalog";
+import { getGameById, isGameId, type GameId } from "./catalog";
 
 export interface RuntimeFetchResponse {
   readonly ok: boolean;
@@ -9,18 +16,6 @@ export interface RuntimeFetchResponse {
 }
 
 export type RuntimeFetch = (url: string) => Promise<RuntimeFetchResponse>;
-
-interface RuntimeCatalogGame {
-  readonly id: GameId;
-  readonly entry: string;
-  readonly manifest: string;
-}
-
-interface RuntimeCatalog {
-  readonly schemaVersion: 1;
-  readonly buildId: string;
-  readonly games: readonly RuntimeCatalogGame[];
-}
 
 export interface PlayableRuntime {
   readonly id: GameId;
@@ -39,63 +34,26 @@ export class RuntimeCatalogError extends Error {
   }
 }
 
-function assertExactKeys(
-  value: Record<string, unknown>,
-  expectedKeys: readonly string[],
-  location: string,
-): void {
-  const actual = Object.keys(value).sort();
-  const expected = [...expectedKeys].sort();
-  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
-    throw new RuntimeCatalogError(`${location} must contain exactly: ${expectedKeys.join(", ")}`);
-  }
-}
-
-function asObject(value: unknown, location: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new RuntimeCatalogError(`${location} must be an object`);
-  }
-  return value as Record<string, unknown>;
-}
-
-export function parseRuntimeCatalog(value: unknown, expectedBuildId: string): RuntimeCatalog {
+export function parseRuntimeCatalog(value: unknown, expectedBuildId: string): GameCatalog {
   const expectedBuild = BuildIdSchema.safeParse(expectedBuildId);
   if (!expectedBuild.success) {
     throw new RuntimeCatalogError("Hub build id is invalid");
   }
 
-  const root = asObject(value, "runtime catalog");
-  assertExactKeys(root, ["schemaVersion", "buildId", "games"], "runtime catalog");
-  if (root.schemaVersion !== 1) {
-    throw new RuntimeCatalogError("runtime catalog schemaVersion must be 1");
+  const parsedCatalog = GameCatalogSchema.safeParse(value);
+  if (!parsedCatalog.success) {
+    throw new RuntimeCatalogError("runtime catalog failed schema validation");
   }
-  if (root.buildId !== expectedBuild.data) {
+  const catalog = parsedCatalog.data;
+  if (catalog.buildId !== expectedBuild.data) {
     throw new RuntimeCatalogError(
-      `runtime catalog build mismatch: expected ${expectedBuild.data}, received ${String(root.buildId)}`,
+      `runtime catalog build mismatch: expected ${expectedBuild.data}, received ${catalog.buildId}`,
     );
   }
-  if (!Array.isArray(root.games)) {
-    throw new RuntimeCatalogError("runtime catalog games must be an array");
-  }
 
-  const ids = new Set<string>();
-  const games = root.games.map((candidate, index) => {
-    const game = asObject(candidate, `runtime catalog games[${index}]`);
-    assertExactKeys(game, ["id", "entry", "manifest"], `runtime catalog games[${index}]`);
-    if (
-      typeof game.id !== "string" ||
-      typeof game.entry !== "string" ||
-      typeof game.manifest !== "string"
-    ) {
-      throw new RuntimeCatalogError(`runtime catalog games[${index}] fields must be strings`);
-    }
+  for (const [index, game] of catalog.games.entries()) {
     if (!isGameId(game.id)) {
-      throw new RuntimeCatalogError(
-        `runtime catalog games[${index}] has unknown game id: ${game.id}`,
-      );
-    }
-    if (ids.has(game.id)) {
-      throw new RuntimeCatalogError(`runtime catalog contains duplicate game id: ${game.id}`);
+      throw new RuntimeCatalogError(`runtime catalog games[${index}] has unknown game id`);
     }
     const expectedManifestPath = `./${game.id}/game.manifest.json`;
     if (game.manifest !== expectedManifestPath) {
@@ -103,11 +61,22 @@ export function parseRuntimeCatalog(value: unknown, expectedBuildId: string): Ru
         `${game.id} manifest path mismatch: expected ${expectedManifestPath}, received ${game.manifest}`,
       );
     }
-    ids.add(game.id);
-    return { id: game.id, entry: game.entry, manifest: game.manifest };
-  });
+  }
 
-  return { schemaVersion: 1, buildId: expectedBuild.data, games };
+  return catalog;
+}
+
+function manifestSourceOf(manifest: GameManifest): GameManifestSource {
+  return {
+    schemaVersion: manifest.schemaVersion,
+    protocol: manifest.protocol,
+    id: manifest.id,
+    version: manifest.version,
+    entry: manifest.entry,
+    locales: manifest.locales,
+    capabilities: manifest.capabilities,
+    provenance: manifest.provenance,
+  };
 }
 
 async function fetchJson(fetcher: RuntimeFetch, url: string, label: string): Promise<unknown> {
@@ -155,6 +124,12 @@ export async function loadGameRuntime(
   const manifest = parsedManifest.data;
   if (manifest.id !== gameId) {
     throw new RuntimeCatalogError(`${gameId} manifest id mismatch: received ${manifest.id}`);
+  }
+  if (
+    JSON.stringify(manifestSourceOf(manifest)) !==
+    JSON.stringify(getGameById(gameId).manifestSource)
+  ) {
+    throw new RuntimeCatalogError(`${gameId} manifest source does not match the Hub catalog`);
   }
   if (manifest.buildId !== catalog.buildId) {
     throw new RuntimeCatalogError(

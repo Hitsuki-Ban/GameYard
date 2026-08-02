@@ -1,17 +1,20 @@
-import type { DiagnosticSnapshot as GuestDiagnosticSnapshot } from "@gameyard/game-contract";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { GAME_CATALOG, type GameCatalogEntry, type GameId } from "./catalog";
 import {
   describeRoute,
-  diagnosticText,
-  makeDiagnosticSnapshot,
+  appendDiagnosticEvent,
+  issueSummaryText,
+  makeDiagnosticEnvelope,
+  serializeDiagnosticEnvelope,
   type DiagnosticEvent,
-  type DiagnosticSnapshot,
+  type DiagnosticEnvelope,
+  type RuntimeDiagnosticState,
 } from "./diagnostics";
 import { i18n } from "./i18n";
 import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
+import type { HubLabStartupState } from "./lab";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
   SETTINGS_STORAGE_KEY,
@@ -21,6 +24,8 @@ import {
   resolveSystemLocale,
   reviseSettings,
   serializeSettings,
+  toHostSettings,
+  toLocaleContext,
   type HubSettings,
   type HubSettingsPatch,
   type LocalePreference,
@@ -28,7 +33,6 @@ import {
   type SupportedLocale,
 } from "./settings";
 
-const MAX_DIAGNOSTIC_EVENTS = 18;
 const REDUCED_MOTION_MEDIA_QUERY = "(prefers-reduced-motion: reduce)";
 
 const LAB_COPY = {
@@ -85,12 +89,13 @@ function GamePoster({ kind }: { readonly kind: GameCatalogEntry["poster"] }) {
 interface SettingsBarProps {
   readonly settings: HubSettings | null;
   readonly error: string | null;
+  readonly locked: boolean;
   readonly onChange: (patch: HubSettingsPatch) => void;
 }
 
-function SettingsBar({ settings, error, onChange }: SettingsBarProps) {
+function SettingsBar({ settings, error, locked, onChange }: SettingsBarProps) {
   const { t } = useTranslation();
-  const disabled = settings === null;
+  const disabled = settings === null || locked;
 
   return (
     <section className="settings-bar" aria-labelledby="settings-title">
@@ -239,7 +244,7 @@ interface StageProps {
   readonly runtimeRef: React.RefObject<GameRuntimeHandle | null>;
   readonly onCloseRuntime: () => Promise<void>;
   readonly onSettingsChange: (patch: HubSettingsPatch) => void;
-  readonly onGuestDiagnosticSnapshot: (snapshot: GuestDiagnosticSnapshot | null) => void;
+  readonly onGuestDiagnosticSnapshot: (snapshot: RuntimeDiagnosticState | null) => void;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
 }
 
@@ -338,7 +343,7 @@ function Stage({
 
 interface DiagnosticsDrawerProps {
   readonly open: boolean;
-  readonly snapshot: DiagnosticSnapshot;
+  readonly snapshot: DiagnosticEnvelope;
   readonly onClose: () => void;
 }
 
@@ -352,7 +357,7 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
 
   const copySummary = async () => {
     try {
-      await navigator.clipboard.writeText(diagnosticText(snapshot));
+      await navigator.clipboard.writeText(issueSummaryText(snapshot));
       setFeedback("diagnostics.copied");
     } catch {
       setFeedback("diagnostics.copyError");
@@ -361,7 +366,9 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
 
   const exportJson = () => {
     try {
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+      const blob = new Blob([serializeDiagnosticEnvelope(snapshot)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -386,48 +393,72 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
         <dl className="diagnostics__facts">
           <div>
             <dt>{t("diagnostics.build")}</dt>
-            <dd>{snapshot.build}</dd>
+            <dd>{snapshot.buildId}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.route")}</dt>
-            <dd>{snapshot.route}</dd>
+            <dd>{snapshot.hub.route}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.selected")}</dt>
-            <dd>{snapshot.selectedGame ?? t("diagnostics.none")}</dd>
+            <dd>{snapshot.game?.id ?? t("diagnostics.none")}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.locale")}</dt>
-            <dd>{snapshot.locale}</dd>
+            <dd>{snapshot.hub.locale}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.revision")}</dt>
-            <dd>{snapshot.settingsRevision ?? t("diagnostics.invalid")}</dd>
+            <dd>{snapshot.hub.settingsRevision ?? t("diagnostics.invalid")}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.guestLifecycle")}</dt>
-            <dd>{snapshot.guest?.lifecycle ?? t("diagnostics.none")}</dd>
+            <dd>{snapshot.game?.lifecycle ?? t("diagnostics.none")}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.guestInput")}</dt>
-            <dd>{snapshot.guest ? String(snapshot.guest.inputEnabled) : t("diagnostics.none")}</dd>
+            <dd>
+              {snapshot.game?.inputEnabled === null || snapshot.game === null
+                ? t("diagnostics.none")
+                : String(snapshot.game.inputEnabled)}
+            </dd>
           </div>
           <div>
             <dt>{t("diagnostics.guestRevision")}</dt>
-            <dd>{snapshot.guest?.settingsRevision ?? t("diagnostics.none")}</dd>
+            <dd>{snapshot.game?.settingsRevision ?? t("diagnostics.none")}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.guestEvents")}</dt>
-            <dd>{snapshot.guest?.events.length ?? 0}</dd>
+            <dd>{snapshot.game?.events.length ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Schema</dt>
+            <dd>{snapshot.schemaVersion}</dd>
+          </div>
+          <div>
+            <dt>Hub health</dt>
+            <dd>{snapshot.hub.health}</dd>
+          </div>
+          <div>
+            <dt>Game version</dt>
+            <dd>{snapshot.game?.version ?? t("diagnostics.none")}</dd>
+          </div>
+          <div>
+            <dt>Game build</dt>
+            <dd>{snapshot.game?.buildId ?? t("diagnostics.none")}</dd>
+          </div>
+          <div>
+            <dt>Game health</dt>
+            <dd>{snapshot.game?.health ?? "unavailable"}</dd>
           </div>
         </dl>
         <div className="diagnostics__events">
           <h3>{t("diagnostics.events")}</h3>
-          {snapshot.events.length === 0 ? (
+          {snapshot.hub.events.length === 0 ? (
             <p>{t("diagnostics.empty")}</p>
           ) : (
             <ol>
-              {snapshot.events.map((event, index) => (
+              {snapshot.hub.events.map((event, index) => (
                 <li key={`${event.at}-${event.type}-${index}`}>
                   <time>{event.at}</time>
                   <strong>{event.type}</strong>
@@ -437,9 +468,9 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
             </ol>
           )}
           <h3>{t("diagnostics.guestEvents")}</h3>
-          {snapshot.guest?.events.length ? (
+          {snapshot.game?.events.length ? (
             <ol>
-              {snapshot.guest.events.map((event, index) => (
+              {snapshot.game.events.map((event, index) => (
                 <li key={`${event.timestampMs}-${event.code}-${index}`}>
                   <time>{event.timestampMs}</time>
                   <strong>{event.level}</strong>
@@ -471,25 +502,38 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
 interface LabOverlayProps {
   readonly open: boolean;
   readonly locale: SupportedLocale;
+  readonly runtime: RuntimeDiagnosticState | null;
   readonly onClose: () => void;
+  readonly onApply: (state: HubLabStartupState) => Promise<void>;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
 }
 
-function LabOverlay({ open, locale, onClose, onEvent }: LabOverlayProps) {
+function LabOverlay({ open, locale, runtime, onClose, onApply, onEvent }: LabOverlayProps) {
   const paneHost = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState("loading");
   const copy = LAB_COPY[locale];
 
   useEffect(() => {
     if (!import.meta.env.DEV || !open || !paneHost.current) return;
+    setStatus("loading");
+    if (runtime === null) {
+      setStatus("Lab requires a loaded guest manifest.");
+      return;
+    }
     let cancelled = false;
     let dispose: (() => void) | undefined;
     void import("./lab")
       .then(({ createLabPane }) => {
         if (cancelled || !paneHost.current) return;
-        return createLabPane(paneHost.current, (label) =>
-          onEvent("lab.change", { target: label, sessionOnly: true }),
-        );
+        return createLabPane(paneHost.current, {
+          identity: {
+            gameId: runtime.gameId,
+            gameVersion: runtime.gameVersion,
+            buildId: runtime.buildId,
+          },
+          onApply: (state) => onApply(state),
+          onChange: (label) => onEvent("lab.change", { target: label, sessionOnly: true }),
+        });
       })
       .then((disposePane) => {
         if (cancelled) {
@@ -506,7 +550,7 @@ function LabOverlay({ open, locale, onClose, onEvent }: LabOverlayProps) {
       cancelled = true;
       dispose?.();
     };
-  }, [onEvent, open]);
+  }, [onApply, onEvent, open, runtime]);
 
   if (!open) return null;
 
@@ -534,9 +578,11 @@ export function App() {
   const [systemLanguages, setSystemLanguages] = useState<readonly string[]>(currentSystemLanguages);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
-  const [guestDiagnosticSnapshot, setGuestDiagnosticSnapshot] =
-    useState<GuestDiagnosticSnapshot | null>(null);
+  const [labSettings, setLabSettings] = useState<HubSettings | null>(null);
+  const [labApplyInFlight, setLabApplyInFlight] = useState(false);
+  const [runtimeDiagnostic, setRuntimeDiagnostic] = useState<RuntimeDiagnosticState | null>(null);
   const runtimeRef = useRef<GameRuntimeHandle>(null);
+  const labApplyInFlightRef = useRef(false);
   const routeRef = useRef(route);
   const [events, setEvents] = useState<readonly DiagnosticEvent[]>(() => [
     {
@@ -548,10 +594,13 @@ export function App() {
 
   const recordEvent = useCallback((type: string, detail: DiagnosticEvent["detail"]) => {
     const event: DiagnosticEvent = { at: new Date().toISOString(), type, detail };
-    setEvents((current) => [event, ...current].slice(0, MAX_DIAGNOSTIC_EVENTS));
+    setEvents((current) => appendDiagnosticEvent(current, event));
   }, []);
 
-  const settings = settingsState.kind === "error" ? null : settingsState.settings;
+  const persistedSettings = settingsState.kind === "error" ? null : settingsState.settings;
+  const settings = persistedSettings === null ? null : (labSettings ?? persistedSettings);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const settingsError = settingsState.kind === "error" ? settingsState.error : writeError;
   const locale: SupportedLocale = settings
     ? resolveLocale(settings.localePreference, systemLanguages)
@@ -603,7 +652,8 @@ export function App() {
           .then(() => {
             routeRef.current = nextRoute;
             setRoute(nextRoute);
-            setGuestDiagnosticSnapshot(null);
+            setLabSettings(null);
+            setRuntimeDiagnostic(null);
             recordEvent("route.popstate", { route: describeRoute(nextRoute) });
           })
           .catch(() => undefined);
@@ -611,6 +661,7 @@ export function App() {
       }
       routeRef.current = nextRoute;
       setRoute(nextRoute);
+      setLabSettings(null);
       recordEvent("route.popstate", { route: describeRoute(nextRoute) });
     };
     window.addEventListener("popstate", handlePopState);
@@ -621,8 +672,9 @@ export function App() {
     if (route.kind === "game" && route.game.id === gameId) return;
     if (route.kind === "game" && route.game.runtime === "local") {
       await runtimeRef.current?.dispose();
-      setGuestDiagnosticSnapshot(null);
+      setRuntimeDiagnostic(null);
     }
+    setLabSettings(null);
     window.history.pushState(null, "", gameSearch(gameId));
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
@@ -631,8 +683,16 @@ export function App() {
   };
 
   const updateSettings = (patch: HubSettingsPatch) => {
-    if (!settings) return;
-    const next = reviseSettings(settings, patch);
+    if (!persistedSettings) return;
+    if (labApplyInFlightRef.current) {
+      recordEvent("settings.blocked", { reason: "lab-apply-in-flight" });
+      return;
+    }
+    const activeSettings = settingsRef.current;
+    if (activeSettings === null || activeSettings.revision < persistedSettings.revision) {
+      throw new Error("Active settings revision must not precede persisted settings");
+    }
+    const next = reviseSettings({ ...persistedSettings, revision: activeSettings.revision }, patch);
     try {
       window.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));
     } catch {
@@ -641,6 +701,8 @@ export function App() {
       return;
     }
     setSettingsState({ kind: "valid", settings: next });
+    setLabSettings(null);
+    settingsRef.current = next;
     setWriteError(null);
     recordEvent("settings.update", {
       revision: next.revision,
@@ -656,6 +718,8 @@ export function App() {
       return;
     }
     setSettingsState({ kind: "valid", settings: result.settings });
+    setLabSettings(null);
+    settingsRef.current = result.settings;
     setWriteError(null);
     recordEvent("settings.reset", {
       revision: result.settings.revision,
@@ -671,7 +735,8 @@ export function App() {
     }
     const gameId = currentRoute.game.id;
     await runtimeRef.current?.dispose();
-    setGuestDiagnosticSnapshot(null);
+    setLabSettings(null);
+    setRuntimeDiagnostic(null);
     window.history.pushState(null, "", "./");
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
@@ -683,28 +748,59 @@ export function App() {
     setDiagnosticsOpen(true);
     const handle = runtimeRef.current;
     if (!handle) return;
-    void handle
-      .requestDiagnostics()
-      .then((snapshot) => {
-        if (snapshot) setGuestDiagnosticSnapshot(snapshot);
-      })
-      .catch((error: unknown) => {
-        recordEvent("diagnostics.guest-failed", {
-          message: error instanceof Error ? error.message : String(error),
-        });
+    void handle.requestDiagnostics().catch((error: unknown) => {
+      recordEvent("diagnostics.guest-failed", {
+        message: error instanceof Error ? error.message : String(error),
       });
+    });
   }, [recordEvent]);
+
+  const applyLabStartupState = useCallback(
+    async (state: HubLabStartupState) => {
+      if (!import.meta.env.DEV) throw new Error("Lab startup states require a development build");
+      const current = settingsRef.current;
+      const handle = runtimeRef.current;
+      if (current === null || handle === null || runtimeDiagnostic === null) {
+        throw new Error("Lab requires a loaded guest manifest and active runtime");
+      }
+      if (labApplyInFlightRef.current) throw new Error("A Lab scene is already being applied");
+      labApplyInFlightRef.current = true;
+      setLabApplyInFlight(true);
+      const next = reviseSettings(current, {
+        localePreference: state.localePreference,
+        masterVolume: state.masterVolume,
+        musicVolume: state.musicVolume,
+        sfxVolume: state.sfxVolume,
+        reducedMotion: state.reducedMotion,
+        screenShake: state.screenShake,
+      });
+      try {
+        await handle.applyHostState(
+          toHostSettings(next),
+          toLocaleContext(next.localePreference, systemLanguages),
+          state.lifecycle,
+        );
+        setLabSettings(next);
+        settingsRef.current = next;
+        setWriteError(null);
+        recordEvent("lab.scene-applied", {
+          gameId: runtimeDiagnostic.gameId,
+          lifecycle: state.lifecycle,
+          revision: next.revision,
+          sessionOnly: true,
+        });
+      } finally {
+        labApplyInFlightRef.current = false;
+        setLabApplyInFlight(false);
+      }
+    },
+    [recordEvent, runtimeDiagnostic, systemLanguages],
+  );
 
   const diagnosticSnapshot = useMemo(
     () =>
-      makeDiagnosticSnapshot(
-        route,
-        locale,
-        settings?.revision ?? null,
-        events,
-        guestDiagnosticSnapshot,
-      ),
-    [events, guestDiagnosticSnapshot, locale, route, settings?.revision],
+      makeDiagnosticEnvelope(route, locale, settings?.revision ?? null, events, runtimeDiagnostic),
+    [events, locale, route, runtimeDiagnostic, settings?.revision],
   );
   const selectedId = route.kind === "game" ? route.game.id : null;
 
@@ -746,7 +842,12 @@ export function App() {
         </div>
       </header>
 
-      <SettingsBar settings={settings} error={settingsError} onChange={updateSettings} />
+      <SettingsBar
+        settings={settings}
+        error={settingsError}
+        locked={labApplyInFlight}
+        onChange={updateSettings}
+      />
       {settingsState.kind === "error" ? (
         <div className="contract-error" role="alert">
           <span>SETTINGS / CONTRACT / STOP</span>
@@ -799,7 +900,7 @@ export function App() {
             runtimeRef={runtimeRef}
             onCloseRuntime={closeRuntime}
             onSettingsChange={updateSettings}
-            onGuestDiagnosticSnapshot={setGuestDiagnosticSnapshot}
+            onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
             onEvent={recordEvent}
           />
         </div>
@@ -819,7 +920,9 @@ export function App() {
         <LabOverlay
           open={labOpen}
           locale={locale}
+          runtime={runtimeDiagnostic}
           onClose={() => setLabOpen(false)}
+          onApply={applyLabStartupState}
           onEvent={recordEvent}
         />
       ) : null}

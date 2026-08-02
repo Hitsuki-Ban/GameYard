@@ -19,6 +19,7 @@
     "react-i18next": "catalog:"
   },
   "devDependencies": {
+    "@gameyard/testkit": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",

@@ -2,13 +2,15 @@ import { connectIframe } from "@gameyard/host-bridge";
 import type {
   DiagnosticSnapshot as GuestDiagnosticSnapshot,
   HostAction,
+  HostSettings,
+  LocaleContext,
   SettingsChange,
 } from "@gameyard/game-contract";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry } from "./catalog";
-import type { DiagnosticEvent } from "./diagnostics";
+import type { DiagnosticEvent, RuntimeDiagnosticState } from "./diagnostics";
 import { loadGameRuntime, type PlayableRuntime } from "./runtime-catalog";
 import { RuntimeController, type RuntimeState } from "./runtime-controller";
 import {
@@ -25,6 +27,11 @@ export interface GameRuntimeHandle {
   dispose(): Promise<void>;
   reload(): Promise<void>;
   requestDiagnostics(): Promise<GuestDiagnosticSnapshot | null>;
+  applyHostState(
+    settings: HostSettings,
+    locale: LocaleContext,
+    lifecycle: "active" | "paused",
+  ): Promise<void>;
 }
 
 interface LoadedRuntime {
@@ -38,7 +45,7 @@ interface GameRuntimeProps {
   readonly systemLanguages: readonly string[];
   readonly onClose: () => Promise<void>;
   readonly onSettingsChange: (patch: HubSettingsPatch) => void;
-  readonly onDiagnosticSnapshot: (snapshot: GuestDiagnosticSnapshot | null) => void;
+  readonly onDiagnosticSnapshot: (snapshot: RuntimeDiagnosticState | null) => void;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
 }
 
@@ -146,6 +153,12 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
       .then((loaded) => {
         if (!cancelled && generation === generationRef.current) {
           setLoadedRuntime({ generation, runtime: loaded });
+          onDiagnosticSnapshot({
+            gameId: loaded.manifest.id,
+            gameVersion: loaded.manifest.version,
+            buildId: loaded.manifest.buildId,
+            snapshot: null,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -199,7 +212,14 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
         });
       },
       onDiagnosticSnapshot: (snapshot) => {
-        if (generation === generationRef.current) onDiagnosticSnapshotRef.current(snapshot);
+        if (generation === generationRef.current) {
+          onDiagnosticSnapshotRef.current({
+            gameId: runtime.manifest.id,
+            gameVersion: runtime.manifest.version,
+            buildId: runtime.manifest.buildId,
+            snapshot,
+          });
+        }
       },
     });
     controllerRef.current = controller;
@@ -282,6 +302,14 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
         const controller = controllerRef.current;
         if (!controller || controller.state.phase === "disposed") return null;
         return controller.requestDiagnostics();
+      },
+      applyHostState: async (settings, locale, lifecycle) => {
+        const controller = controllerRef.current;
+        if (!controller) throw new Error("Runtime controller is unavailable");
+        await controller.applySettings(settings);
+        await controller.applyLocale(locale);
+        if (lifecycle === "paused") await controller.pause();
+        else await controller.resume();
       },
     }),
     [dispose, reload],

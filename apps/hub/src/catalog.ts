@@ -1,13 +1,25 @@
-export type GameId = "tumbledrum" | "pulse-link-overdrive" | "crown-breaker";
+import {
+  GameManifestSourceSchema,
+  type GameId,
+  type GameManifestSource,
+  type ResolvedLocale,
+} from "@gameyard/game-contract";
+
+import crownBreakerSource from "../../../games/crown-breaker/game.manifest.source.json";
+import pulseLinkOverdriveSource from "../../../games/pulse-link-overdrive/game.manifest.source.json";
+import tumbledrumSource from "../../../games/tumbledrum/game.manifest.source.json";
+
+export type { GameId };
 export type MigrationStatus = "playable" | "queued";
 export type PosterKind = "drum" | "pulse" | "crown";
 
 export interface GameCatalogEntry {
   readonly id: GameId;
+  readonly manifestSource: GameManifestSource;
   readonly displayTitle: string;
   readonly typeKey: string;
   readonly descriptionKey: string;
-  readonly languages: readonly ["en", "ja", "zh-Hans"];
+  readonly languages: readonly ResolvedLocale[];
   readonly status: MigrationStatus;
   readonly migrationOrder: 1 | 2 | 3;
   readonly repositoryUrl: string;
@@ -17,47 +29,75 @@ export interface GameCatalogEntry {
   readonly poster: PosterKind;
 }
 
-export const GAME_CATALOG = [
+interface GamePresentation {
+  readonly displayTitle: string;
+  readonly typeKey: string;
+  readonly descriptionKey: string;
+  readonly status: MigrationStatus;
+  readonly migrationOrder: 1 | 2 | 3;
+  readonly liveUrl?: string;
+  readonly runtime: "local";
+  readonly accent: "ultramarine" | "vermilion" | "graphite";
+  readonly poster: PosterKind;
+}
+
+const catalogDefinitions: readonly {
+  readonly source: unknown;
+  readonly presentation: GamePresentation;
+}[] = [
   {
-    id: "tumbledrum",
-    displayTitle: "TUMBLEDRUM",
-    typeKey: "game.tumbledrum.type",
-    descriptionKey: "game.tumbledrum.description",
-    languages: ["en", "ja", "zh-Hans"],
-    status: "playable",
-    migrationOrder: 2,
-    repositoryUrl: "https://github.com/Hitsuki-Ban/TUMBLEDRUM",
-    runtime: "local",
-    accent: "vermilion",
-    poster: "drum",
+    source: tumbledrumSource,
+    presentation: {
+      displayTitle: "TUMBLEDRUM",
+      typeKey: "game.tumbledrum.type",
+      descriptionKey: "game.tumbledrum.description",
+      status: "playable",
+      migrationOrder: 2,
+      runtime: "local",
+      accent: "vermilion",
+      poster: "drum",
+    },
   },
   {
-    id: "pulse-link-overdrive",
-    displayTitle: "PULSE LINK // OVERDRIVE",
-    typeKey: "game.pulse.type",
-    descriptionKey: "game.pulse.description",
-    languages: ["en", "ja", "zh-Hans"],
-    status: "playable",
-    migrationOrder: 1,
-    repositoryUrl: "https://github.com/Hitsuki-Ban/PulseLinkOverdrive",
-    runtime: "local",
-    accent: "ultramarine",
-    poster: "pulse",
+    source: pulseLinkOverdriveSource,
+    presentation: {
+      displayTitle: "PULSE LINK // OVERDRIVE",
+      typeKey: "game.pulse.type",
+      descriptionKey: "game.pulse.description",
+      status: "playable",
+      migrationOrder: 1,
+      runtime: "local",
+      accent: "ultramarine",
+      poster: "pulse",
+    },
   },
   {
-    id: "crown-breaker",
-    displayTitle: "CROWN//BREAKER",
-    typeKey: "game.crown.type",
-    descriptionKey: "game.crown.description",
-    languages: ["en", "ja", "zh-Hans"],
-    status: "playable",
-    migrationOrder: 3,
-    repositoryUrl: "https://github.com/Hitsuki-Ban/CrownBreaker",
-    runtime: "local",
-    accent: "graphite",
-    poster: "crown",
+    source: crownBreakerSource,
+    presentation: {
+      displayTitle: "CROWN//BREAKER",
+      typeKey: "game.crown.type",
+      descriptionKey: "game.crown.description",
+      status: "playable",
+      migrationOrder: 3,
+      runtime: "local",
+      accent: "graphite",
+      poster: "crown",
+    },
   },
-] as const satisfies readonly GameCatalogEntry[];
+] as const;
+
+export const GAME_CATALOG: readonly GameCatalogEntry[] = catalogDefinitions.map(
+  ({ source: sourceJson, presentation }) => {
+    const manifestSource = GameManifestSourceSchema.parse(sourceJson);
+    return {
+      ...presentation,
+      id: manifestSource.id,
+      manifestSource,
+      languages: manifestSource.locales.supported,
+      repositoryUrl: manifestSource.provenance.repository,
+    };
+  },
+);
 
 const CATALOG_BY_ID = new Map<GameId, GameCatalogEntry>(
   GAME_CATALOG.map((game) => [game.id, game]),

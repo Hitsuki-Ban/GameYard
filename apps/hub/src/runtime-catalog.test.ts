@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import type { GameId } from "./catalog";
+import { getGameById, type GameId } from "./catalog";
 import { loadGameRuntime, parseRuntimeCatalog, type RuntimeFetch } from "./runtime-catalog";
 
 const BUILD_ID = "gameyard@0123456789abcdef";
@@ -16,27 +16,17 @@ const catalog = {
   buildId: BUILD_ID,
   games: playableGameIds.map((id) => ({
     id,
-    entry: `./${id}/index.html`,
+    entry: `./${id}/${getGameById(id).manifestSource.entry}`,
     manifest: `./${id}/game.manifest.json`,
   })),
 };
 
 function manifest(id: GameId) {
+  const source = getGameById(id).manifestSource;
   return {
-    schemaVersion: 1,
-    protocol: 1,
-    id,
-    version: "1.0.0",
+    ...source,
     buildId: BUILD_ID,
-    entry: "index.html",
-    locales: { source: "en", supported: ["en", "ja", "zh-Hans"] },
-    capabilities: [],
-    provenance: {
-      repository: `https://github.com/Hitsuki-Ban/${id}`,
-      revision: "0123456789abcdef0123456789abcdef01234567",
-      license: "MIT",
-    },
-    files: ["index.html", "game.manifest.json"],
+    files: [source.entry, "game.manifest.json"],
   };
 }
 
@@ -47,7 +37,7 @@ function response(value: unknown) {
 describe("runtime catalog", () => {
   it("rejects extra fields and build mismatches", () => {
     expect(() => parseRuntimeCatalog({ ...catalog, unexpected: true }, BUILD_ID)).toThrow(
-      /exactly/,
+      /schema validation/,
     );
     expect(() => parseRuntimeCatalog(catalog, "gameyard@fedcba9876543210")).toThrow(
       /build mismatch/,
@@ -70,7 +60,7 @@ describe("runtime catalog", () => {
       await expect(loadGameRuntime(fetcher, BUILD_ID, gameId)).resolves.toMatchObject({
         id: gameId,
         buildId: BUILD_ID,
-        entryUrl: `./games/${gameId}/index.html`,
+        entryUrl: `./games/${gameId}/${getGameById(gameId).manifestSource.entry}`,
         baseUrl: `./games/${gameId}/`,
       });
       expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
@@ -89,7 +79,7 @@ describe("runtime catalog", () => {
           entry: "other.html",
           files: ["other.html", "game.manifest.json"],
         },
-        error: /entry mismatch/,
+        error: /source does not match/,
       },
       { value: { ...manifest(gameId), id: "pulse-link-overdrive" }, error: /id mismatch/ },
       {

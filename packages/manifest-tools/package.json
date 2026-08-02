@@ -1,5 +1,5 @@
 {
-  "name": "@gameyard/testkit",
+  "name": "@gameyard/manifest-tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,7 @@
   },
   "scripts": {
     "build": "vp pack",
-    "check": "vp check",
-    "test": "vp test"
+    "check": "vp check"
   },
   "dependencies": {
     "@gameyard/game-contract": "workspace:*"

@@ -3,9 +3,16 @@ import { describe, expect, it } from "vite-plus/test";
 import { GAME_CATALOG, getGameById, isGameId } from "./catalog";
 
 describe("game catalog", () => {
-  it("contains exactly the three curated games with unique ids", () => {
+  it("combines the three validated manifest sources with curated presentation", () => {
     expect(GAME_CATALOG).toHaveLength(3);
     expect(new Set(GAME_CATALOG.map((game) => game.id)).size).toBe(3);
+    for (const game of GAME_CATALOG) {
+      expect(game).toMatchObject({
+        id: game.manifestSource.id,
+        languages: game.manifestSource.locales.supported,
+        repositoryUrl: game.manifestSource.provenance.repository,
+      });
+    }
     expect(GAME_CATALOG.map((game) => game.displayTitle)).toEqual([
       "TUMBLEDRUM",
       "PULSE LINK // OVERDRIVE",
@@ -26,6 +33,6 @@ describe("game catalog", () => {
   it("performs exact id lookup", () => {
     expect(isGameId("crown-breaker")).toBe(true);
     expect(isGameId("CrownBreaker")).toBe(false);
-    expect(getGameById("tumbledrum").repositoryUrl).toContain("/TUMBLEDRUM");
+    expect(getGameById("tumbledrum")).toBe(GAME_CATALOG[0]);
   });
 });

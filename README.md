@@ -7,9 +7,10 @@ PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker are playable exhibits. All thre
 The production runtime/build boundary is active:
 
 - Host bridge registers first, navigates a source-free iframe, then performs `gameyard:ready-for-init` → exact `gameyard:init` → one transferred `MessagePort`;
-- strict game manifests and terminal guest disposal;
+- strict per-game manifest sources, one shared manifest builder, and terminal guest disposal;
 - isolated Hub/game stages followed by one transactional site assembly;
 - content-derived `gameyard@<16 lowercase hex>` site build IDs;
+- one bounded issue-summary envelope and manifest-bound DEV Lab presets;
 - structural rejection of stale IDs, undeclared files, collisions, game Service Workers, Lab mutation code, and repository-prefix-breaking URLs.
 
 `site.assembly.json` assembles all three games with the Hub into one exact artifact. `dist/games/catalog.json` registers the same three local exhibits.

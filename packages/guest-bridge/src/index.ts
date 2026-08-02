@@ -1,6 +1,7 @@
 import {
   AckEventSchema,
   BuildIdSchema,
+  DiagnosticEventSchema,
   DiagnosticEventMessageSchema,
   DiagnosticSnapshotSchema,
   DiagnosticsSnapshotResultEventSchema,
@@ -108,6 +109,51 @@ export interface GuestBridge {
   requestLifecycleChange(action: LifecycleChangeAction): void;
   requestHostAction(action: HostAction): void;
   emitDiagnostic(event: DiagnosticEvent): void;
+}
+
+export const GUEST_DIAGNOSTIC_EVENT_LIMIT = 32;
+
+export interface GuestDiagnosticLog {
+  readonly size: number;
+  record(event: DiagnosticEvent): void;
+  snapshot(): readonly DiagnosticEvent[];
+}
+
+class BoundedGuestDiagnosticLog implements GuestDiagnosticLog {
+  readonly #bridge: Pick<GuestBridge, "emitDiagnostic">;
+  readonly #events: DiagnosticEvent[] = [];
+
+  constructor(bridge: Pick<GuestBridge, "emitDiagnostic">) {
+    if (
+      bridge === null ||
+      typeof bridge !== "object" ||
+      typeof bridge.emitDiagnostic !== "function"
+    ) {
+      throw new GuestConfigurationError("Guest diagnostic log requires an emitDiagnostic bridge");
+    }
+    this.#bridge = bridge;
+  }
+
+  get size(): number {
+    return this.#events.length;
+  }
+
+  record(event: DiagnosticEvent): void {
+    const validated = DiagnosticEventSchema.parse(event);
+    this.#events.push(validated);
+    if (this.#events.length > GUEST_DIAGNOSTIC_EVENT_LIMIT) this.#events.shift();
+    this.#bridge.emitDiagnostic(validated);
+  }
+
+  snapshot(): readonly DiagnosticEvent[] {
+    return [...this.#events];
+  }
+}
+
+export function createGuestDiagnosticLog(
+  bridge: Pick<GuestBridge, "emitDiagnostic">,
+): GuestDiagnosticLog {
+  return new BoundedGuestDiagnosticLog(bridge);
 }
 
 export class GuestConfigurationError extends Error {

@@ -32,8 +32,8 @@ games/<id>/                 各游戏独立 HTML 入口、adapter、玩法代码
 packages/game-contract/     零 DOM 的 schema/types
 packages/host-bridge/       frame + MessageChannel 生命周期
 packages/guest-bridge/      guest INIT、命令 ACK 与终止清理
-packages/diagnostics/       后续提炼结构化事件与导出
-packages/testkit/           确定性 window/port/clock 与资源探针
+packages/manifest-tools/    由 strict source 生成 dev/production manifest
+packages/testkit/           确定性 window/port/clock、Lab preset 与资源探针
 tooling/*assembler*         严格配置、artifact inspector 与事务装配
 docs/adr/                   不可逆决策
 provenance/                 上游 URL/revision/license/素材来源
@@ -65,7 +65,7 @@ host window:  gameyard:init { context } + MessagePort
 guest port:   ready
 ```
 
-Host 必须在 frame 导航之前开始握手，`connectIframe` 因此拒绝预带 `src`/`srcdoc` 的 iframe，并亲自设置属于 `context.baseUrl` 的 entry URL。Build ID 精确为 `gameyard@<16 lowercase hex>`。`game.manifest.json` 是 strict schema，必填 `schemaVersion`、`protocol`、小写稳定 ID、SemVer、build ID、相对 entry、source/supported locales、capabilities、repository/revision/license provenance 与完整 files 白名单。未知字段、旧握手或旧 build ID 不协商、不降级。
+Host 必须在 frame 导航之前开始握手，`connectIframe` 因此拒绝预带 `src`/`srcdoc` 的 iframe，并亲自设置属于 `context.baseUrl` 的 entry URL。Build ID 精确为 `gameyard@<16 lowercase hex>`。每游戏唯一 `game.manifest.source.json` 以 strict schema 保存 `schemaVersion`、`protocol`、小写稳定 ID、SemVer、相对 entry、source/supported locales、capabilities 与 repository/revision/license provenance；共享 Vite 插件只在构建时补入 build ID 与完整 files 白名单。Hub catalog、dev proxy、assembler 与 production verifier 都消费这条 validated source/stage 链。未知字段、旧握手或旧 build ID 不协商、不降级。
 
 ## 公共 API v1
 
@@ -108,17 +108,17 @@ Game → host：`ready`、`ack`、`lifecycle.state`、`lifecycle.changeRequest`�
 
 ## 调试与开发工具层
 
-生产只读诊断抽屉：
+生产只读诊断抽屉已收敛为单一 versioned envelope：
 
 - buildId/commit/protocol/game/version/route/base
 - frame 生命周期、当前 locale、settings revision 与最近 ACK
 - 输入焦点、viewport/canvas/DPR、AudioContext 状态、存储与 SW 状态
-- bounded structured events、error/unhandledrejection/console error、长帧摘要
-- 用户点击后复制问题摘要或导出版本化 JSON
+- Hub 最多 18 条、Guest 最多 32 条 structured events，以及 lifecycle/input/settings health
+- 用户点击后从同一 envelope 复制问题摘要或导出不超过 64 KiB 的版本化 JSON
 
 默认不导出 raw localStorage、完整 save/run 或截图。
 
-开发模式的显式 `Open Lab` 入口：Tweakpane 只操作 game 或 Hub 显式注册的参数；值 session-only，可手动导出带 buildId/gameVersion 的 preset。生产 build 不包含 mutation handler。Vite 8 自带的 console/error 转发作为第一层开发反馈。[Vite 8](https://vite.dev/blog/announcing-vite8)
+开发模式的显式 `Open Lab` 入口：Tweakpane 与 manifest-bound startup scene 只操作 Hub 公共 API 和显式 CSS token；值 session-only，可手动导出严格绑定 gameId/gameVersion/buildId/sceneId/sceneVersion/seed 的 preset。错误版本直接失败，不协商、不迁移。production output module graph 直接拒绝 Lab/testkit 模块。Vite 8 自带的 console/error 转发作为第一层开发反馈。[Vite 8](https://vite.dev/blog/announcing-vite8)
 
 ## 里程碑与完成门
 
@@ -154,9 +154,11 @@ Issue #10 已按固定 revision 非 squash 导入完整历史，并用 static/i1
 
 Issue #11 保持 run/save schema 的游戏所有权，将持久化迁入 `gameyard.game.crown-breaker.*`，并完成 INIT-only boot、Host 公共 locale/audio/motion、audio scheduler pause、输入释放和确定性 dispose。生产 artifact 不含 game Service Worker 或写 QA surface；`site.assembly.json` 与 runtime catalog 精确登记三款游戏。Issue #12 已补齐 Crown desktop/portrait/landscape × en/ja/zh-Hans 视觉基线与真实 New Run、键盘暂停、Host 恢复路径，并以单一 50-cycle 三游戏 round-robin 验证每次启动与重载的 locale/settings revision 收敛、唯一 iframe、Host port、Guest listener/RAF/timer/audio、Service Worker、网络和 console 边界。根目录唯一完整关闭命令为 `vp run release`。
 
-### M4 — 离线与上线
+### M4 — 共享工具、离线与上线
 
-复用已完成的 staging assembler、路径/资源白名单与 `build-info.json`，加入一个根 Hub PWA。先只预缓存 shell；游戏离线包按用户选择处理，不一次下载全部游戏。发布到 Workers Static Assets，CI 验证真实 preview URL。
+Issue #13 已将三份游戏 manifest 配置收敛为 strict source + 共享插件，统一 Guest bounded diagnostics、Hub issue-summary envelope、三游戏 contract driver 与精确版本 Lab preset；共享包依赖边界由仓库级门禁固定，游戏规则、渲染、输入、音频、存档与翻译仍保持本地。
+
+下一步复用 staging assembler、路径/资源白名单与 `build-info.json`，加入一个根 Hub PWA。先只预缓存 shell；游戏离线包按用户选择处理，不一次下载全部游戏。发布到 Workers Static Assets，CI 验证真实 preview URL。
 
 ## 风险与暂不处理
 

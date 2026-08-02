@@ -1,21 +1,26 @@
 # Handoff
 
-- source: Codex Issue #12 closeout, 2026-08-02
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-12-crown-parity` | HEAD `00d7cd76b7d40028cbd3df5db967f9165eeb8b84` | clean: no
-- goal: Merge Issue #12 from an independently reviewed exact head, then sync `main`, delete the topic branch, and start Issue #13 from a clean tree.
-- verified: dirty working tree @ `00d7cd76b7d40028cbd3df5db967f9165eeb8b84`
-  - `vp run release` PASS: 69/69 tasks, 0 cache hits, 1049.9s; tooling 42/42, `vp check`, every workspace test/build, root E2E, Lab E2E, repository-prefix E2E, artifact verification, and Wrangler 4.118.0 dry-run all passed.
-  - repository-prefix E2E PASS: 4/4 in 7.3m, including three visual/input matrices and one 50-cycle Pulse → TUMBLEDRUM → CrownBreaker round-robin with 10 reloads.
-  - artifact `gameyard@14ba2bd668e20124`: 19 files / 3 games; no Lab runtime, game Service Worker, or root-absolute URL.
-  - focused listener-ledger delta PASS: 1/1 in 285.6s after adding production `pointerdown`, `beforeunload`, and `orientationchange` coverage plus per-type failure diagnostics.
-  - independent owner delta review PASS; representative Crown desktop/en, portrait/ja, and landscape/zh-Hans baselines visually inspected.
+- source: Codex Issue #13 implementation and release evidence, 2026-08-02
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-13-shared-tooling` | HEAD `3f551530e1498f3afa18e11a11f199f723e899c5` | clean: no
+- goal: Independently review Issue #13, commit and exact-head merge its PR, sync `main`, delete the topic branch, then begin Issue #14 from a clean tree.
+- verified: dirty working tree @ `3f551530e1498f3afa18e11a11f199f723e899c5`
+  - `vp check --fix` PASS: 135 files formatted; 75 files with no lint, type, or warning findings.
+  - targeted PASS: tooling 42/42; game-contract 16/16; host-bridge 11/11; guest-bridge 14/14; testkit 6/6; Hub 33/33; production Hub module graph excludes `lab` and `testkit`.
+  - root production E2E PASS: 25 passed / 8 viewport-independent skips, including the parameterized three-Guest settings/locale/lifecycle/diagnostics/dispose driver.
+  - DEV Lab PASS: one three-game manifest-bound scene/preset round-trip in 36.1 seconds, including exact-version rejection, session-only mutation, double-apply exclusion, global settings locking during Host application, and post-Lab Guest revision convergence.
+  - repository-prefix release evidence PASS: TUMBLEDRUM matrix, CrownBreaker matrix, and 50-cycle round-robin passed in the full run; the only initial failure was the Pulse test's stale old-envelope field assertion. After updating that assertion, the complete Pulse matrix passed 1/1 in 1.9 minutes.
+  - final `vp run deploy:dry-run` PASS with Wrangler 4.118.0 after a fresh four-stage build, assembly, and production verification; final production Guest conformance PASS 3/3 in 23.7 seconds.
+  - artifact `gameyard@1e18f94d46c2548f`: 19 files / 3 games; production artifact and Hub output-module boundary contain no Lab/testkit runtime.
+  - independent owner review PASS after fixes for Lab persistence separation, preset export freshness, monotonic settings revisions, and cross-UI in-flight exclusion.
 - done-this-thread:
-  - Crown adds only the desktop/portrait/landscape × en/ja/zh-Hans title matrix and one real New Run → keyboard pause → Host resume path; existing broad Crown gates retain deterministic/static/i18n/assets/fixture ownership.
-  - one 50-cycle production-prefix gate proves every launch/reload converges locale/settings revision, keeps one iframe, removes the prior frame, and returns Host port plus Guest listener/RAF/timer/audio ledgers to baseline with no failed network, console, or Service Worker.
-  - `release:tumbledrum` was replaced by the sole `release` entrypoint; development, QA, and project-plan docs now describe the completed three-game gate.
-- next: stage the normalized diff, commit, push, open and exact-head merge the Issue #12 PR, update Issue #1, sync `main`, and delete local/remote topic branches.
+  - strict `game.manifest.source.json` files and `@gameyard/manifest-tools` replace three duplicated Vite manifest implementations; Hub dev/catalog and assembler derive identity from validated manifests.
+  - assembler config no longer owns game IDs; the production catalog is generated from stage manifests and verified against exact source/build/provenance identities.
+  - three Guests share one 32-event diagnostic log; Hub owns an 18-event, 64 KiB maximum versioned envelope, with copy summary and JSON export derived from the same bounded data.
+  - DEV Lab owns strict game/version/build/scene/seed-bound presets and applies startup states through existing Host locale/settings/lifecycle APIs; version mismatches fail visibly without migration or defaults.
+  - one repository-wide boundary gate rejects shared-package dependencies/imports on game workspaces; game rules, rendering, input, audio, saves, and translations remain local.
+- next: commit, push, open/merge the exact-head Issue #13 PR; update Issue #1; sync `main`; delete local/remote topic branches; begin Issue #14 from the clean tree.
 - gate: run-git-commit-first
 - risks:
-  - the single-worker 50-cycle gate takes about five to seven minutes; keep it as one broad release test rather than splitting it into implementation-detail cases.
-- authority: constraints -> `AGENTS.md`; gate -> `tests/release/pulse-release.spec.ts` and root `package.json`; commands -> `docs/DEVELOPMENT.md`; plan -> Issues #1 and #12.
-- stale-first: re-run `git status`, `git rev-parse HEAD`, and proportionate affected gates after any source, snapshot, or lockfile change.
+  - the full `vp run release` wrapper recorded one stale test assertion before the test-only correction; all other 60 tasks passed, and the corrected complete Pulse release matrix plus final dry-run passed separately. A repeat of the 19-minute wrapper is warranted only if review finds a source-level gap.
+- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #13; manifest chain -> `packages/game-contract`, `packages/manifest-tools`, `tooling/site-assembler.mjs`; diagnostics/Lab -> `packages/guest-bridge`, `packages/testkit`, `apps/hub/src`; full gate -> root `package.json`.
+- stale-first: re-run `git status`, `git diff --check`, and proportionate affected gates after any source, snapshot, lockfile, or test change.

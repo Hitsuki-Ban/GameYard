@@ -1,7 +1,7 @@
 import { copyFile, mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 
-import { GameManifestSchema } from "../packages/game-contract/src/index.ts";
+import { GameCatalogSchema, GameManifestSchema } from "../packages/game-contract/src/index.ts";
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import { inspectArtifactFiles, listArtifactFiles } from "./artifact-inspector.mjs";
 import { parseAssemblyConfig, parseRepositoryRelativePath } from "./assembly-config.mjs";
@@ -136,10 +136,31 @@ export async function createAssemblyPlan(projectRoot) {
       );
     }
   }
-  for (const game of config.games) {
-    if (!distributions.has(game.id)) {
-      distributions.set(game.id, await requireGameDistributionRights(root, provenance, game.id));
+  const gameStages = [];
+  const gameIds = new Set();
+  for (const gameConfig of config.games) {
+    const stage = resolve(root, gameConfig.stage);
+    await requireDirectory(stage, `Game stage ${gameConfig.stage}`);
+    const manifestPath = resolve(stage, manifestFilename);
+    const parsedManifest = GameManifestSchema.safeParse(
+      await readJson(manifestPath, `${gameConfig.stage}/${manifestFilename}`),
+    );
+    if (!parsedManifest.success) {
+      throw new Error(
+        `${gameConfig.stage}/${manifestFilename} violates GameManifestSchema: ${parsedManifest.error.message}`,
+      );
     }
+    const manifest = parsedManifest.data;
+    const foldedId = manifest.id.toLowerCase();
+    if (gameIds.has(foldedId)) throw new Error(`Game ID collision: ${manifest.id}`);
+    gameIds.add(foldedId);
+    if (!distributions.has(manifest.id)) {
+      distributions.set(
+        manifest.id,
+        await requireGameDistributionRights(root, provenance, manifest.id),
+      );
+    }
+    gameStages.push({ gameConfig, stage, manifest, distribution: distributions.get(manifest.id) });
   }
   const buildId = await createArtifactBuildId(root);
   const hubStage = resolve(root, config.hubStage);
@@ -179,27 +200,8 @@ export async function createAssemblyPlan(projectRoot) {
       destination: toLogicalPath(hubStage, source),
     }));
   const games = [];
-  const gameIds = new Set();
 
-  for (const gameConfig of config.games) {
-    const distribution = distributions.get(gameConfig.id);
-    const stage = resolve(root, gameConfig.stage);
-    await requireDirectory(stage, `Game stage ${gameConfig.stage}`);
-    const manifestPath = resolve(stage, manifestFilename);
-    const parsedManifest = GameManifestSchema.safeParse(
-      await readJson(manifestPath, `${gameConfig.stage}/${manifestFilename}`),
-    );
-    if (!parsedManifest.success) {
-      throw new Error(
-        `${gameConfig.stage}/${manifestFilename} violates GameManifestSchema: ${parsedManifest.error.message}`,
-      );
-    }
-    const manifest = parsedManifest.data;
-    if (manifest.id !== gameConfig.id) {
-      throw new Error(
-        `${gameConfig.stage}/${manifestFilename} game ID mismatch: expected ${gameConfig.id}, received ${manifest.id}.`,
-      );
-    }
+  for (const { gameConfig, stage, manifest, distribution } of gameStages) {
     if (
       manifest.provenance.repository !== distribution.url ||
       manifest.provenance.revision !== distribution.revision ||
@@ -214,10 +216,6 @@ export async function createAssemblyPlan(projectRoot) {
         `${gameConfig.stage}/${manifestFilename} buildId mismatch: expected ${buildId}, received ${manifest.buildId}.`,
       );
     }
-    const foldedId = manifest.id.toLowerCase();
-    if (gameIds.has(foldedId)) throw new Error(`Game ID collision: ${manifest.id}`);
-    gameIds.add(foldedId);
-
     const gameFiles = await listArtifactFiles(stage);
     assertExactDeclaredFiles(stage, gameFiles, manifest.files, `Game ${manifest.id}`);
     await inspectStage(gameFiles, stage, `Game ${manifest.id}`);
@@ -247,7 +245,7 @@ export async function createAssemblyPlan(projectRoot) {
     config,
     entries: entries.filter((entry) => entry.source !== undefined),
     buildInfo: { schemaVersion: 1, buildId, files },
-    catalog: { schemaVersion: 1, buildId, games },
+    catalog: GameCatalogSchema.parse({ schemaVersion: 1, buildId, games }),
   };
 }
 

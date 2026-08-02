@@ -1,19 +1,17 @@
+import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
 import { ManagedRuntime } from './src/managed-runtime.js';
 
 export function createCrownBreakerGame({ context, bridge }) {
   if (!context || !bridge) throw new TypeError('CrownBreaker requires an initialized Host context and bridge.');
   const runtime = new ManagedRuntime(window);
-  const diagnosticEvents = [];
+  const diagnostics = createGuestDiagnosticLog(bridge);
   let lifecycle = 'booting';
   let disposed = false;
   let hostInputEnabled = false;
   let hostPauseModalShown = false;
 
   function record(level, code, message) {
-    const event = { timestampMs: Date.now(), level, code, message };
-    diagnosticEvents.push(event);
-    if (diagnosticEvents.length > 32) diagnosticEvents.shift();
-    bridge.emitDiagnostic(event);
+    diagnostics.record({ timestampMs: Date.now(), level, code, message });
   }
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -806,7 +804,7 @@ export function createCrownBreakerGame({ context, bridge }) {
       lifecycle,
       settingsRevision: context.settings.revision,
       inputEnabled: hostInputEnabled && !runtime.paused && !disposed,
-      events: [...diagnosticEvents]
+      events: diagnostics.snapshot()
     };
   }
 

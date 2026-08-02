@@ -1,3 +1,307 @@
+import {
+  BuildIdSchema,
+  GameIdSchema,
+  GameVersionSchema,
+  type BuildId,
+  type GameId,
+  type GameVersion,
+} from "@gameyard/game-contract";
+
+export const LAB_PRESET_SCHEMA_VERSION = 1 as const;
+export const LAB_PRESET_MAX_BYTES = 16 * 1024;
+
+export type LabParameterValue = string | number | boolean;
+
+export type LabParameterSchema =
+  | { readonly type: "boolean" }
+  | {
+      readonly type: "number";
+      readonly integer: boolean;
+      readonly minimum: number;
+      readonly maximum: number;
+    }
+  | { readonly type: "enum"; readonly values: readonly string[] };
+
+export interface LabSceneDefinition {
+  readonly gameId: GameId;
+  readonly gameVersion: GameVersion;
+  readonly buildId: BuildId;
+  readonly sceneId: string;
+  readonly sceneVersion: number;
+  readonly parameters: Readonly<Record<string, LabParameterSchema>>;
+}
+
+export interface LabPreset {
+  readonly schemaVersion: typeof LAB_PRESET_SCHEMA_VERSION;
+  readonly gameId: GameId;
+  readonly gameVersion: GameVersion;
+  readonly buildId: BuildId;
+  readonly sceneId: string;
+  readonly sceneVersion: number;
+  readonly seed: number;
+  readonly parameters: Readonly<Record<string, LabParameterValue>>;
+}
+
+export class LabPresetError extends Error {
+  override readonly name = "LabPresetError";
+}
+
+const SCENE_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const PARAMETER_ID_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+const LAB_PRESET_KEYS = [
+  "schemaVersion",
+  "gameId",
+  "gameVersion",
+  "buildId",
+  "sceneId",
+  "sceneVersion",
+  "seed",
+  "parameters",
+] as const;
+
+function asStrictObject(value: unknown, location: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new LabPresetError(`${location} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function assertExactKeys(
+  value: Record<string, unknown>,
+  expectedKeys: readonly string[],
+  location: string,
+): void {
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new LabPresetError(`${location} must contain exactly: ${expectedKeys.join(", ")}`);
+  }
+}
+
+function assertPositiveSafeInteger(value: unknown, location: string): asserts value is number {
+  if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+    throw new LabPresetError(`${location} must be a positive safe integer`);
+  }
+}
+
+function assertUint32(value: unknown, location: string): asserts value is number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 0xffff_ffff) {
+    throw new LabPresetError(`${location} must be an unsigned 32-bit integer`);
+  }
+}
+
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+function validateParameterSchema(name: string, value: LabParameterSchema): void {
+  if (!PARAMETER_ID_PATTERN.test(name)) {
+    throw new LabPresetError(`Lab parameter id is invalid: ${name}`);
+  }
+  const schema = asStrictObject(value, `Lab parameter ${name}`);
+  if (schema.type === "boolean") {
+    assertExactKeys(schema, ["type"], `Lab parameter ${name}`);
+    return;
+  }
+  if (schema.type === "number") {
+    assertExactKeys(schema, ["type", "integer", "minimum", "maximum"], `Lab parameter ${name}`);
+    if (
+      typeof schema.integer !== "boolean" ||
+      typeof schema.minimum !== "number" ||
+      !Number.isFinite(schema.minimum) ||
+      typeof schema.maximum !== "number" ||
+      !Number.isFinite(schema.maximum) ||
+      schema.minimum > schema.maximum
+    ) {
+      throw new LabPresetError(`Lab parameter ${name} has an invalid number schema`);
+    }
+    return;
+  }
+  if (schema.type === "enum") {
+    assertExactKeys(schema, ["type", "values"], `Lab parameter ${name}`);
+    if (
+      !Array.isArray(schema.values) ||
+      schema.values.length === 0 ||
+      schema.values.some((entry) => typeof entry !== "string" || entry.length === 0) ||
+      new Set(schema.values).size !== schema.values.length
+    ) {
+      throw new LabPresetError(`Lab parameter ${name} enum values must be unique strings`);
+    }
+    return;
+  }
+  throw new LabPresetError(`Lab parameter ${name} has an unknown schema type`);
+}
+
+function validateSceneDefinition(definition: LabSceneDefinition): LabSceneDefinition {
+  assertExactKeys(
+    asStrictObject(definition, "Lab scene"),
+    ["gameId", "gameVersion", "buildId", "sceneId", "sceneVersion", "parameters"],
+    "Lab scene",
+  );
+  const gameId = GameIdSchema.safeParse(definition.gameId);
+  const gameVersion = GameVersionSchema.safeParse(definition.gameVersion);
+  const buildId = BuildIdSchema.safeParse(definition.buildId);
+  if (!gameId.success || !gameVersion.success || !buildId.success) {
+    throw new LabPresetError("Lab scene identity is invalid");
+  }
+  if (!SCENE_ID_PATTERN.test(definition.sceneId) || definition.sceneId.length > 64) {
+    throw new LabPresetError(`Lab scene id is invalid: ${definition.sceneId}`);
+  }
+  assertPositiveSafeInteger(definition.sceneVersion, `Lab scene ${definition.sceneId} version`);
+  const parameters = asStrictObject(
+    definition.parameters,
+    `Lab scene ${definition.sceneId} parameters`,
+  );
+  for (const [name, schema] of Object.entries(parameters)) {
+    validateParameterSchema(name, schema as LabParameterSchema);
+  }
+  return definition;
+}
+
+function validateParameterValue(
+  sceneId: string,
+  name: string,
+  value: unknown,
+  schema: LabParameterSchema,
+): asserts value is LabParameterValue {
+  if (schema.type === "boolean") {
+    if (typeof value !== "boolean") {
+      throw new LabPresetError(`${sceneId}.${name} must be a boolean`);
+    }
+    return;
+  }
+  if (schema.type === "enum") {
+    if (typeof value !== "string" || !schema.values.includes(value)) {
+      throw new LabPresetError(`${sceneId}.${name} must be one of: ${schema.values.join(", ")}`);
+    }
+    return;
+  }
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    (schema.integer && !Number.isInteger(value)) ||
+    value < schema.minimum ||
+    value > schema.maximum
+  ) {
+    throw new LabPresetError(
+      `${sceneId}.${name} must be ${schema.integer ? "an integer" : "a number"} between ${schema.minimum} and ${schema.maximum}`,
+    );
+  }
+}
+
+export class LabSceneRegistry {
+  readonly #scenes = new Map<string, LabSceneDefinition>();
+
+  constructor(definitions: readonly LabSceneDefinition[]) {
+    if (definitions.length === 0) {
+      throw new LabPresetError("Lab scene registry requires at least one scene");
+    }
+    for (const definition of definitions) {
+      const validated = validateSceneDefinition(definition);
+      if (this.#scenes.has(validated.sceneId)) {
+        throw new LabPresetError(`Duplicate Lab scene id: ${validated.sceneId}`);
+      }
+      this.#scenes.set(validated.sceneId, validated);
+    }
+  }
+
+  list(): readonly LabSceneDefinition[] {
+    return [...this.#scenes.values()];
+  }
+
+  createPreset(
+    sceneId: string,
+    seed: number,
+    parameters: Readonly<Record<string, unknown>>,
+  ): LabPreset {
+    const scene = this.#requireScene(sceneId);
+    return this.#parseForScene(
+      {
+        schemaVersion: LAB_PRESET_SCHEMA_VERSION,
+        gameId: scene.gameId,
+        gameVersion: scene.gameVersion,
+        buildId: scene.buildId,
+        sceneId: scene.sceneId,
+        sceneVersion: scene.sceneVersion,
+        seed,
+        parameters,
+      },
+      scene,
+    );
+  }
+
+  parsePreset(value: unknown): LabPreset {
+    const preset = asStrictObject(value, "Lab preset");
+    assertExactKeys(preset, LAB_PRESET_KEYS, "Lab preset");
+    if (preset.schemaVersion !== LAB_PRESET_SCHEMA_VERSION) {
+      throw new LabPresetError(`Lab preset schemaVersion must be ${LAB_PRESET_SCHEMA_VERSION}`);
+    }
+    if (typeof preset.sceneId !== "string") {
+      throw new LabPresetError("Lab preset sceneId must be a string");
+    }
+    return this.#parseForScene(preset, this.#requireScene(preset.sceneId));
+  }
+
+  parseJson(json: string): LabPreset {
+    if (byteLength(json) > LAB_PRESET_MAX_BYTES) {
+      throw new LabPresetError(`Lab preset exceeds ${LAB_PRESET_MAX_BYTES} bytes`);
+    }
+    let value: unknown;
+    try {
+      value = JSON.parse(json);
+    } catch {
+      throw new LabPresetError("Lab preset is not valid JSON");
+    }
+    return this.parsePreset(value);
+  }
+
+  serialize(preset: LabPreset): string {
+    const validated = this.parsePreset(preset);
+    const json = `${JSON.stringify(validated, null, 2)}\n`;
+    if (byteLength(json) > LAB_PRESET_MAX_BYTES) {
+      throw new LabPresetError(`Lab preset exceeds ${LAB_PRESET_MAX_BYTES} bytes`);
+    }
+    return json;
+  }
+
+  #requireScene(sceneId: string): LabSceneDefinition {
+    const scene = this.#scenes.get(sceneId);
+    if (!scene) throw new LabPresetError(`Unknown Lab scene: ${sceneId}`);
+    return scene;
+  }
+
+  #parseForScene(value: Record<string, unknown>, scene: LabSceneDefinition): LabPreset {
+    if (
+      value.gameId !== scene.gameId ||
+      value.gameVersion !== scene.gameVersion ||
+      value.buildId !== scene.buildId ||
+      value.sceneId !== scene.sceneId ||
+      value.sceneVersion !== scene.sceneVersion
+    ) {
+      throw new LabPresetError(`Lab preset identity does not exactly match scene ${scene.sceneId}`);
+    }
+    assertUint32(value.seed, "Lab preset seed");
+    const parameters = asStrictObject(value.parameters, "Lab preset parameters");
+    assertExactKeys(parameters, Object.keys(scene.parameters), "Lab preset parameters");
+    const validatedParameters: Record<string, LabParameterValue> = {};
+    for (const [name, schema] of Object.entries(scene.parameters)) {
+      const parameter = parameters[name];
+      validateParameterValue(scene.sceneId, name, parameter, schema);
+      validatedParameters[name] = parameter;
+    }
+    return {
+      schemaVersion: LAB_PRESET_SCHEMA_VERSION,
+      gameId: scene.gameId,
+      gameVersion: scene.gameVersion,
+      buildId: scene.buildId,
+      sceneId: scene.sceneId,
+      sceneVersion: scene.sceneVersion,
+      seed: value.seed,
+      parameters: validatedParameters,
+    };
+  }
+}
+
 type ScheduledTask = {
   readonly id: number;
   dueAt: number;
