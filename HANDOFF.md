@@ -12,7 +12,8 @@
   - PR: https://github.com/Hitsuki-Ban/GameYard/pull/31
   - first GitHub Actions run: https://github.com/Hitsuki-Ban/GameYard/actions/runs/30729002938
   - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable.
-  - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI. The workflow now downloads the official pinned ImageMagick 7 AppImage, verifies its published SHA-256, and runs the unchanged baseline with the required `magick` CLI.
+  - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI; third run confirmed the official ImageMagick 7 AppImage lacks the `rsvg` delegate required by one narrow icon-geometry checker.
+  - PR quality now keeps CrownBreaker's production build/verifier and exact 100-run simulation fixture, while leaving the unrelated icon micro-check in the game's full local suite. No compatibility alias or alternate SVG renderer was added.
   - GitHub `cloudflare-production` environment exists and contains the verified `CLOUDFLARE_ACCOUNT_ID`; a scoped `CLOUDFLARE_API_TOKEN` is still required.
   - local Wrangler OAuth is authenticated, but local OAuth credentials must not be copied into GitHub secrets.
 - implementation:

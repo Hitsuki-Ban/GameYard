@@ -46,22 +46,14 @@ jobs:
           vp run hub#test
       - name: Install pinned browsers
         run: vp run e2e:install
-      - name: Install game baseline system dependencies
-        run: |
-          curl --fail --location --silent --show-error \
-            "https://github.com/ImageMagick/ImageMagick/releases/download/7.1.2-28/ImageMagick-7.1.2-28-gcc-x86_64.AppImage" \
-            --output /tmp/magick
-          echo "c8a8451a0d764507474fab5c0db5a7b2e51840a70172c39dcd83d3a1547093ff  /tmp/magick" | sha256sum --check
-          sudo install --mode 0755 /tmp/magick /usr/local/bin/magick
-          APPIMAGE_EXTRACT_AND_RUN=1 magick -version
       - name: Preserve game behavior baselines
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: 1
         run: |
           vp run pulse-link-overdrive#test
           vp run tumbledrum#build
           vp run tumbledrum#test
-          vp run crown-breaker#test
+          vp run crown-breaker#build
+          vp run crown-breaker#build:testkit
+          vp exec node games/crown-breaker/tools/verify-simulation-fixture.mjs
 
   artifact:
     name: Build the immutable artifact
