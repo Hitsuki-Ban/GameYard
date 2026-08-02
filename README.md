@@ -17,7 +17,7 @@ The production runtime/build boundary is active:
 
 `site.assembly.json` assembles all three games with the Hub into one exact artifact. `dist/games/catalog.json` registers the same three local exhibits.
 
-Public production is served from the same Cloudflare Worker at both [the root exhibition](https://gameyard.houtei-ban.workers.dev/) and [the repository-style `/GameYard/` path](https://gameyard.houtei-ban.workers.dev/GameYard/). The prefix route strips exactly that public mount before reading the same immutable static-asset binding; it is not a second build or deployment.
+Public production is served from the same Cloudflare Worker Custom Domain at both [the root exhibition](https://gameyard.lepus.icu/) and [the repository-style `/GameYard/` path](https://gameyard.lepus.icu/GameYard/). The prefix route strips exactly that public mount before reading the same immutable static-asset binding; it is not a second build or deployment. The production Worker has no `workers.dev` endpoint.
 
 ## Commands
 

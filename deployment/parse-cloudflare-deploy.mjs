@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 const sourceShaPattern = /^[0-9a-f]{40}$/u;
 const artifactDigestPattern = /^sha256:[0-9a-f]{64}$/u;
 const versionIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const productionOrigin = "https://gameyard.lepus.icu";
 
 function parseArguments(argv) {
   const values = new Map();
@@ -48,7 +49,10 @@ function requireProductionTarget(value) {
   if (target.protocol !== "https:" || target.pathname !== "/" || target.search || target.hash) {
     throw new Error(`Wrangler deploy target is not an HTTPS origin: ${value}`);
   }
-  return target.origin;
+  if (target.origin !== productionOrigin) {
+    throw new Error(`Wrangler deploy target is not ${productionOrigin}: ${value}`);
+  }
+  return productionOrigin;
 }
 
 async function main() {

@@ -16,6 +16,13 @@
     },
     "production": {
       "name": "gameyard",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "gameyard.lepus.icu",
+          "custom_domain": true,
+        },
+      ],
     },
   },
 }
