@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const gameIds = ["pulse-link-overdrive", "tumbledrum", "crown-breaker"];
+const runtimeStartupTimeoutMs = 45_000;
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--evidence" || !argv[1]) {
@@ -43,7 +44,28 @@ async function assertGame(browser, baseUrl, gameId) {
     if (response === null || !response.ok()) {
       throw new Error(`${pageUrl} did not return a successful document`);
     }
-    await page.locator(".runtime-state--active").waitFor({ state: "visible", timeout: 20_000 });
+    const runtimeState = page.locator(".runtime-state");
+    try {
+      await page.locator(".runtime-state--active, .runtime-state--failed").waitFor({
+        state: "visible",
+        timeout: runtimeStartupTimeoutMs,
+      });
+    } catch (cause) {
+      const label = (await runtimeState.textContent())?.trim() ?? "missing";
+      throw new Error(
+        `${pageUrl} remained in runtime state "${label}" after ${runtimeStartupTimeoutMs}ms` +
+          (failures.length > 0 ? `:\n- ${failures.join("\n- ")}` : ""),
+        { cause },
+      );
+    }
+    if (
+      await runtimeState.evaluate((element) => element.classList.contains("runtime-state--failed"))
+    ) {
+      throw new Error(
+        `${pageUrl} entered the failed runtime state` +
+          (failures.length > 0 ? `:\n- ${failures.join("\n- ")}` : ""),
+      );
+    }
     const frame = page.locator(".runtime-frame iframe");
     await frame.waitFor({ state: "visible", timeout: 20_000 });
     const frameSource = await frame.getAttribute("src");
