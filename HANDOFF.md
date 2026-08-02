@@ -1,26 +1,27 @@
 # Handoff
 
-- source: Codex Issue #13 implementation and release evidence, 2026-08-02
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-13-shared-tooling` | HEAD `3f551530e1498f3afa18e11a11f199f723e899c5` | clean: no
-- goal: Independently review Issue #13, commit and exact-head merge its PR, sync `main`, delete the topic branch, then begin Issue #14 from a clean tree.
-- verified: dirty working tree @ `3f551530e1498f3afa18e11a11f199f723e899c5`
-  - `vp check --fix` PASS: 135 files formatted; 75 files with no lint, type, or warning findings.
-  - targeted PASS: tooling 42/42; game-contract 16/16; host-bridge 11/11; guest-bridge 14/14; testkit 6/6; Hub 33/33; production Hub module graph excludes `lab` and `testkit`.
-  - root production E2E PASS: 25 passed / 8 viewport-independent skips, including the parameterized three-Guest settings/locale/lifecycle/diagnostics/dispose driver.
-  - DEV Lab PASS: one three-game manifest-bound scene/preset round-trip in 36.1 seconds, including exact-version rejection, session-only mutation, double-apply exclusion, global settings locking during Host application, and post-Lab Guest revision convergence.
-  - repository-prefix release evidence PASS: TUMBLEDRUM matrix, CrownBreaker matrix, and 50-cycle round-robin passed in the full run; the only initial failure was the Pulse test's stale old-envelope field assertion. After updating that assertion, the complete Pulse matrix passed 1/1 in 1.9 minutes.
-  - final `vp run deploy:dry-run` PASS with Wrangler 4.118.0 after a fresh four-stage build, assembly, and production verification; final production Guest conformance PASS 3/3 in 23.7 seconds.
-  - artifact `gameyard@1e18f94d46c2548f`: 19 files / 3 games; production artifact and Hub output-module boundary contain no Lab/testkit runtime.
-  - independent owner review PASS after fixes for Lab persistence separation, preset export freshness, monotonic settings revisions, and cross-UI in-flight exclusion.
+- source: Codex Issue #14 implementation and release evidence, 2026-08-02
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-14-hub-pwa` | base `main@1194bc3cf7b3cb41969085a93b51be35e0bc574d` | clean: no
+- goal: independently review Issue #14, commit and exact-head merge its PR, sync `main`, delete the topic branch, then begin Issue #15 from a clean tree.
+- artifact: `gameyard@8c924842547d6e8f`; 24 files / 3 games / one root Hub Service Worker.
+- verified:
+  - `vp check --fix` PASS: 81 files, no lint/type/warning findings.
+  - tooling PASS 42/42; Hub PASS 33/33.
+  - root PWA broad flow PASS 1/1: install, explicit Pulse offline save, offline reload, unsaved TUMBLEDRUM visible failure, save-preserving cache clear, mixed-artifact stop, rejection of a superseded waiting worker, and exact-current recovery across two consecutive synthetic releases.
+  - repository-prefix PWA broad flow PASS 1/1 under `/GameYard/`: exact scope/script, explicit Crown save, offline reload.
+  - production Guest contract conformance PASS 3/3 after the PWA integration.
+  - production build/verifier PASS with six shell precache entries and scope/build-bound per-game cache namespace.
+  - independent owner review PASS after closing artifact-inspector overreach, transactional download validation, and superseded waiting-worker activation races.
 - done-this-thread:
-  - strict `game.manifest.source.json` files and `@gameyard/manifest-tools` replace three duplicated Vite manifest implementations; Hub dev/catalog and assembler derive identity from validated manifests.
-  - assembler config no longer owns game IDs; the production catalog is generated from stage manifests and verified against exact source/build/provenance identities.
-  - three Guests share one 32-event diagnostic log; Hub owns an 18-event, 64 KiB maximum versioned envelope, with copy summary and JSON export derived from the same bounded data.
-  - DEV Lab owns strict game/version/build/scene/seed-bound presets and applies startup states through existing Host locale/settings/lifecycle APIs; version mismatches fail visibly without migration or defaults.
-  - one repository-wide boundary gate rejects shared-package dependencies/imports on game workspaces; game rules, rendering, input, audio, saves, and translations remain local.
-- next: commit, push, open/merge the exact-head Issue #13 PR; update Issue #1; sync `main`; delete local/remote topic branches; begin Issue #14 from the clean tree.
+  - `vite-plugin-pwa` injectManifest supplies only the generated shell file list; GameYard owns registration, update activation, artifact checking, offline-library commands, and visible failures.
+  - production registers exactly one relative `service-worker.js`; manifest ID/start/scope and all runtime assets remain repository-prefix safe.
+  - Offline drawer exposes install/status, selected-game save, cache clear, and deliberate update controls; it emits bounded diagnostics through the existing Hub path.
+  - old HTML/current artifact mismatches fail before React App mount and can activate the current waiting release; offline shell use is allowed only after a genuine network failure and exact current worker status.
+  - game cache cleanup is restricted to the active scope/build cache namespace and never reads or deletes localStorage saves.
+  - production verifier and transactional assembler accept one Hub SW while continuing to reject every game SW, stale build, undeclared file, Lab runtime, and prefix-breaking URL.
+- next: owner review; commit/push/PR/merge Issue #14; update Issue #1; clean and sync `main`; begin Issue #15 deployment/CI preview from that exact head.
 - gate: run-git-commit-first
 - risks:
-  - the full `vp run release` wrapper recorded one stale test assertion before the test-only correction; all other 60 tasks passed, and the corrected complete Pulse release matrix plus final dry-run passed separately. A repeat of the 19-minute wrapper is warranted only if review finds a source-level gap.
-- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #13; manifest chain -> `packages/game-contract`, `packages/manifest-tools`, `tooling/site-assembler.mjs`; diagnostics/Lab -> `packages/guest-bridge`, `packages/testkit`, `apps/hub/src`; full gate -> root `package.json`.
-- stale-first: re-run `git status`, `git diff --check`, and proportionate affected gates after any source, snapshot, lockfile, or test change.
+  - Vite PWA currently emits an upstream `inlineDynamicImports` deprecation warning while producing a valid six-entry Workbox precache; no product failure or alternate build path is present.
+- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #14; runtime -> `apps/hub/src/pwa.ts`, `apps/hub/src/service-worker.ts`; artifact gates -> `tooling/artifact-inspector.mjs`, `tooling/verify-production.mjs`; broad evidence -> `tests/e2e/pwa.spec.ts`, `tests/release/pwa-prefix.spec.ts`.
+- stale-first: after any source, lockfile, or generated manifest change, rebuild before browser evidence because artifact IDs are content-derived.

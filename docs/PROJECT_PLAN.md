@@ -22,7 +22,7 @@ Catalog / Settings / Diagnostics (React Hub)
 - Hub 不读取 iframe DOM；Host bridge 先对无 `src`/`srcdoc` iframe 注册 listener，再设置严格相对 entry URL。Guest 随后发送不含实例号的 `gameyard:ready-for-init`，Hub 校验 source/origin/protocol/game/build 后，以唯一 `gameyard:init` 发送完整 context、分配 instance 并转移 `MessagePort`，之后业务只走 port。[postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 - 同时最多一个 frame。离开游戏时发送 dispose，收到 ACK 后移除；超时也移除并记录失败。
 - Hub/game 属于同一个 buildId 和原子 artifact。协议或 build 不一致直接显示缓存/部署混合错误，不做版本协商。
-- 初期无 Service Worker。运行边界稳定后才引入一个根 Hub SW；game SW 永不注册。重叠 scope 不宜存在。[Service Worker scope](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register)
+- 生产仅注册一个与 Hub 同 scope 的 Service Worker；game SW 永不注册。shell 与显式保存的 game cache 都绑定 exact build，重叠 scope 不存在。[Service Worker scope](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register)
 
 ## 目标目录
 
@@ -44,6 +44,8 @@ provenance/                 上游 URL/revision/license/素材来源
 ```text
 dist/index.html
 dist/assets/**
+dist/service-worker.js
+dist/manifest.webmanifest
 dist/games/<id>/index.html
 dist/games/<id>/assets/**
 dist/games/<id>/game.manifest.json
@@ -158,7 +160,9 @@ Issue #11 保持 run/save schema 的游戏所有权，将持久化迁入 `gameya
 
 Issue #13 已将三份游戏 manifest 配置收敛为 strict source + 共享插件，统一 Guest bounded diagnostics、Hub issue-summary envelope、三游戏 contract driver 与精确版本 Lab preset；共享包依赖边界由仓库级门禁固定，游戏规则、渲染、输入、音频、存档与翻译仍保持本地。
 
-下一步复用 staging assembler、路径/资源白名单与 `build-info.json`，加入一个根 Hub PWA。先只预缓存 shell；游戏离线包按用户选择处理，不一次下载全部游戏。发布到 Workers Static Assets，CI 验证真实 preview URL。
+Issue #14 已完成唯一 Hub PWA：injectManifest 只生成 shell precache 清单，注册、更新、build ID 校验和 per-game cache 协议均由 Hub 显式控制。玩家按游戏保存离线包；未保存游戏离线时显式失败；更新在用户确认前保持 waiting，旧 HTML/新 JS 混合会进入可恢复的 contract stop。cache namespace 同时绑定 registration scope 与 exact build，因此根路径和 repository prefix 互不污染；清理离线包不触碰 game saves。
+
+下一步发布到 Workers Static Assets，并让 CI 对真实 preview URL 执行 smoke/contract 检查。
 
 ## 风险与暂不处理
 
