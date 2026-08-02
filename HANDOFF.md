@@ -11,8 +11,9 @@
 - remote state:
   - PR: https://github.com/Hitsuki-Ban/GameYard/pull/31
   - first GitHub Actions run: https://github.com/Hitsuki-Ban/GameYard/actions/runs/30729002938
-  - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable. The workflow now installs that existing baseline dependency before running the games.
-  - GitHub repository currently has no Cloudflare secrets or `cloudflare-production` environment.
+  - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable.
+  - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI. The workflow now downloads the official pinned ImageMagick 7 AppImage, verifies its published SHA-256, and runs the unchanged baseline with the required `magick` CLI.
+  - GitHub `cloudflare-production` environment exists and contains the verified `CLOUDFLARE_ACCOUNT_ID`; a scoped `CLOUDFLARE_API_TOKEN` is still required.
   - local Wrangler OAuth is authenticated, but local OAuth credentials must not be copied into GitHub secrets.
 - implementation:
   - official `setup-vp@v1` resolves the repository-pinned Vite+ and exact Node; official setup-uv installs the TUMBLEDRUM Python/browser toolchain.
