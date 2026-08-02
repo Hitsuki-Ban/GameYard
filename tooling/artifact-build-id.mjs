@@ -20,6 +20,7 @@ export const REQUIRED_PRODUCTION_INPUTS = Object.freeze([
   { path: "tooling/assemble-site.mjs", kind: "file" },
   { path: "tooling/provenance.mjs", kind: "file" },
   { path: "tooling/site-assembler.mjs", kind: "file" },
+  { path: "tooling/verify-published-artifact.mjs", kind: "file" },
   { path: "tooling/verify-production.mjs", kind: "file" },
   { path: "tooling/preview.vite.config.mjs", kind: "file" },
   { path: "apps/hub/index.html", kind: "file" },

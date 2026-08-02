@@ -33,7 +33,7 @@ async function sourceFiles(directory) {
 await test("build creates every owned stage before the sole assembler", () => {
   assert.equal(
     packageJson.scripts.build,
-    "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache tumbledrum#build && vp run --no-cache crown-breaker#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify",
+    "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache tumbledrum#build && vp run --no-cache crown-breaker#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify-source",
   );
 });
 
@@ -51,7 +51,7 @@ await test("development and browser installation cover every runtime workspace",
 await test("preview verifies the current artifact before serving final dist", () => {
   assert.equal(
     packageJson.scripts.preview,
-    "vp run artifact:verify && vp preview --config tooling/preview.vite.config.mjs",
+    "vp run artifact:verify-source && vp preview --config tooling/preview.vite.config.mjs",
   );
 });
 

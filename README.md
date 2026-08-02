@@ -12,6 +12,7 @@ The production runtime/build boundary is active:
 - content-derived `gameyard@<16 lowercase hex>` site build IDs;
 - one bounded issue-summary envelope and manifest-bound DEV Lab presets;
 - one scope-bound Hub PWA with explicit per-game offline saves and visible atomic-update stops;
+- one CI-built artifact whose digest and source/build/protocol/provenance metadata follow it through host smoke and deployment;
 - structural rejection of stale IDs, undeclared files, collisions, game Service Workers, Lab mutation code, and repository-prefix-breaking URLs.
 
 `site.assembly.json` assembles all three games with the Hub into one exact artifact. `dist/games/catalog.json` registers the same three local exhibits.
@@ -29,6 +30,8 @@ vp run e2e
 vp run deploy:dry-run
 ```
 
-All project operations go through `vp`. `vp run build` writes the Hub to an isolated stage, assembles and verifies a fresh `dist`, and fails on any missing required input. Preview verifies that artifact against current sources before serving it; deployment always rebuilds and verifies first.
+All project operations go through `vp`. `vp run build` writes the Hub to an isolated stage, assembles and verifies a fresh `dist`, and fails on any missing required input. Preview verifies that artifact against current sources before serving it. Deployment accepts only an already verified artifact and never rebuilds it.
+
+GitHub Actions uses the official Vite+ setup to run shared checks and all three preserved game baselines, then builds and uploads `dist` exactly once. Root/repository-prefix browser smoke and Cloudflare dry-run download that same artifact; production deploy is a separate `cloudflare-production` environment job and never runs the application build again.
 
 See `docs/PROJECT_PLAN.md` for the migration order and `docs/DEVELOPMENT.md` for the exact development and validation paths.

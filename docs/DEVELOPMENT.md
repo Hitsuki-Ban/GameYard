@@ -56,6 +56,19 @@ vp run crown-breaker#test
 
 根 `vp run test` 与 `vp run ready` 将 workspace 测试按单任务串行调度。多个游戏的真实浏览器门不会争用渲染时钟或音频 ramp，这与“一次一个活动游戏”的产品边界一致；每个游戏内部仍可按自身固定策略使用 worker。
 
+## CI 与发布
+
+`.github/workflows/verify-and-publish.yml` 是唯一自动发布路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json` 并上传一次 `dist`。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash 与 provenance hash。
+
+Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传同一份 `dist`。
+
+GitHub environment 必须配置：
+
+- `CLOUDFLARE_ACCOUNT_ID`：目标 Cloudflare account ID；
+- `CLOUDFLARE_API_TOKEN`：只授权该 account 的 Workers Scripts Edit token。
+
+缺失凭据时 production job 显式失败，不跳过、不改走本机构建或另一条 publish path。`preview`/`production` Wrangler environment 分别命名为 `gameyard-preview` 与 `gameyard`；Static Assets 保持普通 HTML 路由和真实 404，不启用 SPA fallback。
+
 生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、`provenance/`、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
 `vp run build` 始终执行 Pulse stage → TUMBLEDRUM stage → CrownBreaker stage → Hub stage → site assembler → production verifier。每个游戏只在 `game.manifest.source.json` 声明 ID、版本、入口、语言、能力与 provenance；`@gameyard/manifest-tools` 的共享 Vite 插件从这份 strict source 生成 dev/production `game.manifest.json`。Assembler 首先严格解析 `provenance/upstreams.json`，校验所有项目专用 `LicenseRef-*` 记录、授权文本哈希与公开分发状态，并要求生产 game manifest 的 repository/revision/license 与 upstream index 精确一致；缺失或不完整会在读取 stage 前失败。TUMBLEDRUM 的 repository/revision/tree/LicenseRef/record 路径不可降级。随后 assembler 读取严格 `site.assembly.json` 和每个 `game.manifest.json`，从 stage manifest 推导 catalog identity，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。当前 catalog 精确登记三款游戏，测试 Host、截图、standalone 文件和生成工具均不进入 `dist`。

@@ -77,10 +77,7 @@ function assertExactFiles(actualFiles, declaredFiles, label) {
   }
 }
 
-export async function verifyProductionArtifact(
-  directory = productionDirectory,
-  reportRoot = projectRoot,
-) {
+export async function verifyPublishedArtifact(directory = productionDirectory) {
   const root = resolve(directory);
   const files = await listArtifactFiles(root);
   if (files.length === 0) throw new Error("Production artifact is empty.");
@@ -102,10 +99,6 @@ export async function verifyProductionArtifact(
     );
   }
   const catalog = parsedCatalog.data;
-  const assemblyConfig = parseAssemblyConfig(
-    await readJson(resolve(reportRoot, "site.assembly.json"), "site.assembly.json"),
-  );
-
   assertExactKeys(buildInfo, ["schemaVersion", "buildId", "files"], "build-info.json");
   if (buildInfo.schemaVersion !== 1) throw new Error("build-info.json schemaVersion must be 1.");
   if (!buildIdPattern.test(buildInfo.buildId)) {
@@ -119,17 +112,6 @@ export async function verifyProductionArtifact(
   if (catalog.buildId !== buildInfo.buildId) {
     throw new Error("games/catalog.json buildId does not match build-info.json.");
   }
-  if (catalog.games.length !== assemblyConfig.games.length) {
-    throw new Error("games/catalog.json games do not match site.assembly.json.");
-  }
-
-  const expectedBuildId = await createArtifactBuildId(reportRoot);
-  if (buildInfo.buildId !== expectedBuildId) {
-    throw new Error(
-      `Production artifact buildId mismatch: expected ${expectedBuildId}, received ${buildInfo.buildId}.`,
-    );
-  }
-
   const actualFiles = files
     .map((file) => relative(root, file).replaceAll("\\", "/"))
     .sort(compareStrings);
@@ -196,28 +178,7 @@ export async function verifyProductionArtifact(
   }
 
   const allowedGameFiles = new Set(["games/catalog.json"]);
-  for (const [index, game] of catalog.games.entries()) {
-    const stageConfig = assemblyConfig.games[index];
-    if (!stageConfig) {
-      throw new Error(`site.assembly.json is missing stage for catalog game ${game.id}.`);
-    }
-    const parsedStageManifest = GameManifestSchema.safeParse(
-      await readJson(
-        resolve(reportRoot, stageConfig.stage, "game.manifest.json"),
-        `Stage ${stageConfig.stage} game manifest`,
-      ),
-    );
-    if (!parsedStageManifest.success) {
-      throw new Error(
-        `Stage ${stageConfig.stage} game manifest violates GameManifestSchema: ${parsedStageManifest.error.message}`,
-      );
-    }
-    if (game.id !== parsedStageManifest.data.id) {
-      throw new Error(
-        `games/catalog.json games[${index}].id does not match its stage manifest identity.`,
-      );
-    }
-
+  for (const game of catalog.games) {
     const expectedManifestReference = `./${game.id}/game.manifest.json`;
     if (game.manifest !== expectedManifestReference) {
       throw new Error(
@@ -264,6 +225,58 @@ export async function verifyProductionArtifact(
   }
 
   return { buildId: buildInfo.buildId, fileCount: files.length, gameCount: catalog.games.length };
+}
+
+export async function verifyProductionArtifact(
+  directory = productionDirectory,
+  reportRoot = projectRoot,
+) {
+  const result = await verifyPublishedArtifact(directory);
+  const root = resolve(directory);
+  const parsedCatalog = GameCatalogSchema.safeParse(
+    await readJson(resolve(root, "games/catalog.json"), "games/catalog.json"),
+  );
+  if (!parsedCatalog.success) {
+    throw new Error(
+      `games/catalog.json violates GameCatalogSchema: ${parsedCatalog.error.message}`,
+    );
+  }
+  const catalog = parsedCatalog.data;
+  const assemblyConfig = parseAssemblyConfig(
+    await readJson(resolve(reportRoot, "site.assembly.json"), "site.assembly.json"),
+  );
+  if (catalog.games.length !== assemblyConfig.games.length) {
+    throw new Error("games/catalog.json games do not match site.assembly.json.");
+  }
+  const expectedBuildId = await createArtifactBuildId(reportRoot);
+  if (result.buildId !== expectedBuildId) {
+    throw new Error(
+      `Production artifact buildId mismatch: expected ${expectedBuildId}, received ${result.buildId}.`,
+    );
+  }
+  for (const [index, game] of catalog.games.entries()) {
+    const stageConfig = assemblyConfig.games[index];
+    if (!stageConfig) {
+      throw new Error(`site.assembly.json is missing stage for catalog game ${game.id}.`);
+    }
+    const parsedStageManifest = GameManifestSchema.safeParse(
+      await readJson(
+        resolve(reportRoot, stageConfig.stage, "game.manifest.json"),
+        `Stage ${stageConfig.stage} game manifest`,
+      ),
+    );
+    if (!parsedStageManifest.success) {
+      throw new Error(
+        `Stage ${stageConfig.stage} game manifest violates GameManifestSchema: ${parsedStageManifest.error.message}`,
+      );
+    }
+    if (game.id !== parsedStageManifest.data.id) {
+      throw new Error(
+        `games/catalog.json games[${index}].id does not match its stage manifest identity.`,
+      );
+    }
+  }
+  return result;
 }
 
 async function main() {

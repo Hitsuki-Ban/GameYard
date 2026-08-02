@@ -1,27 +1,31 @@
 # Handoff
 
-- source: Codex Issue #14 implementation and release evidence, 2026-08-02
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-14-hub-pwa` | base `main@1194bc3cf7b3cb41969085a93b51be35e0bc574d` | clean: no
-- goal: independently review Issue #14, commit and exact-head merge its PR, sync `main`, delete the topic branch, then begin Issue #15 from a clean tree.
-- artifact: `gameyard@8c924842547d6e8f`; 24 files / 3 games / one root Hub Service Worker.
-- verified:
-  - `vp check --fix` PASS: 81 files, no lint/type/warning findings.
-  - tooling PASS 42/42; Hub PASS 33/33.
-  - root PWA broad flow PASS 1/1: install, explicit Pulse offline save, offline reload, unsaved TUMBLEDRUM visible failure, save-preserving cache clear, mixed-artifact stop, rejection of a superseded waiting worker, and exact-current recovery across two consecutive synthetic releases.
-  - repository-prefix PWA broad flow PASS 1/1 under `/GameYard/`: exact scope/script, explicit Crown save, offline reload.
-  - production Guest contract conformance PASS 3/3 after the PWA integration.
-  - production build/verifier PASS with six shell precache entries and scope/build-bound per-game cache namespace.
-  - independent owner review PASS after closing artifact-inspector overreach, transactional download validation, and superseded waiting-worker activation races.
-- done-this-thread:
-  - `vite-plugin-pwa` injectManifest supplies only the generated shell file list; GameYard owns registration, update activation, artifact checking, offline-library commands, and visible failures.
-  - production registers exactly one relative `service-worker.js`; manifest ID/start/scope and all runtime assets remain repository-prefix safe.
-  - Offline drawer exposes install/status, selected-game save, cache clear, and deliberate update controls; it emits bounded diagnostics through the existing Hub path.
-  - old HTML/current artifact mismatches fail before React App mount and can activate the current waiting release; offline shell use is allowed only after a genuine network failure and exact current worker status.
-  - game cache cleanup is restricted to the active scope/build cache namespace and never reads or deletes localStorage saves.
-  - production verifier and transactional assembler accept one Hub SW while continuing to reject every game SW, stale build, undeclared file, Lab runtime, and prefix-breaking URL.
-- next: owner review; commit/push/PR/merge Issue #14; update Issue #1; clean and sync `main`; begin Issue #15 deployment/CI preview from that exact head.
-- gate: run-git-commit-first
-- risks:
-  - Vite PWA currently emits an upstream `inlineDynamicImports` deprecation warning while producing a valid six-entry Workbox precache; no product failure or alternate build path is present.
-- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #14; runtime -> `apps/hub/src/pwa.ts`, `apps/hub/src/service-worker.ts`; artifact gates -> `tooling/artifact-inspector.mjs`, `tooling/verify-production.mjs`; broad evidence -> `tests/e2e/pwa.spec.ts`, `tests/release/pwa-prefix.spec.ts`.
-- stale-first: after any source, lockfile, or generated manifest change, rebuild before browser evidence because artifact IDs are content-derived.
+- source: Codex Issue #15 implementation in progress, 2026-08-02
+- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-15-ci-deploy` | base `main@93785bae2c613f7c6d0248326b7363cf9fe69454` | clean: no
+- goal: prove one GitHub-built artifact through bounded checks, root/prefix smoke, Cloudflare dry-run, and authenticated production deployment; then merge PR #31 and clean the branch.
+- local verified:
+  - `vp check --fix` PASS: 82 checked files, no lint/type/warning findings.
+  - production build/verifier PASS: `gameyard@20dbe1c20ecad65d`, 24 files / 3 games / one Hub Service Worker.
+  - release metadata write + exact verify PASS for source/build/protocol/catalog/three manifests/provenance.
+  - `vp run deploy:dry-run` PASS with Wrangler 4.118.0; it consumed current `dist` without rebuilding.
+- remote state:
+  - PR: https://github.com/Hitsuki-Ban/GameYard/pull/31
+  - first GitHub Actions run: https://github.com/Hitsuki-Ban/GameYard/actions/runs/30729002938
+  - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable.
+  - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI; third run confirmed the official ImageMagick 7 AppImage lacks the `rsvg` delegate required by one narrow icon-geometry checker.
+  - PR quality now keeps CrownBreaker's production build/verifier and exact 100-run simulation fixture, while leaving the unrelated icon micro-check in the game's full local suite. No compatibility alias or alternate SVG renderer was added.
+  - fourth run passed quality and uploaded one artifact (`sha256:162328a7...ce931bef`), then exposed that the old verifier required build-only stage directories. Verification is now split explicitly: source-bound for build/preview, artifact-only plus release metadata for downloaded deployables.
+  - GitHub `cloudflare-production` environment exists and contains the verified `CLOUDFLARE_ACCOUNT_ID`; a scoped `CLOUDFLARE_API_TOKEN` is still required.
+  - local Wrangler OAuth is authenticated, but local OAuth credentials must not be copied into GitHub secrets.
+- implementation:
+  - official `setup-vp@v1` resolves the repository-pinned Vite+ and exact Node; official setup-uv installs the TUMBLEDRUM Python/browser toolchain.
+  - quality job runs check, tooling/shared tests, and all three game baselines.
+  - artifact job builds once, writes strict release metadata, uploads `dist` once, and exposes the GitHub artifact ID/digest.
+  - host smoke and Cloudflare dry-run download and re-verify that artifact without stage or rebuild; root Guest/PWA and `/GameYard/` PWA reuse existing broad flows.
+  - production job is main-only, depends on all smoke/dry-run gates, requires the `cloudflare-production` environment, and deploys the downloaded artifact without rebuilding.
+- next:
+  - inspect and fix the real GitHub runner result;
+  - configure `CLOUDFLARE_ACCOUNT_ID` and a scoped `CLOUDFLARE_API_TOKEN` in the GitHub environment;
+  - deploy the verified artifact, run live-host smoke, complete owner review, merge, sync, and clean.
+- gate: remote-ci-and-deployment-required
+- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #15; workflow -> `.github/workflows/verify-and-publish.yml`; metadata -> `tooling/release-metadata.mjs`; Cloudflare config -> `wrangler.jsonc`.
