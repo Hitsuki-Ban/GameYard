@@ -14,13 +14,14 @@
   - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable.
   - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI; third run confirmed the official ImageMagick 7 AppImage lacks the `rsvg` delegate required by one narrow icon-geometry checker.
   - PR quality now keeps CrownBreaker's production build/verifier and exact 100-run simulation fixture, while leaving the unrelated icon micro-check in the game's full local suite. No compatibility alias or alternate SVG renderer was added.
+  - fourth run passed quality and uploaded one artifact (`sha256:162328a7...ce931bef`), then exposed that the old verifier required build-only stage directories. Verification is now split explicitly: source-bound for build/preview, artifact-only plus release metadata for downloaded deployables.
   - GitHub `cloudflare-production` environment exists and contains the verified `CLOUDFLARE_ACCOUNT_ID`; a scoped `CLOUDFLARE_API_TOKEN` is still required.
   - local Wrangler OAuth is authenticated, but local OAuth credentials must not be copied into GitHub secrets.
 - implementation:
   - official `setup-vp@v1` resolves the repository-pinned Vite+ and exact Node; official setup-uv installs the TUMBLEDRUM Python/browser toolchain.
   - quality job runs check, tooling/shared tests, and all three game baselines.
   - artifact job builds once, writes strict release metadata, uploads `dist` once, and exposes the GitHub artifact ID/digest.
-  - host smoke and Cloudflare dry-run download and re-verify that artifact; root Guest/PWA and `/GameYard/` PWA reuse existing broad flows.
+  - host smoke and Cloudflare dry-run download and re-verify that artifact without stage or rebuild; root Guest/PWA and `/GameYard/` PWA reuse existing broad flows.
   - production job is main-only, depends on all smoke/dry-run gates, requires the `cloudflare-production` environment, and deploys the downloaded artifact without rebuilding.
 - next:
   - inspect and fix the real GitHub runner result;

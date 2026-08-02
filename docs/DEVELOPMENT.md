@@ -60,7 +60,7 @@ vp run crown-breaker#test
 
 `.github/workflows/verify-and-publish.yml` 是唯一自动发布路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json` 并上传一次 `dist`。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash 与 provenance hash。
 
-Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 production verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。`vp run deploy:dry-run` 不再隐式 build，只接受与当前源码一致的 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传同一份 `dist`。
+Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传同一份 `dist`。
 
 GitHub environment 必须配置：
 
