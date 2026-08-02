@@ -160,7 +160,7 @@ jobs:
   public-release:
     name: Public release journey from artifact
     needs: artifact
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
