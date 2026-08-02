@@ -28,3 +28,9 @@
 - Mutation tools live only in the explicit lab build. They must not survive production tree-shaking.
 - Use deterministic contract tests, Playwright E2E, and screenshot baselines at desktop, portrait mobile, and landscape mobile sizes.
 - Test both root hosting and a repository-style path prefix before release. All runtime asset URLs remain relative.
+
+## Release artifact
+
+- GitHub automation builds and uploads one artifact per source SHA. Host smoke, Cloudflare dry-run, and authenticated deployment must download and re-verify that artifact; deployment jobs never rebuild it.
+- `release-metadata.json` binds the artifact to source SHA, build ID, protocol, game manifests, and provenance. A metadata mismatch stops the job.
+- Cloudflare production deploys only from `main` through the `cloudflare-production` GitHub environment. Required secrets are `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.

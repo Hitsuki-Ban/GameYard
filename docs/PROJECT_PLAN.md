@@ -162,7 +162,9 @@ Issue #13 已将三份游戏 manifest 配置收敛为 strict source + 共享插�
 
 Issue #14 已完成唯一 Hub PWA：injectManifest 只生成 shell precache 清单，注册、更新、build ID 校验和 per-game cache 协议均由 Hub 显式控制。玩家按游戏保存离线包；未保存游戏离线时显式失败；更新在用户确认前保持 waiting，旧 HTML/新 JS 混合会进入可恢复的 contract stop。cache namespace 同时绑定 registration scope 与 exact build，因此根路径和 repository prefix 互不污染；清理离线包不触碰 game saves。
 
-下一步发布到 Workers Static Assets，并让 CI 对真实 preview URL 执行 smoke/contract 检查。
+Issue #15 的发布链只产生一次 verified artifact：GitHub runner 固定 Vite+/Node/pnpm/uv，先运行共享检查与三游戏保存基线；artifact job 记录 source/build/protocol/manifest/provenance 后上传一次。root 与 repository-prefix smoke、Cloudflare dry-run 和 main-only authenticated production job 都下载并复验同一份内容，任何失败都会阻断部署。
+
+下一步在真实 GitHub runner 与 Cloudflare production environment 上完成该链的远端证据，再进入 Issue #16 的最终可访问性、本地化、视觉、压力与发布门。
 
 ## 风险与暂不处理
 

@@ -46,6 +46,10 @@ jobs:
           vp run hub#test
       - name: Install pinned browsers
         run: vp run e2e:install
+      - name: Install game baseline system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes imagemagick
       - name: Preserve game behavior baselines
         run: |
           vp run pulse-link-overdrive#test
