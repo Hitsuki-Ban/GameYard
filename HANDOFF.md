@@ -1,31 +1,30 @@
 # Handoff
 
-- source: Codex Issue #15 implementation in progress, 2026-08-02
-- repo: `F:\WorkSpace\GameYard` | branch `agent/issue-15-ci-deploy` | base `main@93785bae2c613f7c6d0248326b7363cf9fe69454` | clean: no
-- goal: prove one GitHub-built artifact through bounded checks, root/prefix smoke, Cloudflare dry-run, and authenticated production deployment; then merge PR #31 and clean the branch.
-- local verified:
-  - `vp check --fix` PASS: 82 checked files, no lint/type/warning findings.
-  - production build/verifier PASS: `gameyard@20dbe1c20ecad65d`, 24 files / 3 games / one Hub Service Worker.
-  - release metadata write + exact verify PASS for source/build/protocol/catalog/three manifests/provenance.
-  - `vp run deploy:dry-run` PASS with Wrangler 4.118.0; it consumed current `dist` without rebuilding.
-- remote state:
-  - PR: https://github.com/Hitsuki-Ban/GameYard/pull/31
-  - first GitHub Actions run: https://github.com/Hitsuki-Ban/GameYard/actions/runs/30729002938
-  - first run reached all shared checks and Pulse/TUMBLEDRUM baselines; CrownBreaker stopped because the Ubuntu image lacked its required ImageMagick executable.
-  - second run confirmed Ubuntu's `imagemagick` package exposes only the ImageMagick 6 `convert` CLI; third run confirmed the official ImageMagick 7 AppImage lacks the `rsvg` delegate required by one narrow icon-geometry checker.
-  - PR quality now keeps CrownBreaker's production build/verifier and exact 100-run simulation fixture, while leaving the unrelated icon micro-check in the game's full local suite. No compatibility alias or alternate SVG renderer was added.
-  - fourth run passed quality and uploaded one artifact (`sha256:162328a7...ce931bef`), then exposed that the old verifier required build-only stage directories. Verification is now split explicitly: source-bound for build/preview, artifact-only plus release metadata for downloaded deployables.
-  - GitHub `cloudflare-production` environment exists and contains the verified `CLOUDFLARE_ACCOUNT_ID`; a scoped `CLOUDFLARE_API_TOKEN` is still required.
-  - local Wrangler OAuth is authenticated, but local OAuth credentials must not be copied into GitHub secrets.
-- implementation:
-  - official `setup-vp@v1` resolves the repository-pinned Vite+ and exact Node; official setup-uv installs the TUMBLEDRUM Python/browser toolchain.
-  - quality job runs check, tooling/shared tests, and all three game baselines.
-  - artifact job builds once, writes strict release metadata, uploads `dist` once, and exposes the GitHub artifact ID/digest.
-  - host smoke and Cloudflare dry-run download and re-verify that artifact without stage or rebuild; root Guest/PWA and `/GameYard/` PWA reuse existing broad flows.
-  - production job is main-only, depends on all smoke/dry-run gates, requires the `cloudflare-production` environment, and deploys the downloaded artifact without rebuilding.
-- next:
-  - inspect and fix the real GitHub runner result;
-  - configure `CLOUDFLARE_ACCOUNT_ID` and a scoped `CLOUDFLARE_API_TOKEN` in the GitHub environment;
-  - deploy the verified artifact, run live-host smoke, complete owner review, merge, sync, and clean.
-- gate: remote-ci-and-deployment-required
-- authority: constraints -> `AGENTS.md`; scope -> GitHub Issue #15; workflow -> `.github/workflows/verify-and-publish.yml`; metadata -> `tooling/release-metadata.mjs`; Cloudflare config -> `wrangler.jsonc`.
+## Shipped system
+
+GameYard presents PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker through one React Hub and one active same-origin iframe. The versioned `MessageChannel` contract is the only Hub/Guest runtime path. Public locale, audio/motion settings, focus/pause/fullscreen policy, diagnostics, PWA lifecycle, catalog, deployment, and release identity belong to the Hub; game rules, rendering, input semantics, audio graphs, saves, content, and game-specific accessibility remain local to each game.
+
+Production is served by one Cloudflare Worker from the same immutable artifact:
+
+- root: `https://gameyard.houtei-ban.workers.dev/`
+- repository mount: `https://gameyard.houtei-ban.workers.dev/GameYard/`
+
+Root assets use Cloudflare Static Assets directly. Only the exact `/GameYard` mount enters `deployment/cloudflare-worker.mjs`, which strips that prefix and fetches the same `ASSETS` binding. No second build, fallback route, remote game embed, compatibility alias, or per-game Service Worker exists.
+
+## Release authority
+
+- constraints and runtime boundary: `AGENTS.md`
+- architecture and completed migration: `docs/PROJECT_PLAN.md` and `docs/adr/`
+- development, diagnostics, PWA, validation, and deployment: `docs/DEVELOPMENT.md`
+- upstream rights and fixed revisions: `docs/UPSTREAM_AUDIT.md` and `provenance/`
+- automated verification/deployment: `.github/workflows/verify-and-publish.yml`
+- no-rebuild tag/Release publication: `.github/workflows/publish-release.yml`
+- source/build/protocol/manifest/provenance/deployment identity: `tooling/release-metadata.mjs`
+
+`Verify and publish` builds exactly one artifact for each `main` source SHA. Every smoke, visual/localization/accessibility/stress gate, Cloudflare dry-run, and production deploy downloads and re-verifies it. `Publish verified release` accepts the successful `main` run ID and exact package tag, downloads the original Actions ZIP, checks its SHA-256 against the artifact API, re-verifies metadata and both live mounts, and then creates the tag and GitHub Release without rebuilding or clobbering.
+
+## Continuation rules
+
+Start from a clean `main` equal to `origin/main`. Use `vp` for all project operations. Preserve the single-frame/strict-contract boundary, explicit offline saves, one Hub Service Worker, `gameyard.*` storage namespace, relative asset URLs, and fail-fast configuration. Do not revive standalone products, legacy storage imports, production Lab mutation, cross-version negotiation, or alternate deployment paths.
+
+For a release investigation, identify the GitHub Release tag, source SHA, Verify/deploy run ID, Actions artifact ID/digest, `gameyard@<build>` ID, Cloudflare Worker version, and live root/prefix result before changing code. Release-specific evidence belongs in the GitHub Release and the closing Issue #16/roadmap comments rather than in this evergreen handoff.

@@ -90,8 +90,18 @@ export async function createReleaseMetadata(root, sourceSha) {
 
   const provenancePath = "provenance/upstreams.json";
   const provenance = await readText(resolve(root, provenancePath), provenancePath);
+  const deploymentConfigPath = "wrangler.jsonc";
+  const deploymentConfig = await readText(
+    resolve(root, deploymentConfigPath),
+    deploymentConfigPath,
+  );
+  const deploymentWorkerPath = "deployment/cloudflare-worker.mjs";
+  const deploymentWorker = await readText(
+    resolve(root, deploymentWorkerPath),
+    deploymentWorkerPath,
+  );
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceSha,
     buildId: buildInfo.buildId,
     protocol: PROTOCOL_VERSION,
@@ -104,6 +114,16 @@ export async function createReleaseMetadata(root, sourceSha) {
     provenance: {
       path: provenancePath,
       sha256: sha256(provenance),
+    },
+    deployment: {
+      config: {
+        path: deploymentConfigPath,
+        sha256: sha256(deploymentConfig),
+      },
+      worker: {
+        path: deploymentWorkerPath,
+        sha256: sha256(deploymentWorker),
+      },
     },
   };
 }

@@ -4,7 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:
 
 concurrency:
   group: gameyard-${{ github.workflow }}-${{ github.ref }}
@@ -89,6 +88,8 @@ jobs:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: |
             dist
+            deployment
+            wrangler.jsonc
             ${{ env.RELEASE_METADATA }}
           include-hidden-files: true
           if-no-files-found: error
@@ -155,16 +156,48 @@ jobs:
           vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
       - run: vp exec wrangler deploy --env preview --dry-run
 
+  public-release:
+    name: Public release journey from artifact
+    needs: artifact
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ env.RELEASE_ARTIFACT }}
+          path: .
+      - name: Verify the downloaded artifact
+        run: |
+          vp run artifact:verify
+          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+      - run: vp exec playwright install chromium
+      - name: Run the complete public release journey without rebuilding
+        run: >-
+          vp exec playwright test
+          tests/release/pulse-release.spec.ts tests/release/public-accessibility.spec.ts
+          --config playwright.release.config.ts
+
   cloudflare-production:
     name: Cloudflare production from artifact
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [artifact, host-smoke, cloudflare-dry-run]
+    needs: [artifact, host-smoke, cloudflare-dry-run, public-release]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: cloudflare-production
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    outputs:
+      version-id: ${{ steps.deployment-evidence.outputs.version-id }}
+      target: ${{ steps.deployment-evidence.outputs.target }}
+      build-id: ${{ steps.deployment-evidence.outputs.build-id }}
     steps:
       - uses: actions/checkout@v6
       - uses: voidzero-dev/setup-vp@v1
@@ -185,5 +218,27 @@ jobs:
         run: |
           vp run artifact:verify
           vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+      - name: Install the live-smoke browser
+        run: vp exec playwright install chromium
       - name: Deploy without rebuilding
-        run: vp exec wrangler deploy --env production --strict --message "GameYard ${{ github.sha }} artifact ${{ needs.artifact.outputs.artifact-digest }}"
+        env:
+          WRANGLER_OUTPUT_FILE_PATH: .gameyard/wrangler-production.ndjson
+        run: vp exec wrangler deploy --env production --strict --message "GameYard ${{ github.sha }} artifact sha256:${{ needs.artifact.outputs.artifact-digest }}"
+      - name: Verify machine-readable deployment evidence
+        id: deployment-evidence
+        run: >-
+          vp exec node deployment/parse-cloudflare-deploy.mjs
+          --file .gameyard/wrangler-production.ndjson
+          --metadata "${{ env.RELEASE_METADATA }}"
+          --artifact-digest "sha256:${{ needs.artifact.outputs.artifact-digest }}"
+          --github-output "$GITHUB_OUTPUT"
+          --evidence .gameyard/cloudflare-production.json
+      - name: Smoke the deployed root and repository prefix
+        run: vp exec node deployment/live-smoke.mjs --evidence .gameyard/cloudflare-production.json
+      - name: Publish production evidence
+        run: |
+          echo "### Cloudflare production" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build: \`${{ steps.deployment-evidence.outputs.build-id }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`${{ steps.deployment-evidence.outputs.version-id }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: ${{ steps.deployment-evidence.outputs.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Root and \`/GameYard/\`: six game launches passed without page, console, request, or HTTP failures." >> "$GITHUB_STEP_SUMMARY"

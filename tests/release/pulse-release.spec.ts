@@ -788,6 +788,11 @@ test("50 three-game round-robin cycles leave one clean browsing context", async 
     currentLocale = targetLocale;
   }
 
-  expect(page.context().serviceWorkers()).toEqual([]);
+  expect(
+    page
+      .context()
+      .serviceWorkers()
+      .map((worker) => worker.url()),
+  ).toEqual([new URL("service-worker.js", page.url()).href]);
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
