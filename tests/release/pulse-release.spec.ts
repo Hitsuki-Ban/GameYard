@@ -301,21 +301,23 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   expect(downloadPath).not.toBeNull();
   const diagnosticJson = await readFile(downloadPath!, "utf8");
   const diagnostic = JSON.parse(diagnosticJson) as {
-    events: unknown[];
-    guest: { events: unknown[] } | null;
+    schemaVersion: number;
+    buildId: string;
+    generatedAt: string;
+    hub: { events: unknown[] };
+    game: { events: unknown[] } | null;
     [key: string]: unknown;
   };
   expect(Object.keys(diagnostic).sort()).toEqual([
-    "build",
-    "events",
-    "guest",
-    "locale",
-    "route",
-    "selectedGame",
-    "settingsRevision",
+    "buildId",
+    "game",
+    "generatedAt",
+    "hub",
+    "schemaVersion",
   ]);
-  expect(diagnostic.events.length).toBeLessThanOrEqual(18);
-  expect(diagnostic.guest?.events.length ?? 0).toBeLessThanOrEqual(32);
+  expect(diagnostic.schemaVersion).toBe(1);
+  expect(diagnostic.hub.events.length).toBeLessThanOrEqual(18);
+  expect(diagnostic.game?.events.length ?? 0).toBeLessThanOrEqual(32);
   expect(Buffer.byteLength(diagnosticJson)).toBeLessThan(64 * 1024);
   expect(diagnosticJson).not.toContain(PRIVATE_STORAGE_SENTINEL);
   expect(diagnosticJson).not.toMatch(/localStorage|data:image|screenshot/i);

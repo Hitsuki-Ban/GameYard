@@ -52,9 +52,7 @@ async function createFixture({ game = true } = {}) {
       {
         schemaVersion: 1,
         hubStage: ".gameyard/stage/hub",
-        games: game
-          ? [{ id: "demo", stage: gameStagePath, productionInputs: [gameProductionInput] }]
-          : [],
+        games: game ? [{ stage: gameStagePath, productionInputs: [gameProductionInput] }] : [],
       },
       null,
       2,
@@ -274,16 +272,6 @@ await test("rejects manifest build mismatches and unknown fields", async () => {
   await assert.rejects(createAssemblyPlan(unknownFixture.root), /violates GameManifestSchema/);
 });
 
-await test("rejects a manifest ID that differs from the configured game ID", async () => {
-  const fixture = await createFixture();
-  const manifestPath = join(fixture.gameStage, "game.manifest.json");
-  const manifest = await readJson(manifestPath);
-  manifest.id = "another-game";
-  await writeFile(manifestPath, JSON.stringify(manifest));
-
-  await assert.rejects(createAssemblyPlan(fixture.root), /game ID mismatch/);
-});
-
 await test("fails closed when distribution rights are missing, blocked, or incomplete", async () => {
   const missingFixture = await createFixture();
   await rm(join(missingFixture.root, "provenance/upstreams.json"));
@@ -411,7 +399,7 @@ await test("rejects unknown assembly configuration fields", async () => {
   await assert.rejects(createAssemblyPlan(root), /fields must be exactly/);
 });
 
-await test("rejects unstable IDs, traversal, and generated output as production inputs", () => {
+await test("rejects config-owned identity, traversal, and generated production inputs", () => {
   const createConfig = (game) => ({
     schemaVersion: 1,
     hubStage: ".gameyard/stage/hub",
@@ -421,18 +409,17 @@ await test("rejects unstable IDs, traversal, and generated output as production 
     () =>
       parseAssemblyConfig(
         createConfig({
-          id: "Demo",
+          id: "demo",
           stage: ".gameyard/stage/games/demo",
           productionInputs: ["games/demo/src"],
         }),
       ),
-    /stable lowercase game ID/,
+    /fields must be exactly/,
   );
   assert.throws(
     () =>
       parseAssemblyConfig(
         createConfig({
-          id: "demo",
           stage: "../outside",
           productionInputs: ["games/demo/src"],
         }),
@@ -443,32 +430,17 @@ await test("rejects unstable IDs, traversal, and generated output as production 
     () =>
       parseAssemblyConfig(
         createConfig({
-          id: "demo",
           stage: ".gameyard/stage/games/demo",
           productionInputs: [".gameyard/stage/games/demo"],
         }),
       ),
     /must not include stage or distribution output/,
   );
-  for (const id of ["demo_game", "demo.game", "demo--game"]) {
-    assert.throws(
-      () =>
-        parseAssemblyConfig(
-          createConfig({
-            id,
-            stage: ".gameyard/stage/games/demo",
-            productionInputs: ["games/demo/src"],
-          }),
-        ),
-      /stable lowercase game ID/,
-    );
-  }
   for (const path of ["games/demo:src", "games/demo%src", "games/demo?src", "games/demo#src"]) {
     assert.throws(
       () =>
         parseAssemblyConfig(
           createConfig({
-            id: "demo",
             stage: ".gameyard/stage/games/demo",
             productionInputs: [path],
           }),

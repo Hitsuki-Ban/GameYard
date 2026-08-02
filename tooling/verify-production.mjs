@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { GameManifestSchema } from "../packages/game-contract/src/index.ts";
+import { GameCatalogSchema, GameManifestSchema } from "../packages/game-contract/src/index.ts";
 import { parseAssemblyConfig } from "./assembly-config.mjs";
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import {
@@ -93,7 +93,15 @@ export async function verifyProductionArtifact(
   const buildInfoPath = resolve(root, "build-info.json");
   const catalogPath = resolve(root, "games/catalog.json");
   const buildInfo = await readJson(buildInfoPath, "build-info.json");
-  const catalog = await readJson(catalogPath, "games/catalog.json");
+  const parsedCatalog = GameCatalogSchema.safeParse(
+    await readJson(catalogPath, "games/catalog.json"),
+  );
+  if (!parsedCatalog.success) {
+    throw new Error(
+      `games/catalog.json violates GameCatalogSchema: ${parsedCatalog.error.message}`,
+    );
+  }
+  const catalog = parsedCatalog.data;
   const assemblyConfig = parseAssemblyConfig(
     await readJson(resolve(reportRoot, "site.assembly.json"), "site.assembly.json"),
   );
@@ -108,12 +116,9 @@ export async function verifyProductionArtifact(
     throw new Error("build-info.json files must be sorted.");
   }
 
-  assertExactKeys(catalog, ["schemaVersion", "buildId", "games"], "games/catalog.json");
-  if (catalog.schemaVersion !== 1) throw new Error("games/catalog.json schemaVersion must be 1.");
   if (catalog.buildId !== buildInfo.buildId) {
     throw new Error("games/catalog.json buildId does not match build-info.json.");
   }
-  if (!Array.isArray(catalog.games)) throw new Error("games/catalog.json games must be an array.");
   if (catalog.games.length !== assemblyConfig.games.length) {
     throw new Error("games/catalog.json games do not match site.assembly.json.");
   }
@@ -139,20 +144,28 @@ export async function verifyProductionArtifact(
   if (!actualFiles.includes("index.html"))
     throw new Error("Production Hub entry is missing: index.html");
 
-  const gameIds = new Set();
   const allowedGameFiles = new Set(["games/catalog.json"]);
   for (const [index, game] of catalog.games.entries()) {
-    assertExactKeys(game, ["id", "entry", "manifest"], `games/catalog.json games[${index}]`);
-    if (typeof game.id !== "string" || game.id.length === 0) {
-      throw new Error(`games/catalog.json games[${index}].id must be a non-empty string.`);
+    const stageConfig = assemblyConfig.games[index];
+    if (!stageConfig) {
+      throw new Error(`site.assembly.json is missing stage for catalog game ${game.id}.`);
     }
-    if (game.id !== assemblyConfig.games[index].id) {
-      throw new Error(`games/catalog.json games[${index}].id does not match site.assembly.json.`);
+    const parsedStageManifest = GameManifestSchema.safeParse(
+      await readJson(
+        resolve(reportRoot, stageConfig.stage, "game.manifest.json"),
+        `Stage ${stageConfig.stage} game manifest`,
+      ),
+    );
+    if (!parsedStageManifest.success) {
+      throw new Error(
+        `Stage ${stageConfig.stage} game manifest violates GameManifestSchema: ${parsedStageManifest.error.message}`,
+      );
     }
-    const foldedId = game.id.toLowerCase();
-    if (gameIds.has(foldedId))
-      throw new Error(`games/catalog.json has a game ID collision: ${game.id}`);
-    gameIds.add(foldedId);
+    if (game.id !== parsedStageManifest.data.id) {
+      throw new Error(
+        `games/catalog.json games[${index}].id does not match its stage manifest identity.`,
+      );
+    }
 
     const expectedManifestReference = `./${game.id}/game.manifest.json`;
     if (game.manifest !== expectedManifestReference) {

@@ -237,27 +237,44 @@ export const GameProvenanceSchema = z.strictObject({
 });
 export type GameProvenance = z.infer<typeof GameProvenanceSchema>;
 
+const gameManifestSourceShape = {
+  schemaVersion: z.literal(1),
+  protocol: z.literal(PROTOCOL_VERSION),
+  id: GameIdSchema,
+  version: GameVersionSchema,
+  entry: PosixRelativeFilePathSchema,
+  locales: GameLocalesSchema,
+  capabilities: z.array(GameCapabilitySchema),
+  provenance: GameProvenanceSchema,
+};
+
+function requireUniqueCapabilities(
+  source: { capabilities: readonly GameCapability[] },
+  context: z.core.$RefinementCtx,
+): void {
+  if (new Set(source.capabilities).size !== source.capabilities.length) {
+    context.addIssue({
+      code: "custom",
+      message: "Capabilities must be unique",
+      path: ["capabilities"],
+      input: source,
+    });
+  }
+}
+
+export const GameManifestSourceSchema = z
+  .strictObject(gameManifestSourceShape)
+  .superRefine(requireUniqueCapabilities);
+export type GameManifestSource = z.infer<typeof GameManifestSourceSchema>;
+
 export const GameManifestSchema = z
   .strictObject({
-    schemaVersion: z.literal(1),
-    protocol: z.literal(PROTOCOL_VERSION),
-    id: GameIdSchema,
-    version: GameVersionSchema,
+    ...gameManifestSourceShape,
     buildId: BuildIdSchema,
-    entry: PosixRelativeFilePathSchema,
-    locales: GameLocalesSchema,
-    capabilities: z.array(GameCapabilitySchema),
-    provenance: GameProvenanceSchema,
     files: z.array(PosixRelativeFilePathSchema).min(1),
   })
   .superRefine((manifest, context) => {
-    if (new Set(manifest.capabilities).size !== manifest.capabilities.length) {
-      context.addIssue({
-        code: "custom",
-        message: "Capabilities must be unique",
-        path: ["capabilities"],
-      });
-    }
+    requireUniqueCapabilities(manifest, context);
     if (new Set(manifest.files).size !== manifest.files.length) {
       context.addIssue({ code: "custom", message: "Files must be unique", path: ["files"] });
     }
@@ -277,6 +294,44 @@ export const GameManifestSchema = z
     }
   });
 export type GameManifest = z.infer<typeof GameManifestSchema>;
+
+function isCanonicalCatalogReference(value: string): boolean {
+  return value.startsWith("./") && isCanonicalPosixRelativeFilePath(value.slice(2));
+}
+
+export const GameCatalogReferenceSchema = z
+  .string()
+  .refine(isCanonicalCatalogReference, "Expected a canonical ./-relative catalog reference");
+export type GameCatalogReference = z.infer<typeof GameCatalogReferenceSchema>;
+
+export const GameCatalogEntrySchema = z.strictObject({
+  id: GameIdSchema,
+  entry: GameCatalogReferenceSchema,
+  manifest: GameCatalogReferenceSchema,
+});
+export type GameCatalogEntry = z.infer<typeof GameCatalogEntrySchema>;
+
+export const GameCatalogSchema = z
+  .strictObject({
+    schemaVersion: z.literal(1),
+    buildId: BuildIdSchema,
+    games: z.array(GameCatalogEntrySchema),
+  })
+  .superRefine((catalog, context) => {
+    const ids = new Set<string>();
+    for (const [index, game] of catalog.games.entries()) {
+      if (ids.has(game.id)) {
+        context.addIssue({
+          code: "custom",
+          message: "Game catalog IDs must be unique",
+          path: ["games", index, "id"],
+          input: catalog,
+        });
+      }
+      ids.add(game.id);
+    }
+  });
+export type GameCatalog = z.infer<typeof GameCatalogSchema>;
 
 export const SettingsApplyCommandSchema = z.strictObject({
   type: z.literal("settings.apply"),

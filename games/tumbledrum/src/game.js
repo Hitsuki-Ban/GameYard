@@ -1,3 +1,5 @@
+import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
+
 (function () {
   'use strict';
 
@@ -241,7 +243,7 @@
       this.inputEnabled = false;
       this.cancelFrame = null;
       this.cancelOrientationTimer = null;
-      this.events = [];
+      this.diagnostics = createGuestDiagnosticLog(bridge);
       this.dpr = 1;
       this.scale = 1;
       this.lastFrame = performance.now();
@@ -530,10 +532,7 @@
     }
 
     record(level, code, message) {
-      const event = { timestampMs: Date.now(), level, code, message };
-      this.events.push(event);
-      if (this.events.length > 32) this.events.shift();
-      this.bridge.emitDiagnostic(event);
+      this.diagnostics.record({ timestampMs: Date.now(), level, code, message });
     }
 
     diagnosticSnapshot() {
@@ -541,7 +540,7 @@
         lifecycle: this.lifecycle,
         settingsRevision: this.context.settings.revision,
         inputEnabled: this.inputEnabled,
-        events: [...this.events]
+        events: this.diagnostics.snapshot()
       };
     }
 

@@ -2,10 +2,83 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   DeterministicClock,
+  LAB_PRESET_MAX_BYTES,
+  LabPresetError,
+  LabSceneRegistry,
   createFakeMessagePortPair,
   createFakeWindowPair,
   snapshotResources,
 } from "../src/index";
+
+const identity = {
+  gameId: "pulse-link-overdrive",
+  gameVersion: "1.1.0",
+  buildId: "gameyard@0123456789abcdef",
+} as const;
+
+function createRegistry(): LabSceneRegistry {
+  return new LabSceneRegistry([
+    {
+      ...identity,
+      sceneId: "ready",
+      sceneVersion: 1,
+      parameters: {
+        lifecycle: { type: "enum", values: ["active", "paused"] },
+        reducedMotion: { type: "boolean" },
+        accentOffset: { type: "number", integer: true, minimum: -24, maximum: 24 },
+      },
+    },
+  ]);
+}
+
+describe("LabSceneRegistry", () => {
+  it("round-trips a strict, exact-version preset", () => {
+    const registry = createRegistry();
+    const preset = registry.createPreset("ready", 0x5eed, {
+      lifecycle: "active",
+      reducedMotion: true,
+      accentOffset: -4,
+    });
+
+    expect(registry.list()).toHaveLength(1);
+    expect(registry.parseJson(registry.serialize(preset))).toEqual(preset);
+  });
+
+  it("rejects extra fields, missing parameters, and every identity mismatch", () => {
+    const registry = createRegistry();
+    const preset = registry.createPreset("ready", 7, {
+      lifecycle: "paused",
+      reducedMotion: false,
+      accentOffset: 0,
+    });
+
+    expect(() => registry.parsePreset({ ...preset, legacyVersion: 1 })).toThrow(
+      "Lab preset must contain exactly",
+    );
+    expect(() =>
+      registry.parsePreset({
+        ...preset,
+        parameters: { lifecycle: "paused", reducedMotion: false },
+      }),
+    ).toThrow("Lab preset parameters must contain exactly");
+    for (const mutation of [
+      { gameId: "tumbledrum" },
+      { gameVersion: "1.1.1" },
+      { buildId: "gameyard@fedcba9876543210" },
+      { sceneVersion: 2 },
+    ]) {
+      expect(() => registry.parsePreset({ ...preset, ...mutation })).toThrow(
+        "does not exactly match",
+      );
+    }
+  });
+
+  it("enforces the byte limit before parsing JSON", () => {
+    const oversized = `{"padding":"${"x".repeat(LAB_PRESET_MAX_BYTES)}"}`;
+    expect(() => createRegistry().parseJson(oversized)).toThrow(LabPresetError);
+    expect(() => createRegistry().parseJson(oversized)).toThrow("exceeds 16384 bytes");
+  });
+});
 
 describe("DeterministicClock", () => {
   it("runs timers, intervals, and animation frames in stable order", () => {

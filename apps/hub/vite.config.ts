@@ -1,14 +1,26 @@
 import react from "@vitejs/plugin-react";
-import { GameManifestSchema } from "@gameyard/game-contract";
+import { GameManifestSchema, GameManifestSourceSchema } from "@gameyard/game-contract";
 import { defineConfig } from "vite-plus";
 
 import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
+import crownBreakerSource from "../../games/crown-breaker/game.manifest.source.json";
+import pulseLinkOverdriveSource from "../../games/pulse-link-overdrive/game.manifest.source.json";
+import tumbledrumSource from "../../games/tumbledrum/game.manifest.source.json";
 
 const artifactBuildId = await createArtifactBuildId();
 const devRuntimes = [
-  { id: "pulse-link-overdrive", origin: "http://127.0.0.1:5174" },
-  { id: "tumbledrum", origin: "http://127.0.0.1:5175" },
-  { id: "crown-breaker", origin: "http://127.0.0.1:5176" },
+  {
+    source: GameManifestSourceSchema.parse(pulseLinkOverdriveSource),
+    origin: "http://127.0.0.1:5174",
+  },
+  {
+    source: GameManifestSourceSchema.parse(tumbledrumSource),
+    origin: "http://127.0.0.1:5175",
+  },
+  {
+    source: GameManifestSourceSchema.parse(crownBreakerSource),
+    origin: "http://127.0.0.1:5176",
+  },
 ] as const;
 const hubStageManifest = `${JSON.stringify(
   { schemaVersion: 1, buildId: artifactBuildId, entry: "index.html" },
@@ -20,10 +32,10 @@ const devCatalog = `${JSON.stringify(
   {
     schemaVersion: 1,
     buildId: artifactBuildId,
-    games: devRuntimes.map(({ id }) => ({
-      id,
-      entry: `./${id}/index.html`,
-      manifest: `./${id}/game.manifest.json`,
+    games: devRuntimes.map(({ source }) => ({
+      id: source.id,
+      entry: `./${source.id}/${source.entry}`,
+      manifest: `./${source.id}/game.manifest.json`,
     })),
   },
   null,
@@ -41,9 +53,9 @@ type DevMiddleware = (
 ) => void | Promise<void>;
 
 async function waitForDevRuntime(runtime: (typeof devRuntimes)[number]): Promise<void> {
-  const manifestUrl = `${runtime.origin}/games/${runtime.id}/game.manifest.json`;
+  const manifestUrl = `${runtime.origin}/games/${runtime.source.id}/game.manifest.json`;
   const deadline = Date.now() + 10_000;
-  let lastFailure = `${runtime.id} dev server did not respond`;
+  let lastFailure = `${runtime.source.id} dev server did not respond`;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(manifestUrl, {
@@ -54,21 +66,22 @@ async function waitForDevRuntime(runtime: (typeof devRuntimes)[number]): Promise
         const manifest = GameManifestSchema.safeParse(await response.json());
         if (
           manifest.success &&
-          manifest.data.id === runtime.id &&
+          manifest.data.id === runtime.source.id &&
+          manifest.data.entry === runtime.source.entry &&
           manifest.data.buildId === artifactBuildId
         ) {
           return;
         }
-        lastFailure = `${runtime.id} dev manifest does not match the Hub runtime identity`;
+        lastFailure = `${runtime.source.id} dev manifest does not match the Hub runtime identity`;
       } else {
-        lastFailure = `${runtime.id} dev manifest returned HTTP ${response.status}`;
+        lastFailure = `${runtime.source.id} dev manifest returned HTTP ${response.status}`;
       }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
   }
-  throw new Error(`${runtime.id} dev runtime was not ready after 10000ms: ${lastFailure}`);
+  throw new Error(`${runtime.source.id} dev runtime was not ready after 10000ms: ${lastFailure}`);
 }
 
 async function waitForDevRuntimes(): Promise<void> {
@@ -106,11 +119,38 @@ function devRuntimeProxyPlugin() {
   };
 }
 
+function productionBoundaryPlugin() {
+  return {
+    name: "gameyard-production-boundary",
+    apply: "build" as const,
+    generateBundle(
+      _options: unknown,
+      bundle: Record<
+        string,
+        { readonly type: string; readonly modules?: Readonly<Record<string, unknown>> }
+      >,
+    ) {
+      const forbiddenModule = Object.values(bundle)
+        .filter((output) => output.type === "chunk")
+        .flatMap((output) => Object.keys(output.modules ?? {}))
+        .find(
+          (moduleId) =>
+            /[/\\]apps[/\\]hub[/\\]src[/\\]lab(?:\.css|\.ts)$/u.test(moduleId) ||
+            /[/\\]packages[/\\]testkit[/\\]/u.test(moduleId),
+        );
+      if (forbiddenModule) {
+        throw new Error(`Production Hub includes a Lab/testkit module: ${forbiddenModule}`);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: "./",
   plugins: [
     react(),
     devRuntimeProxyPlugin(),
+    productionBoundaryPlugin(),
     {
       name: "gameyard-hub-stage-manifest",
       generateBundle() {
@@ -127,8 +167,8 @@ export default defineConfig({
   },
   server: {
     proxy: Object.fromEntries(
-      devRuntimes.map(({ id, origin }) => [
-        `/games/${id}`,
+      devRuntimes.map(({ source, origin }) => [
+        `/games/${source.id}`,
         {
           target: origin,
           ws: true,

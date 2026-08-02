@@ -3,10 +3,10 @@
   "hubStage": ".gameyard/stage/hub",
   "games": [
     {
-      "id": "pulse-link-overdrive",
       "stage": ".gameyard/stage/games/pulse-link-overdrive",
       "productionInputs": [
         "games/pulse-link-overdrive/assets/icon.svg",
+        "games/pulse-link-overdrive/game.manifest.source.json",
         "games/pulse-link-overdrive/index.html",
         "games/pulse-link-overdrive/package.json",
         "games/pulse-link-overdrive/src",
@@ -16,9 +16,9 @@
       ]
     },
     {
-      "id": "tumbledrum",
       "stage": ".gameyard/stage/games/tumbledrum",
       "productionInputs": [
+        "games/tumbledrum/game.manifest.source.json",
         "games/tumbledrum/index.html",
         "games/tumbledrum/package.json",
         "games/tumbledrum/src",
@@ -27,11 +27,11 @@
       ]
     },
     {
-      "id": "crown-breaker",
       "stage": ".gameyard/stage/games/crown-breaker",
       "productionInputs": [
         "games/crown-breaker/assets/acts",
         "games/crown-breaker/game.js",
+        "games/crown-breaker/game.manifest.source.json",
         "games/crown-breaker/icon-192.png",
         "games/crown-breaker/i18n.js",
         "games/crown-breaker/index.html",

@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@gameyard/game-contract": "workspace:*",
-    "@gameyard/guest-bridge": "workspace:*"
+    "@gameyard/guest-bridge": "workspace:*",
+    "@gameyard/manifest-tools": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

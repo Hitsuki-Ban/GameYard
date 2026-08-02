@@ -9,14 +9,47 @@ import {
 } from "@gameyard/testkit";
 
 import {
+  GUEST_DIAGNOSTIC_EVENT_LIMIT,
   GuestConfigurationError,
   GuestDisposedError,
   GuestHandshakeMismatchError,
   GuestInitializationError,
   connectGuest,
+  createGuestDiagnosticLog,
   type GuestBridge,
   type GuestBridgeHooks,
 } from "../src/index";
+
+describe("guest diagnostic log", () => {
+  it("retains exactly the newest 32 validated events and emits every recorded event", () => {
+    const emitDiagnostic = vi.fn();
+    const log = createGuestDiagnosticLog({ emitDiagnostic });
+
+    for (let index = 0; index < GUEST_DIAGNOSTIC_EVENT_LIMIT + 3; index += 1) {
+      log.record({
+        timestampMs: index,
+        level: "info",
+        code: `test.event-${index}`,
+        message: `event ${index}`,
+      });
+    }
+
+    expect(log.size).toBe(32);
+    expect(log.snapshot()[0]?.timestampMs).toBe(3);
+    expect(log.snapshot().at(-1)?.timestampMs).toBe(34);
+    expect(emitDiagnostic).toHaveBeenCalledTimes(35);
+  });
+
+  it("rejects invalid diagnostic events before emission", () => {
+    const emitDiagnostic = vi.fn();
+    const log = createGuestDiagnosticLog({ emitDiagnostic });
+    expect(() =>
+      log.record({ timestampMs: -1, level: "info", code: "Bad code", message: "bad" }),
+    ).toThrow();
+    expect(log.size).toBe(0);
+    expect(emitDiagnostic).not.toHaveBeenCalled();
+  });
+});
 
 const context: HostContext = {
   protocol: PROTOCOL_VERSION,

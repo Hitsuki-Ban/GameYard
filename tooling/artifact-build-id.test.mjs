@@ -63,11 +63,12 @@ await test("artifact build ID changes with source, lock, and configuration conte
   assert.notEqual(configChanged, lockChanged);
 });
 
-await test("artifact build ID covers runtime bridges, contract, assembler, and site config", async () => {
+await test("artifact build ID covers runtime bridges, contract, manifest tools, and assembler", async () => {
   const root = await createFixture();
   let previous = await createArtifactBuildId(root);
   const changedInputs = [
     "packages/game-contract/src/entry.ts",
+    "packages/manifest-tools/src/entry.ts",
     "packages/host-bridge/src/entry.ts",
     "packages/guest-bridge/src/entry.ts",
     "tooling/site-assembler.mjs",
@@ -100,7 +101,6 @@ await test("artifact build ID includes each configured game's production inputs"
         hubStage: ".gameyard/stage/hub",
         games: [
           {
-            id: "demo",
             stage: ".gameyard/stage/games/demo",
             productionInputs: ["games/demo/src"],
           },

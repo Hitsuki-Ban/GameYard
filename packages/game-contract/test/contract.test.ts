@@ -3,7 +3,9 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   BuildIdSchema,
   DiagnosticEventSchema,
+  GameCatalogSchema,
   GameManifestSchema,
+  GameManifestSourceSchema,
   GameIdSchema,
   GuestEventSchema,
   HostCommandSchema,
@@ -285,12 +287,11 @@ describe("v1 contract", () => {
   });
 
   it("accepts a strict manifest with normalized unique fields", () => {
-    const manifest = {
+    const source = {
       schemaVersion: 1,
       protocol: PROTOCOL_VERSION,
       id: context.gameId,
       version: "1.2.3-beta.1+build.5",
-      buildId: context.buildId,
       entry: "assets/index.js",
       locales: { source: "en", supported: ["en", "ja"] },
       capabilities: ["audio", "keyboard"],
@@ -299,10 +300,38 @@ describe("v1 contract", () => {
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",
       },
+    } as const;
+    const manifest = {
+      ...source,
+      buildId: context.buildId,
       files: ["game.manifest.json", "assets/index.js", "assets/main.css"],
     } as const;
 
+    expect(GameManifestSourceSchema.parse(source)).toEqual(source);
     expect(GameManifestSchema.parse(manifest)).toEqual(manifest);
+    expect(
+      GameCatalogSchema.parse({
+        schemaVersion: 1,
+        buildId: context.buildId,
+        games: [
+          {
+            id: source.id,
+            entry: `./${source.id}/${source.entry}`,
+            manifest: `./${source.id}/game.manifest.json`,
+          },
+        ],
+      }),
+    ).toEqual({
+      schemaVersion: 1,
+      buildId: context.buildId,
+      games: [
+        {
+          id: source.id,
+          entry: `./${source.id}/${source.entry}`,
+          manifest: `./${source.id}/game.manifest.json`,
+        },
+      ],
+    });
     expect(GameManifestSchema.safeParse({ ...manifest, unknown: true }).success).toBe(false);
     expect(
       GameManifestSchema.safeParse({

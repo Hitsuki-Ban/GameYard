@@ -96,6 +96,9 @@ importers:
         specifier: 'catalog:'
         version: 17.0.11(i18next@26.3.6(typescript@7.0.2))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
     devDependencies:
+      '@gameyard/testkit':
+        specifier: workspace:*
+        version: link:../../packages/testkit
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.18
@@ -123,6 +126,9 @@ importers:
       '@gameyard/guest-bridge':
         specifier: workspace:*
         version: link:../../packages/guest-bridge
+      '@gameyard/manifest-tools':
+        specifier: workspace:*
+        version: link:../../packages/manifest-tools
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -145,6 +151,9 @@ importers:
       '@gameyard/guest-bridge':
         specifier: workspace:*
         version: link:../../packages/guest-bridge
+      '@gameyard/manifest-tools':
+        specifier: workspace:*
+        version: link:../../packages/manifest-tools
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
@@ -164,6 +173,9 @@ importers:
       '@gameyard/guest-bridge':
         specifier: workspace:*
         version: link:../../packages/guest-bridge
+      '@gameyard/manifest-tools':
+        specifier: workspace:*
+        version: link:../../packages/manifest-tools
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -217,7 +229,24 @@ importers:
         specifier: 'catalog:'
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)
 
+  packages/manifest-tools:
+    dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../game-contract
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(typescript@7.0.2))(esbuild@0.28.1)(typescript@7.0.2)
+
   packages/testkit:
+    dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../game-contract
     devDependencies:
       typescript:
         specifier: 'catalog:'

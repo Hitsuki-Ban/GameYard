@@ -1,4 +1,4 @@
-import { connectGuest } from "@gameyard/guest-bridge";
+import { connectGuest, createGuestDiagnosticLog } from "@gameyard/guest-bridge";
 
 import "./config.js";
 import "./i18n.js";
@@ -34,7 +34,7 @@ class App {
     this.hostPaused = true;
     this.hostInputEnabled = false;
     this.pendingResumeAction = null;
-    this.events = [];
+    this.diagnostics = createGuestDiagnosticLog(bridge);
     this.save = new PLO.SaveStore();
     this.i18n = new PLO.I18n({ locale: gameLocale(context.locale) });
     this.dom = this.collectDom();
@@ -710,10 +710,7 @@ class App {
   }
 
   record(level, code, message) {
-    const event = { timestampMs: Date.now(), level, code, message };
-    this.events.push(event);
-    if (this.events.length > 32) this.events.shift();
-    this.bridge.emitDiagnostic(event);
+    this.diagnostics.record({ timestampMs: Date.now(), level, code, message });
   }
 
   snapshot() {
@@ -721,7 +718,7 @@ class App {
       lifecycle: this.lifecycle,
       settingsRevision: this.context.settings.revision,
       inputEnabled: this.input.enabled,
-      events: [...this.events],
+      events: this.diagnostics.snapshot(),
     };
   }
 

@@ -1,5 +1,4 @@
 const assemblyConfigFilename = "site.assembly.json";
-const gameIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -52,10 +51,7 @@ function assertUniquePaths(paths, label) {
 
 function parseGameConfig(value, index) {
   const label = `site.assembly.json games[${index}]`;
-  assertExactKeys(value, ["id", "stage", "productionInputs"], label);
-  if (typeof value.id !== "string" || value.id.length > 128 || !gameIdPattern.test(value.id)) {
-    throw new Error(`${label}.id must be a stable lowercase game ID.`);
-  }
+  assertExactKeys(value, ["stage", "productionInputs"], label);
   const stage = parseRepositoryRelativePath(value.stage, `${label}.stage`);
   if (!Array.isArray(value.productionInputs) || value.productionInputs.length === 0) {
     throw new Error(`${label}.productionInputs must be a non-empty array.`);
@@ -80,7 +76,7 @@ function parseGameConfig(value, index) {
       );
     }
   }
-  return { id: value.id, stage, productionInputs };
+  return { stage, productionInputs };
 }
 
 export function parseAssemblyConfig(value) {
@@ -92,17 +88,12 @@ export function parseAssemblyConfig(value) {
   if (!Array.isArray(value.games)) throw new Error("site.assembly.json games must be an array.");
 
   const games = value.games.map(parseGameConfig);
-  const ids = new Set();
   const stages = new Set();
   for (const game of games) {
-    const foldedId = game.id.toLowerCase();
     const foldedStage = game.stage.toLowerCase();
-    if (ids.has(foldedId))
-      throw new Error(`site.assembly.json has a game ID collision: ${game.id}`);
     if (stages.has(foldedStage)) {
       throw new Error(`site.assembly.json has a game stage collision: ${game.stage}`);
     }
-    ids.add(foldedId);
     stages.add(foldedStage);
   }
 
