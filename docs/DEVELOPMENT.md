@@ -48,7 +48,7 @@ vp run crown-breaker#test
 
 首次在本机运行浏览器测试前执行一次 `vp run e2e:install`。它先安装根 Node Playwright 锁定的 Chromium，再分别安装 TUMBLEDRUM 的 Python `playwright==1.61.0` 与 CrownBreaker 的 Node `playwright==1.61.1` 所锁定的浏览器；不会假定三套 Playwright 共用浏览器。`vp run e2e` 会先执行完整 production build，再由根目录的 `playwright.config.ts` 从最终 `dist` 启动严格端口 preview。root E2E 用同一个参数化 driver 对三个 Guest 执行设置、语言、暂停/恢复、只读诊断与 dispose 契约流程，并保留一条 focused Crown gameplay path；完整三视口 × 三语言视觉与三游戏长循环由 repository-prefix release suite 负责。所有 Canvas 测试由单 worker 顺序运行，符合“一次一个活动游戏”的产品边界。
 
-`vp run e2e:release` 在 `/GameYard/` repository prefix 下执行三游戏发布门：Pulse 与 TUMBLEDRUM 保留 desktop、portrait、landscape × en/ja/zh-Hans 的视觉和真实输入基线；CrownBreaker 使用固定随机与 RAF 时钟生成同样 3 × 3 的 title 基线，并以真实 New Run button、键盘 Escape 和 Host Resume 验证 pause/resume。另一条宽测试以 Pulse → TUMBLEDRUM → CrownBreaker round-robin 执行 50 次进入/退出，每 5 次重载当前 Guest；每轮通过 production diagnostics 等待 locale/settings revision 收敛，只允许一个 iframe，并统一检查旧 frame、Host MessagePort、Guest listener/RAF/timer/audio、失败请求、console/page error 与 Service Worker 回到严格基线。`vp run release` 是唯一完整关闭门，串行执行 ready、root E2E、Lab、repository-prefix release suite 与 Cloudflare dry-run。
+`vp run e2e:release` 在 `/GameYard/` repository prefix 下执行三游戏发布门：Pulse 与 TUMBLEDRUM 保留 desktop、portrait、landscape × en/ja/zh-Hans 的视觉和真实输入基线；CrownBreaker 使用固定随机与 RAF 时钟生成同样 3 × 3 的 title 基线，并以真实 New Run button、键盘 Escape 和 Host Resume 验证 pause/resume。另一条宽测试以 Pulse → TUMBLEDRUM → CrownBreaker round-robin 执行 50 次进入/退出，每 5 次重载当前 Guest；每轮通过 production diagnostics 等待 locale/settings revision 收敛，只允许一个 iframe，并统一检查旧 frame、Host MessagePort、Guest listener/RAF/timer/audio、失败请求、console/page error 与 Service Worker 回到严格基线。最终 public accessibility journey 以一条英文桌面/移动连续流程验证真实 Tab/Enter、焦点可见性、WCAG A/AA、系统 reduced motion、Hub fullscreen 与活动 TUMBLEDRUM portrait ↔ landscape，不为每个控件复制微测试。`vp run release` 是唯一完整本地关闭门，串行执行 ready、root E2E、Lab、repository-prefix release suite 与 Cloudflare dry-run。
 
 `vp run tumbledrum#build` 构建唯一 Vite guest stage；`vp run tumbledrum#test` 通过 test-only 同源 Host harness 对该 stage 执行 exact INIT/MessageChannel，再顺序运行 smoke/integration/regression/full-run。测试覆盖 desktop、portrait touch、landscape touch；每个视口通过真实 mouse/touch 启动 Campaign，并从实际 RAF loop 观察每次 simulation update 都是 1/120、每帧后 accumulator 小于一个固定步。所有程序固定使用 `playwright==1.61.0` 所属的 Chromium；外部 `CHROMIUM_EXECUTABLE` 覆盖或缺失的项目浏览器都会直接失败，不改用系统 Chrome。完整流程时间受未 seeded RNG 影响，不锁偶然秒数；1/120 step、13 关、Campaign victory 与 Endless wave 12 才是稳定门。测试 Host 与调试实例不会进入 production stage。
 
@@ -58,9 +58,11 @@ vp run crown-breaker#test
 
 ## CI 与发布
 
-`.github/workflows/verify-and-publish.yml` 是唯一自动发布路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json` 并上传一次 `dist`。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash 与 provenance hash。
+`.github/workflows/verify-and-publish.yml` 是唯一自动构建与生产部署路径。PR 和 `main` 先在 Ubuntu 上通过 check、tooling/shared tests 与三游戏保存基线；随后单独的 artifact job 执行一次 `vp run build`，生成 `.gameyard/release-metadata.json`，并把 `dist`、`deployment/`、`provenance/`、`wrangler.jsonc` 与 metadata 作为一个 artifact 上传一次。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、三份 manifest 的版本/revision/license/hash、provenance hash 与部署 config/Worker hash。消费者使用 artifact 内同一份 provenance 输入复验，不能依赖 checkout 的平台换行表示。
 
-Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传同一份 `dist`。
+Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。固定 Windows artifact consumer 直接运行现有视觉/三语言/50-switch 矩阵和单条 public accessibility journey，禁止调用会先 build 的 wrapper。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 deployment entry 与 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传下载的同一份 artifact。
+
+Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `/GameYard` mount 运行，将其 path 映射到同一 binding 的 root 文件。路由脚本、Wrangler 配置与 release metadata 都进入 build/release identity；缺少其中任一文件会在部署前停止。生产 deploy 的机器可读输出提供 Worker version 与 target URL，随后对 root 和 `/GameYard/` 校验 `build-info.json`、三游戏启动以及 console/page/request/HTTP 信号。
 
 GitHub environment 必须配置：
 
@@ -80,6 +82,8 @@ GitHub environment 必须配置：
 生产 Hub 注册唯一的同 scope `service-worker.js`。shell precache 绑定当前 `gameyard@<build>`；游戏资源不批量预取，只有用户在 Offline drawer 对当前选中游戏执行 Save 后，才将该 manifest 的精确文件集和 catalog 放入当前 scope/build 的 cache。Clear offline games 仅清理这些 cache，不读取或删除 `gameyard.*` 存档。未保存游戏在离线状态返回显式 503 页面，不回退到陈旧或其他版本资源。
 
 发布更新不会由 waiting worker 自动接管。页面先以网络 `build-info.json` 校验 HTML/JS 与原子 artifact；版本混合时停在 `ARTIFACT / CONTRACT / STOP`，用户应用当前 release 后才 `skipWaiting` 并重载。根路径和 `/GameYard/` 前缀分别由一条宽 Playwright 流程验证；不要为单个 message/cache helper 追加重复浏览器测试。
+
+正式 GitHub Release 由独立的 `Publish verified release` workflow 显式接收已经成功完成的 `main` push `run_id` 与非空 `release_tag`；它不会运行 build。该 job 先验证指定 run 的 workflow、branch、event、conclusion 与唯一未过期 artifact，直接下载 Actions 原始 ZIP，断言 ZIP SHA-256 等于 artifact API digest，再复验 metadata 和线上双路径，最后把 tag 指向该 run 的完整 source SHA 并上传原始 ZIP；既有 tag、Release、asset 或 digest/SHA 不一致都直接失败，不覆盖旧发布物。
 
 ```powershell
 vp run build

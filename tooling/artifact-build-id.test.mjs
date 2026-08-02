@@ -63,7 +63,7 @@ await test("artifact build ID changes with source, lock, and configuration conte
   assert.notEqual(configChanged, lockChanged);
 });
 
-await test("artifact build ID covers runtime bridges, contract, manifest tools, and assembler", async () => {
+await test("artifact build ID covers runtime, assembly, and deployment inputs", async () => {
   const root = await createFixture();
   let previous = await createArtifactBuildId(root);
   const changedInputs = [
@@ -72,6 +72,7 @@ await test("artifact build ID covers runtime bridges, contract, manifest tools, 
     "packages/host-bridge/src/entry.ts",
     "packages/guest-bridge/src/entry.ts",
     "tooling/site-assembler.mjs",
+    "deployment/entry.ts",
   ];
 
   for (const input of changedInputs) {

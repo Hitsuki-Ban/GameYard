@@ -1,0 +1,144 @@
+name: Publish verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Completed Verify and publish main push run ID
+        required: true
+        type: string
+      release_tag:
+        description: Exact new release tag matching package.json (for example v0.1.0)
+        required: true
+        type: string
+
+concurrency:
+  group: gameyard-release
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: write
+
+env:
+  NODE_VERSION: 24.18.1
+  RELEASE_METADATA: .gameyard/release-metadata.json
+  PRODUCTION_TARGET: https://gameyard.houtei-ban.workers.dev
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  release:
+    name: Publish the already-deployed artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve the successful main run and its unique artifact
+        id: source
+        env:
+          SOURCE_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN_ID}" > source-run.json
+          test "$(jq -r '.name' source-run.json)" = "Verify and publish"
+          test "$(jq -r '.event' source-run.json)" = "push"
+          test "$(jq -r '.head_branch' source-run.json)" = "main"
+          test "$(jq -r '.status' source-run.json)" = "completed"
+          test "$(jq -r '.conclusion' source-run.json)" = "success"
+          source_sha="$(jq -r '.head_sha' source-run.json)"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          artifact_name="gameyard-site-${source_sha}"
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN_ID}/artifacts?per_page=100" > artifacts.json
+          artifact_count="$(jq --arg name "$artifact_name" '[.artifacts[] | select(.name == $name and .expired == false)] | length' artifacts.json)"
+          test "$artifact_count" = "1"
+          artifact_id="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .id' artifacts.json)"
+          artifact_digest="$(jq -r --arg name "$artifact_name" '.artifacts[] | select(.name == $name and .expired == false) | .digest' artifacts.json)"
+          [[ "$artifact_id" =~ ^[1-9][0-9]*$ ]]
+          [[ "$artifact_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "source-sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "artifact-id=$artifact_id" >> "$GITHUB_OUTPUT"
+          echo "artifact-digest=$artifact_digest" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=$artifact_name" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.source.outputs.source-sha }}
+          fetch-depth: 0
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - name: Download and verify the exact Actions artifact archive
+        id: archive
+        run: |
+          set -euo pipefail
+          archive="${{ steps.source.outputs.artifact-name }}.zip"
+          gh api --method GET -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${{ steps.source.outputs.artifact-id }}/zip" > "$archive"
+          actual="sha256:$(sha256sum "$archive" | cut -d ' ' -f 1)"
+          test "$actual" = "${{ steps.source.outputs.artifact-digest }}"
+          unzip -oq "$archive" -d .
+          vp run artifact:verify
+          vp exec node tooling/release-metadata.mjs verify \
+            --source-sha "${{ steps.source.outputs.source-sha }}" \
+            --file "${{ env.RELEASE_METADATA }}"
+          echo "file=$archive" >> "$GITHUB_OUTPUT"
+      - name: Re-verify the deployed root and repository prefix
+        run: |
+          set -euo pipefail
+          vp exec playwright install chromium
+          build_id="$(jq -r '.buildId' "${RELEASE_METADATA}")"
+          jq -n --arg buildId "$build_id" --arg target "$PRODUCTION_TARGET" \
+            '{schemaVersion: 1, buildId: $buildId, target: $target}' > .gameyard/release-live.json
+          vp exec node deployment/live-smoke.mjs --evidence .gameyard/release-live.json
+      - name: Require a new tag matching the artifact source
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          expected_tag="v$(jq -r '.version' package.json)"
+          test "$RELEASE_TAG" = "$expected_tag"
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+      - name: Create the tag and release without clobbering
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          build_id="$(jq -r '.buildId' "${RELEASE_METADATA}")"
+          cat > release-notes.md <<EOF
+          Verified GameYard public release.
+
+          - Source SHA: \`${{ steps.source.outputs.source-sha }}\`
+          - Verify/deploy workflow run: \`${SOURCE_RUN_ID}\`
+          - Actions artifact ID: \`${{ steps.source.outputs.artifact-id }}\`
+          - Actions artifact digest: \`${{ steps.source.outputs.artifact-digest }}\`
+          - Build ID: \`${build_id}\`
+          - Production target: ${PRODUCTION_TARGET}
+          - Verified paths: \`/\` and \`/GameYard/\`
+          EOF
+          gh release create "$RELEASE_TAG" \
+            "${{ steps.archive.outputs.file }}#GameYard immutable site artifact" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "${{ steps.source.outputs.source-sha }}" \
+            --title "GameYard $RELEASE_TAG" \
+            --notes-file release-notes.md
+      - name: Re-verify release tag and asset digest
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag_sha="$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha')"
+          test "$tag_sha" = "${{ steps.source.outputs.source-sha }}"
+          asset_digest="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+            --jq '.assets[] | select(.name == "${{ steps.archive.outputs.file }}") | .digest')"
+          test "$asset_digest" = "${{ steps.source.outputs.artifact-digest }}"
+          echo "GitHub Release $RELEASE_TAG verified at $tag_sha with $asset_digest" >> "$GITHUB_STEP_SUMMARY"

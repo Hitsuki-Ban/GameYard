@@ -12,6 +12,7 @@ export const REQUIRED_PRODUCTION_INPUTS = Object.freeze([
   { path: "tsconfig.json", kind: "file" },
   { path: "vite.config.ts", kind: "file" },
   { path: "wrangler.jsonc", kind: "file" },
+  { path: "deployment", kind: "directory" },
   { path: "site.assembly.json", kind: "file" },
   { path: "provenance", kind: "directory" },
   { path: "tooling/assembly-config.mjs", kind: "file" },

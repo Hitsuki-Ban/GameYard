@@ -17,6 +17,8 @@ The production runtime/build boundary is active:
 
 `site.assembly.json` assembles all three games with the Hub into one exact artifact. `dist/games/catalog.json` registers the same three local exhibits.
 
+Public production is served from the same Cloudflare Worker at both [the root exhibition](https://gameyard.houtei-ban.workers.dev/) and [the repository-style `/GameYard/` path](https://gameyard.houtei-ban.workers.dev/GameYard/). The prefix route strips exactly that public mount before reading the same immutable static-asset binding; it is not a second build or deployment.
+
 ## Commands
 
 ```powershell
@@ -32,6 +34,6 @@ vp run deploy:dry-run
 
 All project operations go through `vp`. `vp run build` writes the Hub to an isolated stage, assembles and verifies a fresh `dist`, and fails on any missing required input. Preview verifies that artifact against current sources before serving it. Deployment accepts only an already verified artifact and never rebuilds it.
 
-GitHub Actions uses the official Vite+ setup to run shared checks and all three preserved game baselines, then builds and uploads `dist` exactly once. Root/repository-prefix browser smoke and Cloudflare dry-run download that same artifact; production deploy is a separate `cloudflare-production` environment job and never runs the application build again.
+GitHub Actions uses the official Vite+ setup to run shared checks and all three preserved game baselines, then builds and uploads the site, deployment entry, and bound provenance records exactly once. Root/repository-prefix PWA smoke, the Windows visual/localization/50-switch/accessibility release gate, Cloudflare dry-run, and production deploy all download and re-verify that artifact without rebuilding. A tagged release additionally publishes the original GitHub Actions ZIP only after its SHA-256 matches the immutable artifact digest and the deployed root/prefix URLs pass live smoke.
 
-See `docs/PROJECT_PLAN.md` for the migration order and `docs/DEVELOPMENT.md` for the exact development and validation paths.
+See `docs/PROJECT_PLAN.md` for architecture and migration history, `docs/DEVELOPMENT.md` for development/diagnostics/deployment paths, `docs/UPSTREAM_AUDIT.md` plus `provenance/` for source rights, and [GitHub Releases](https://github.com/Hitsuki-Ban/GameYard/releases) for verified public artifacts.
