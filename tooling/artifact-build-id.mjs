@@ -24,6 +24,7 @@ export const REQUIRED_PRODUCTION_INPUTS = Object.freeze([
   { path: "tooling/preview.vite.config.mjs", kind: "file" },
   { path: "apps/hub/index.html", kind: "file" },
   { path: "apps/hub/package.json", kind: "file" },
+  { path: "apps/hub/public", kind: "directory" },
   { path: "apps/hub/tsconfig.json", kind: "file" },
   { path: "apps/hub/vite.config.ts", kind: "file" },
   { path: "apps/hub/src", kind: "directory" },

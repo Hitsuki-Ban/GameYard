@@ -1183,6 +1183,142 @@ main {
   font-size: 9px;
 }
 
+.pwa-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 24;
+  width: min(460px, 100vw);
+  overflow: auto;
+  border-left: 5px solid var(--acid);
+  color: var(--mineral);
+  background: var(--graphite);
+  box-shadow: -24px 0 80px rgba(23, 23, 23, 0.34);
+}
+
+.pwa-drawer__bar,
+.pwa-drawer__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pwa-drawer__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 17px 20px;
+  border-bottom: 1px solid rgba(244, 242, 236, 0.3);
+  background: var(--graphite);
+}
+
+.pwa-drawer__bar h2 {
+  margin: 0;
+  font: 900 22px var(--wide-title);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pwa-drawer button,
+.artifact-stop button {
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  color: inherit;
+  background: transparent;
+  font: 700 10px var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pwa-drawer button:hover:not(:disabled),
+.artifact-stop button:hover {
+  color: var(--graphite);
+  background: var(--acid);
+}
+
+.pwa-drawer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.pwa-drawer__content {
+  display: grid;
+  gap: 1px;
+  padding: 20px;
+  background: rgba(244, 242, 236, 0.24);
+}
+
+.pwa-drawer__content > section,
+.pwa-drawer__status,
+.pwa-drawer__content > p {
+  margin: 0;
+  padding: 18px;
+  background: var(--graphite);
+}
+
+.pwa-drawer__content strong,
+.pwa-drawer__content p,
+.pwa-drawer__status {
+  font-family: var(--mono);
+}
+
+.pwa-drawer__content strong {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.pwa-drawer__content p {
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.pwa-drawer__status span {
+  color: var(--acid);
+  font: 800 11px var(--mono);
+  text-transform: uppercase;
+}
+
+.pwa-drawer__status span[data-online="false"],
+.pwa-drawer__error {
+  color: #ff806b;
+}
+
+.pwa-drawer__update {
+  border-left: 4px solid var(--acid);
+}
+
+.artifact-stop {
+  display: grid;
+  place-content: center;
+  min-height: 100vh;
+  padding: clamp(28px, 8vw, 96px);
+  color: var(--mineral);
+  background: var(--graphite);
+}
+
+.artifact-stop > * {
+  max-width: 720px;
+}
+
+.artifact-stop span,
+.artifact-stop code {
+  color: var(--acid);
+  font: 700 12px var(--mono);
+}
+
+.artifact-stop h1 {
+  margin: 20px 0 10px;
+  font: 900 clamp(44px, 9vw, 110px) / 0.88 var(--wide-title);
+  text-transform: uppercase;
+}
+
+.artifact-stop button {
+  justify-self: start;
+  margin-top: 24px;
+}
+
 html[data-reduced-motion="true"] *,
 html[data-reduced-motion="true"] *::before,
 html[data-reduced-motion="true"] *::after {

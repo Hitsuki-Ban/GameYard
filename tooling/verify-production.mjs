@@ -85,7 +85,7 @@ export async function verifyProductionArtifact(
   const files = await listArtifactFiles(root);
   if (files.length === 0) throw new Error("Production artifact is empty.");
 
-  const failures = await inspectArtifactFiles(files, reportRoot);
+  const failures = await inspectArtifactFiles(files, root, { allowHubPwa: true });
   if (failures.length > 0) {
     throw new Error(`Production artifact verification failed:\n- ${failures.join("\n- ")}`);
   }
@@ -143,6 +143,57 @@ export async function verifyProductionArtifact(
 
   if (!actualFiles.includes("index.html"))
     throw new Error("Production Hub entry is missing: index.html");
+  const serviceWorkers = actualFiles.filter((file) =>
+    /(?:^|\/)(?:service-worker|service_worker|serviceworker|sw)\.js$/iu.test(file),
+  );
+  if (serviceWorkers.length !== 1 || serviceWorkers[0] !== "service-worker.js") {
+    throw new Error("Production artifact must contain exactly one root service-worker.js.");
+  }
+  if (!actualFiles.includes("manifest.webmanifest")) {
+    throw new Error("Production Hub web manifest is missing: manifest.webmanifest");
+  }
+  const webManifest = await readJson(resolve(root, "manifest.webmanifest"), "manifest.webmanifest");
+  if (
+    webManifest.id !== "./" ||
+    webManifest.start_url !== "./" ||
+    webManifest.scope !== "./" ||
+    webManifest.display !== "standalone" ||
+    !Array.isArray(webManifest.icons) ||
+    !["192x192", "512x512"].every((size) =>
+      webManifest.icons.some(
+        (icon) =>
+          icon?.sizes === size &&
+          typeof icon.src === "string" &&
+          icon.src.startsWith("./") &&
+          actualFiles.includes(icon.src.slice(2)),
+      ),
+    )
+  ) {
+    throw new Error("manifest.webmanifest violates the relative installability contract.");
+  }
+  const serviceWorker = await readFile(resolve(root, "service-worker.js"), "utf8");
+  if (
+    !serviceWorker.includes(buildInfo.buildId) ||
+    !serviceWorker.includes("gameyard-") ||
+    !serviceWorker.includes("registration.scope")
+  ) {
+    throw new Error(
+      "service-worker.js is not bound to the exact artifact and per-game cache contract.",
+    );
+  }
+  const hubJavaScript = (
+    await Promise.all(
+      actualFiles
+        .filter((file) => file.startsWith("assets/") && file.endsWith(".js"))
+        .map((file) => readFile(resolve(root, file), "utf8")),
+    )
+  ).join("\n");
+  if ((hubJavaScript.match(/serviceWorker\.register/gu) ?? []).length !== 1) {
+    throw new Error("Production Hub must register exactly one Service Worker.");
+  }
+  if ((hubJavaScript.match(/service-worker\.js/gu) ?? []).length !== 1) {
+    throw new Error("Production Hub registration must target the one root service-worker.js.");
+  }
 
   const allowedGameFiles = new Set(["games/catalog.json"]);
   for (const [index, game] of catalog.games.entries()) {
@@ -218,7 +269,7 @@ export async function verifyProductionArtifact(
 async function main() {
   const { buildId, fileCount, gameCount } = await verifyProductionArtifact();
   console.log(
-    `Production artifact verified: ${buildId}; ${fileCount} files; ${gameCount} games; no Lab runtime, game Service Worker, or repository-prefix-breaking root-absolute URLs.`,
+    `Production artifact verified: ${buildId}; ${fileCount} files; ${gameCount} games; one Hub Service Worker; no Lab runtime, game Service Worker, or repository-prefix-breaking root-absolute URLs.`,
   );
 }
 

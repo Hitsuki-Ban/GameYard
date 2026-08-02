@@ -114,8 +114,8 @@ function assertNoDestinationCollisions(entries) {
   }
 }
 
-async function inspectStage(files, stage, label) {
-  const failures = await inspectArtifactFiles(files, stage);
+async function inspectStage(files, stage, label, options) {
+  const failures = await inspectArtifactFiles(files, stage, options);
   if (failures.length > 0) {
     throw new Error(`${label} artifact inspection failed:\n- ${failures.join("\n- ")}`);
   }
@@ -191,7 +191,7 @@ export async function createAssemblyPlan(projectRoot) {
   if (!hubFiles.some((file) => toLogicalPath(hubStage, file) === hubManifest.entry)) {
     throw new Error(`Hub stage entry is missing: ${hubManifest.entry}`);
   }
-  await inspectStage(hubFiles, hubStage, "Hub stage");
+  await inspectStage(hubFiles, hubStage, "Hub stage", { allowHubPwa: true });
 
   const entries = hubFiles
     .filter((source) => toLogicalPath(hubStage, source) !== hubManifestFilename)

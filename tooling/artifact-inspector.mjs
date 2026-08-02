@@ -20,16 +20,8 @@ const serviceWorkerFilenames = new Set([
   "serviceworker.js",
   "sw.js",
 ]);
-const forbiddenMarkers = [
-  "open lab",
-  "session lab",
-  "tweakpane",
-  "lab-overlay",
-  "lab-accent",
-  "navigator.serviceworker",
-  "serviceworker.register",
-  "sw.js",
-];
+const forbiddenLabMarkers = ["open lab", "session lab", "tweakpane", "lab-overlay", "lab-accent"];
+const serviceWorkerMarkers = ["navigator.serviceworker", "serviceworker.register", "sw.js"];
 
 function isRootAbsoluteUrl(value) {
   return /^\s*\/(?!\/)/.test(value);
@@ -105,16 +97,28 @@ function findJavaScriptReferences(content) {
   return failures;
 }
 
-export function inspectArtifactText(file, content) {
+export function inspectArtifactText(file, content, options = {}) {
   const extension = extname(file).toLowerCase();
   const failures = [];
   const normalized = content.toLowerCase();
+  const allowHubPwa = options.allowHubPwa === true;
+  const artifactPath = String(options.artifactPath ?? file).replaceAll("\\", "/");
+  const isHubServiceWorker = allowHubPwa && artifactPath === "service-worker.js";
+  const isHubJavaScript =
+    allowHubPwa && /^assets\/[^/]+\.(?:js|mjs)$/u.test(artifactPath.toLowerCase());
 
-  if (serviceWorkerFilenames.has(basename(file).toLowerCase())) {
+  if (serviceWorkerFilenames.has(basename(file).toLowerCase()) && !isHubServiceWorker) {
     failures.push("forbidden Service Worker file");
   }
-  for (const marker of forbiddenMarkers) {
-    if (normalized.includes(marker)) failures.push(`forbidden marker "${marker}"`);
+  for (const marker of forbiddenLabMarkers) {
+    if (normalized.includes(marker)) {
+      failures.push(`forbidden marker "${marker}"`);
+    }
+  }
+  for (const marker of serviceWorkerMarkers) {
+    if (normalized.includes(marker) && !isHubServiceWorker && !isHubJavaScript) {
+      failures.push(`forbidden marker "${marker}"`);
+    }
   }
 
   if (extension === ".html" || extension === ".svg") {
@@ -158,12 +162,13 @@ export async function listArtifactFiles(directory) {
   return files;
 }
 
-export async function inspectArtifactFiles(files, reportRoot) {
+export async function inspectArtifactFiles(files, reportRoot, options = {}) {
   const failures = [];
   for (const file of files) {
     if (!TEXT_ARTIFACT_EXTENSIONS.has(extname(file).toLowerCase())) continue;
     const content = await readFile(file, "utf8");
-    for (const failure of inspectArtifactText(file, content)) {
+    const artifactPath = relative(reportRoot, file).split("\\").join("/");
+    for (const failure of inspectArtifactText(file, content, { ...options, artifactPath })) {
       failures.push(`${relative(reportRoot, file)} contains ${failure}`);
     }
   }

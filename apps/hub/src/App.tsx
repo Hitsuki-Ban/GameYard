@@ -15,6 +15,7 @@ import {
 import { i18n } from "./i18n";
 import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
 import type { HubLabStartupState } from "./lab";
+import { PwaDrawer } from "./PwaDrawer";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
   SETTINGS_STORAGE_KEY,
@@ -577,6 +578,7 @@ export function App() {
   const [writeError, setWriteError] = useState<string | null>(null);
   const [systemLanguages, setSystemLanguages] = useState<readonly string[]>(currentSystemLanguages);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [pwaOpen, setPwaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const [labSettings, setLabSettings] = useState<HubSettings | null>(null);
   const [labApplyInFlight, setLabApplyInFlight] = useState(false);
@@ -836,6 +838,11 @@ export function App() {
               {LAB_COPY[locale].open}
             </button>
           ) : null}
+          {import.meta.env.PROD ? (
+            <button className="utility-button" type="button" onClick={() => setPwaOpen(true)}>
+              {t("nav.offline")} <span aria-hidden="true">↓</span>
+            </button>
+          ) : null}
           <button className="utility-button" type="button" onClick={openDiagnostics}>
             {t("nav.diagnostics")} <span aria-hidden="true">↘</span>
           </button>
@@ -916,6 +923,14 @@ export function App() {
         snapshot={diagnosticSnapshot}
         onClose={() => setDiagnosticsOpen(false)}
       />
+      {import.meta.env.PROD ? (
+        <PwaDrawer
+          open={pwaOpen}
+          selectedGame={selectedId}
+          onClose={() => setPwaOpen(false)}
+          onEvent={recordEvent}
+        />
+      ) : null}
       {import.meta.env.DEV ? (
         <LabOverlay
           open={labOpen}

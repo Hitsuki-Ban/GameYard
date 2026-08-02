@@ -25,6 +25,9 @@
     "@vitejs/plugin-react": "catalog:",
     "tweakpane": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plugin-pwa": "catalog:",
+    "vite-plus": "catalog:",
+    "workbox-core": "catalog:",
+    "workbox-precaching": "catalog:"
   }
 }

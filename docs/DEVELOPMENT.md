@@ -62,6 +62,18 @@ vp run crown-breaker#test
 
 `vp run artifact:verify` 还会验证 `build-info.json`、`games/catalog.json`、每个 manifest、catalog 外 game 路径和完整文件集合，并检查产物不含 Lab/Tweakpane、game Service Worker 注册，以及 HTML、CSS、manifest/JSON 和明确 JavaScript URL 调用中的根绝对路径；Hub production build 还从输出模块图直接拒绝 `lab`/`testkit` 模块。`//cdn.example/...` 这类 scheme-relative URL 不视为 repository-root 路径。该检查已包含在根 build、preview、ready、production E2E 与 Wrangler dry-run 中，因此 direct preview 会拒绝与当前源码 build ID 不同的陈旧 `dist`。`vp run e2e:lab` 单独启动严格端口的开发服务器，用一个三游戏宽流程验证 manifest-bound startup scene、session-only 设置、preset 导出、错误版本拒绝与精确导入；它不复用 production preview。
 
+## PWA 与离线验证
+
+生产 Hub 注册唯一的同 scope `service-worker.js`。shell precache 绑定当前 `gameyard@<build>`；游戏资源不批量预取，只有用户在 Offline drawer 对当前选中游戏执行 Save 后，才将该 manifest 的精确文件集和 catalog 放入当前 scope/build 的 cache。Clear offline games 仅清理这些 cache，不读取或删除 `gameyard.*` 存档。未保存游戏在离线状态返回显式 503 页面，不回退到陈旧或其他版本资源。
+
+发布更新不会由 waiting worker 自动接管。页面先以网络 `build-info.json` 校验 HTML/JS 与原子 artifact；版本混合时停在 `ARTIFACT / CONTRACT / STOP`，用户应用当前 release 后才 `skipWaiting` 并重载。根路径和 `/GameYard/` 前缀分别由一条宽 Playwright 流程验证；不要为单个 message/cache helper 追加重复浏览器测试。
+
+```powershell
+vp run build
+vp exec playwright test tests/e2e/pwa.spec.ts --config playwright.config.ts --project desktop-chromium
+vp exec playwright test tests/release/pwa-prefix.spec.ts --config playwright.release.config.ts
+```
+
 Host 创建运行 frame 时必须先插入一个没有 `src`/`srcdoc` 的 iframe，再调用 `connectIframe({ entryUrl, ... })`。Bridge 校验相对 entry 属于 `HostContext.baseUrl`，注册 timeout/window listener 后才设置 `src`；不要在 JSX/HTML 中预载文档，也不要在 bridge 外导航。这个单一顺序保证缓存命中或极速加载也不会早于 Host listener 发送一次性 `ready-for-init`。
 
 ## 添加游戏 stage

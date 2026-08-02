@@ -97,10 +97,38 @@ async function createFixture({ game = true } = {}) {
 
   const hubStage = join(root, ".gameyard/stage/hub");
   await mkdir(join(hubStage, "assets"), { recursive: true });
-  await writeFile(join(hubStage, "index.html"), '<script src="./assets/hub.js"></script>');
-  await writeFile(join(hubStage, "assets/hub.js"), 'console.log("fixture")');
+  await mkdir(join(hubStage, "icons"), { recursive: true });
+  await writeFile(
+    join(hubStage, "index.html"),
+    '<link rel="manifest" href="./manifest.webmanifest"><script src="./assets/hub.js"></script>',
+  );
+  await writeFile(
+    join(hubStage, "assets/hub.js"),
+    'navigator.serviceWorker.register("./service-worker.js")',
+  );
+  await writeFile(
+    join(hubStage, "manifest.webmanifest"),
+    JSON.stringify({
+      id: "./",
+      name: "Fixture",
+      start_url: "./",
+      scope: "./",
+      display: "standalone",
+      icons: [
+        { src: "./icons/icon-192.png", sizes: "192x192" },
+        { src: "./icons/icon-512.png", sizes: "512x512" },
+      ],
+    }),
+  );
+  await writeFile(join(hubStage, "icons/icon-192.png"), "fixture icon 192");
+  await writeFile(join(hubStage, "icons/icon-512.png"), "fixture icon 512");
+  await writeFile(join(hubStage, "service-worker.js"), "self.addEventListener('fetch', () => {})");
 
   const buildId = await createArtifactBuildId(root);
+  await writeFile(
+    join(hubStage, "service-worker.js"),
+    `const BUILD_ID = "${buildId}"; const SCOPE = registration.scope; const GAME_CACHE = "gameyard-fixture-game-";`,
+  );
   await writeFile(
     join(hubStage, "hub.manifest.json"),
     `${JSON.stringify({ schemaVersion: 1, buildId, entry: "index.html" }, null, 2)}\n`,
@@ -143,16 +171,16 @@ await test("assembles a declared Hub and game transactionally", async () => {
   await mkdir(join(root, "dist"));
   await writeFile(join(root, "dist/old.txt"), "old artifact");
 
-  assert.deepEqual(await assembleSite(root), { buildId, fileCount: 6, gameCount: 1 });
+  assert.deepEqual(await assembleSite(root), { buildId, fileCount: 10, gameCount: 1 });
   await assert.rejects(stat(join(root, "dist/old.txt")), { code: "ENOENT" });
   assert.equal(
     await readFile(join(root, "dist/index.html"), "utf8"),
-    '<script src="./assets/hub.js"></script>',
+    '<link rel="manifest" href="./manifest.webmanifest"><script src="./assets/hub.js"></script>',
   );
   assert.equal((await readJson(join(root, "dist/build-info.json"))).buildId, buildId);
   assert.deepEqual(await verifyProductionArtifact(join(root, "dist"), root), {
     buildId,
-    fileCount: 6,
+    fileCount: 10,
     gameCount: 1,
   });
 });
@@ -323,6 +351,17 @@ await test("rejects game Service Workers and root-absolute asset URLs", async ()
   await assert.rejects(
     createAssemblyPlan(serviceWorkerFixture.root),
     /forbidden Service Worker file/,
+  );
+
+  const finalArtifactFixture = await createFixture();
+  await assembleSite(finalArtifactFixture.root);
+  await writeFile(
+    join(finalArtifactFixture.root, "dist/games/demo/game.js"),
+    'navigator.serviceWorker.register("./worker.js")',
+  );
+  await assert.rejects(
+    verifyProductionArtifact(join(finalArtifactFixture.root, "dist"), finalArtifactFixture.root),
+    /forbidden marker "navigator\.serviceworker"/,
   );
 
   const absoluteFixture = await createFixture();
