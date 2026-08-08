@@ -67,7 +67,7 @@ Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `
 GitHub environment 必须配置：
 
 - `CLOUDFLARE_ACCOUNT_ID`：目标 Cloudflare account ID；
-- `CLOUDFLARE_API_TOKEN`：只授权该 account 的 Workers Scripts Edit token。
+- `CLOUDFLARE_API_TOKEN`：授权目标 account 的 Workers Scripts Edit，并仅对 `hitsuki.space` zone 授权 Zone Read 与 Workers Routes Edit；不需要 DNS 或 SSL 写权限。
 
 缺失凭据时 production job 显式失败，不跳过、不改走本机构建或另一条 publish path。`preview`/`production` Wrangler environment 分别命名为 `gameyard-preview` 与 `gameyard`；Static Assets 保持普通 HTML 路由和真实 404，不启用 SPA fallback。
 
