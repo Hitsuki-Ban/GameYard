@@ -16,6 +16,13 @@
     },
     "production": {
       "name": "gameyard",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "gameyard.hitsuki.space",
+          "custom_domain": true,
+        },
+      ],
     },
   },
 }

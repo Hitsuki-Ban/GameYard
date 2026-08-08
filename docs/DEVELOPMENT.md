@@ -62,7 +62,7 @@ vp run crown-breaker#test
 
 Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。固定 Windows artifact consumer 直接运行现有视觉/三语言/50-switch 矩阵和单条 public accessibility journey，禁止调用会先 build 的 wrapper。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 deployment entry 与 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传下载的同一份 artifact。
 
-Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `/GameYard` mount 运行，将其 path 映射到同一 binding 的 root 文件。路由脚本、Wrangler 配置与 release metadata 都进入 build/release identity；缺少其中任一文件会在部署前停止。生产 deploy 的机器可读输出提供 Worker version 与 target URL，随后对 root 和 `/GameYard/` 校验 `build-info.json`、三游戏启动以及 console/page/request/HTTP 信号。
+Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `/GameYard` mount 运行，将其 path 映射到同一 binding 的 root 文件。生产环境只声明 `gameyard.hitsuki.space` Custom Domain 并关闭 `workers.dev`；路由脚本、Wrangler 配置与 release metadata 都进入 build/release identity，缺少其中任一文件会在部署前停止。生产 deploy 的机器可读输出必须提供恰好一个 `https://gameyard.hitsuki.space` target，随后对 root 和 `/GameYard/` 校验 `build-info.json`、三游戏启动以及 console/page/request/HTTP 信号。
 
 GitHub environment 必须配置：
 

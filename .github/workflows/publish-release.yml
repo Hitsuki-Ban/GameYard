@@ -23,7 +23,7 @@ permissions:
 env:
   NODE_VERSION: 24.18.1
   RELEASE_METADATA: .gameyard/release-metadata.json
-  PRODUCTION_TARGET: https://gameyard.houtei-ban.workers.dev
+  PRODUCTION_TARGET: https://gameyard.hitsuki.space
   GH_TOKEN: ${{ github.token }}
 
 jobs:

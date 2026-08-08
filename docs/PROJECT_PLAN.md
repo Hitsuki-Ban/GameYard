@@ -164,7 +164,7 @@ Issue #14 已完成唯一 Hub PWA：injectManifest 只生成 shell precache 清�
 
 Issue #15 的发布链只产生一次 verified artifact：GitHub runner 固定 Vite+/Node/pnpm/uv，先运行共享检查与三游戏保存基线；artifact job 记录 source/build/protocol/manifest/provenance 后上传一次。root 与 repository-prefix smoke、Cloudflare dry-run 和 main-only authenticated production job 都下载并复验同一份内容，任何失败都会阻断部署。
 
-Issue #15 已在真实 GitHub runner 与 `cloudflare-production` environment 完成远端证据，正式地址为 `https://gameyard.houtei-ban.workers.dev/`。Issue #16 将同一 Worker 的 `/GameYard/` 设为第二个公开 mount；Worker 入口与 `dist` 一起进入唯一 artifact，两个 URL 不产生第二次构建。
+Issue #15 已在真实 GitHub runner 与 `cloudflare-production` environment 完成远端证据。Issue #16 将同一 Worker 的 `/GameYard/` 设为第二个公开 mount；Worker 入口与 `dist` 一起进入唯一 artifact，两个 URL 不产生第二次构建。当前唯一正式 origin 为 `https://gameyard.hitsuki.space`，生产 Worker 不发布 `workers.dev` 入口。
 
 最终发布门复用已有三游戏 × 三语言 × 三视口视觉矩阵、50 次切换/周期重载、PWA 离线与原子更新流程，只补一条覆盖 Tab/焦点、WCAG A/AA 扫描、系统 reduced motion、真实 fullscreen 和活动 orientation rotation 的宽旅程。Windows runner 从唯一 artifact 直接执行该门；生产部署后再对 root 与 `/GameYard/` 运行真实网络/console/page smoke。只有 Actions 原始 ZIP 的 SHA-256 与 artifact digest 精确一致时，workflow 才能对该 source SHA 创建 release tag 与 GitHub Release。
 
