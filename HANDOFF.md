@@ -6,10 +6,10 @@ GameYard presents PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker through one R
 
 Production is served by one Cloudflare Worker from the same immutable artifact:
 
-- root: `https://gameyard.lepus.icu/`
-- repository mount: `https://gameyard.lepus.icu/GameYard/`
+- root: `https://gameyard.hitsuki.space/`
+- repository mount: `https://gameyard.hitsuki.space/GameYard/`
 
-Root assets use Cloudflare Static Assets directly. Only the exact `/GameYard` mount enters `deployment/cloudflare-worker.mjs`, which strips that prefix and fetches the same `ASSETS` binding. `gameyard.lepus.icu` is the sole production origin; the production Worker does not publish a `workers.dev` endpoint. No second build, fallback route, remote game embed, compatibility alias, or per-game Service Worker exists.
+Root assets use Cloudflare Static Assets directly. Only the exact `/GameYard` mount enters `deployment/cloudflare-worker.mjs`, which strips that prefix and fetches the same `ASSETS` binding. `gameyard.hitsuki.space` is the sole production origin; the production Worker does not publish a `workers.dev` endpoint. No second build, fallback route, remote game embed, compatibility alias, or per-game Service Worker exists.
 
 ## Release authority
 

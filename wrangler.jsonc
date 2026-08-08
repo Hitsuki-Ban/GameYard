@@ -19,7 +19,7 @@
       "workers_dev": false,
       "routes": [
         {
-          "pattern": "gameyard.lepus.icu",
+          "pattern": "gameyard.hitsuki.space",
           "custom_domain": true,
         },
       ],
