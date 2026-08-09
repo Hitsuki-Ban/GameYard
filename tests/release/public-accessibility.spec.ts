@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { REGISTERED_GAMES } from "../registered-games";
+import { openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -126,10 +127,11 @@ test("public keyboard, WCAG, motion, fullscreen, and orientation journey", async
       .evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
   ).toBe(true);
 
-  const reducedMotion = page.getByRole("checkbox", { name: "Reduce motion" });
+  const playTools = await openPlayTools(page);
+  const reducedMotion = playTools.getByRole("checkbox", { name: "Reduce motion" });
   await reducedMotion.uncheck();
   await reducedMotion.check();
-  await page.getByRole("button", { name: /^Diagnostics/ }).click();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__events")).toContainText("reduced=true");
   await page.getByRole("button", { name: "Close ×" }).click();
   await expectNoWcagViolations(page, "active TUMBLEDRUM runtime");

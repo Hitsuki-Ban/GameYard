@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { openPlayTools } from "../play-mode";
+
 test("the repository-prefix PWA saves and restores one explicit game offline", async ({
   context,
   page,
@@ -9,7 +11,8 @@ test("the repository-prefix PWA saves and restores one explicit game offline", a
   await page.locator('.catalog-row__select[href="?game=crown-breaker"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  await page.getByRole("button", { name: "Offline" }).click();
+  const playTools = await openPlayTools(page);
+  await playTools.getByRole("button", { name: "Offline" }).click();
   const drawer = page.locator(".pwa-drawer");
   const saveButton = drawer.getByRole("button", { name: "Save selected game" });
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });

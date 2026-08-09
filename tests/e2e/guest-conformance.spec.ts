@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 import { REGISTERED_GAME_IDS } from "../registered-games";
+import { closePlayTools, openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 type GuestId = (typeof REGISTERED_GAME_IDS)[number];
 
@@ -49,11 +50,6 @@ async function exportDiagnostics(page: Page): Promise<{ json: string; value: Dia
   return { json, value: JSON.parse(json) as DiagnosticEnvelope };
 }
 
-async function openDiagnostics(page: Page): Promise<void> {
-  await page.locator(".header-actions .utility-button").last().click();
-  await expect(page.locator(".diagnostics")).toHaveClass(/is-open/);
-}
-
 async function closeDiagnostics(page: Page): Promise<void> {
   await page.locator(".diagnostics__bar button").click();
   await expect(page.locator(".diagnostics")).not.toHaveClass(/is-open/);
@@ -68,13 +64,15 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  await page.locator('.settings-bar input[type="range"]').first().fill("0.44");
-  await page.locator('.settings-bar input[type="checkbox"]').first().check();
-  await page.locator(".settings-bar select").selectOption("ja");
+  const playTools = await openPlayTools(page);
+  await playTools.locator('.settings-bar input[type="range"]').first().fill("0.44");
+  await playTools.locator('.settings-bar input[type="checkbox"]').first().check();
+  await playTools.locator(".settings-bar select").selectOption("ja");
+  await closePlayTools(page);
 
   await page.locator(".runtime-toolbar__actions button").first().click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--paused/);
-  await openDiagnostics(page);
+  await openPlayDiagnostics(page);
   const facts = page.locator(".diagnostics__facts dd");
   await expect(facts.nth(5)).toHaveText("paused");
   await expect(facts.nth(6)).toHaveText("false");
@@ -112,12 +110,12 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
 
   await page.locator(".runtime-toolbar__actions button").first().click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
-  await openDiagnostics(page);
+  await openPlayDiagnostics(page);
   await expect(facts.nth(5)).toHaveText("active");
   await expect(facts.nth(6)).toHaveText("true");
   await closeDiagnostics(page);
 
-  await page.locator(".runtime-toolbar__actions button").last().click();
+  await page.locator(".runtime-toolbar__back").click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   await expect(page).not.toHaveURL(new RegExp(`game=${gameId}`));
 }

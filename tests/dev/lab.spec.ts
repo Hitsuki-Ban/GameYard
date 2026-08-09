@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { REGISTERED_GAME_IDS } from "../registered-games";
+import { openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 function collectRuntimeErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -24,7 +25,8 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
       window.localStorage.getItem("gameyard.settings.v1"),
     );
 
-    await page.locator(".utility-button--lab").click();
+    const initialTools = await openPlayTools(page);
+    await initialTools.locator(".play-tools__utilities button").first().click();
     const overlay = page.locator(".lab-overlay");
     await expect(overlay).toBeVisible();
     await expect(overlay).toHaveCSS("border-top-color", /rgb\(/);
@@ -119,7 +121,8 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
 
     await page.locator(".lab-overlay__bar button").click();
     await expect(overlay).toBeHidden();
-    await page.locator('.settings-bar input[type="checkbox"]').last().uncheck();
+    const playTools = await openPlayTools(page);
+    await playTools.locator('.settings-bar input[type="checkbox"]').last().uncheck();
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("gameyard.settings.v1")))
       .not.toBe(persistedSettings);
@@ -139,7 +142,7 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
     expect(afterRevision).toBeGreaterThan(beforeRevision);
     expect(afterScreenShake).toBe(false);
     expect(stableAfter).toEqual(stableBefore);
-    await page.locator(".header-actions .utility-button").last().click();
+    await openPlayDiagnostics(page);
     await expect(page.locator(".diagnostics__events")).toContainText(
       `settings revision ${afterRevision}`,
       { timeout: 15_000 },
@@ -147,7 +150,7 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
     await expect(page.locator(".diagnostics__facts dd").nth(7)).toHaveText(String(afterRevision));
     await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
     await page.locator(".diagnostics__bar button").click();
-    await page.locator(".runtime-toolbar__actions button").last().click();
+    await page.locator(".runtime-toolbar__back").click();
     await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   }
 

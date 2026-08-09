@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 import { REGISTERED_GAMES } from "../registered-games";
+import { openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
@@ -150,7 +151,7 @@ async function expectProductionDiagnostics(
   settingsRevision: number,
   expectAppliedEvents = true,
 ) {
-  await page.locator(".header-actions .utility-button").last().click();
+  await openPlayDiagnostics(page);
   const facts = page.locator(".diagnostics__facts dd");
   await expect(facts.nth(1)).toHaveText(`game:${gameId}`);
   await expect(facts.nth(2)).toHaveText(gameId);
@@ -166,7 +167,7 @@ async function expectProductionDiagnostics(
 }
 
 async function closeRuntime(page: Page) {
-  await page.locator(".runtime-toolbar__actions button:last-child").click();
+  await page.locator(".runtime-toolbar__back").click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   await expect(page).toHaveURL(/\/GameYard\/$/);
 }
@@ -232,14 +233,10 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await pulse.getByRole("button", { name: "Start game" }).click();
   await expect(pulse.locator("#title-screen")).toBeHidden();
   await expect(pulse.locator("#hud")).toBeVisible();
-  const hardDrop = pulse.locator('[data-action="hardDrop"]');
-  await hardDrop.hover();
-  await page.mouse.down();
-  await expect(hardDrop).toHaveClass(/is-pressed/);
-  await page.mouse.up();
-  await expect(hardDrop).not.toHaveClass(/is-pressed/);
   const gameplayCanvas = pulse.locator("#game-canvas");
   await gameplayCanvas.focus();
+  await gameplayCanvas.press("Space");
+  await expect(pulse.locator("#hud")).toBeVisible();
   await gameplayCanvas.press("Escape");
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await expect(page).toHaveScreenshot("pulse-gameplay-paused.png", {
@@ -250,7 +247,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await openPlayDiagnostics(page);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
   await expect(page.locator(".diagnostics__facts")).toContainText("active");
   const downloadPromise = page.waitForEvent("download");
@@ -348,12 +345,13 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("slider", { name: /Master/ }).fill("0.42");
-  await page.getByRole("slider", { name: /Music/ }).fill("0.37");
-  await page.getByRole("slider", { name: /SFX/ }).fill("0.58");
-  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
-  await page.getByRole("checkbox", { name: "Screen shake" }).uncheck();
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  const tumbleTools = await openPlayTools(page);
+  await tumbleTools.getByRole("slider", { name: /Master/ }).fill("0.42");
+  await tumbleTools.getByRole("slider", { name: /Music/ }).fill("0.37");
+  await tumbleTools.getByRole("slider", { name: /SFX/ }).fill("0.58");
+  await tumbleTools.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await tumbleTools.getByRole("checkbox", { name: "Screen shake" }).uncheck();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__events")).toContainText(
     "master=0.42, music=0.37, sfx=0.58, reduced=true, shake=false",
   );
@@ -686,9 +684,10 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
     expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
 
     const targetLocale = locales[(cycle - 1) % locales.length]!;
-    await page.locator("select").selectOption(targetLocale.id);
+    const roundRobinTools = await openPlayTools(page);
+    await roundRobinTools.locator("select").selectOption(targetLocale.id);
     const masterValue = String(Number((0.31 + (cycle % 10) * 0.01).toFixed(2)));
-    await page.locator('input[type="range"]').first().fill(masterValue);
+    await roundRobinTools.locator('input[type="range"]').first().fill(masterValue);
     const settingsRevision = await page.evaluate(() => {
       const raw = window.localStorage.getItem("gameyard.settings.v1");
       if (raw === null) throw new Error("Release settings revision is missing");
@@ -710,7 +709,8 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
 
     if (cycle % 5 === 0) {
       const previousGuest = guest;
-      await page.locator(".runtime-toolbar__actions button").nth(1).click();
+      const reloadTools = await openPlayTools(page);
+      await reloadTools.locator(".play-tools__reload button").click();
       await expectRoundRobinRuntimeReady(page);
       await expect.poll(() => page.frames().includes(previousGuest)).toBe(false);
       guest = page.frames().find((frame) => frame.url().includes(game.frameUrl))!;

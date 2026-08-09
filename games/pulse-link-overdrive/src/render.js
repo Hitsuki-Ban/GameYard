@@ -3,6 +3,8 @@
   const PLO = window.PLO;
   const { CONFIG } = PLO;
   const { clamp, lerp, smoothstep, easeOutCubic, easeOutBack } = PLO.util;
+  const MAX_CANVAS_PIXELS = 400_000;
+  const MIN_RENDER_SCALE = 0.33;
 
   function roundedRect(ctx, x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
@@ -232,7 +234,9 @@
       const rect = this.canvas.getBoundingClientRect();
       this.width = Math.max(1, rect.width);
       this.height = Math.max(1, rect.height);
-      this.dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const deviceScale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+      const budgetScale = Math.sqrt(MAX_CANVAS_PIXELS / (this.width * this.height));
+      this.dpr = Math.min(deviceScale, Math.max(MIN_RENDER_SCALE, budgetScale));
       const cw = Math.round(this.width * this.dpr),
         ch = Math.round(this.height * this.dpr);
       if (this.canvas.width !== cw || this.canvas.height !== ch) {

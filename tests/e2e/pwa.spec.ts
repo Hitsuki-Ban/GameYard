@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
+import { openPlayTools } from "../play-mode";
+
 const SYNTHETIC_BUILD_B = "gameyard@ffffffffffffffff";
 const SYNTHETIC_BUILD_C = "gameyard@eeeeeeeeeeeeeeee";
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".js", ".json", ".svg", ".webmanifest"]);
@@ -44,7 +46,8 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   await page.locator('.catalog-row__select[href="?game=pulse-link-overdrive"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  await page.getByRole("button", { name: "Offline" }).click();
+  const playTools = await openPlayTools(page);
+  await playTools.getByRole("button", { name: "Offline" }).click();
   const drawer = page.locator(".pwa-drawer");
   await expect(drawer).toBeVisible();
   const saveButton = drawer.getByRole("button", { name: "Save selected game" });
@@ -71,14 +74,15 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/, {
     timeout: 20_000,
   });
-  await page.locator(".runtime-toolbar__actions button").last().click();
+  await page.locator(".runtime-toolbar__back").click();
   await page.locator('.catalog-row__select[href="?game=tumbledrum"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--failed/, {
     timeout: 20_000,
   });
   await expect(page.locator(".runtime-overlay--failed")).toContainText(/503|offline copy/i);
 
-  await page.getByRole("button", { name: "Offline" }).click();
+  const failedRuntimeTools = await openPlayTools(page);
+  await failedRuntimeTools.getByRole("button", { name: "Offline" }).click();
   await drawer.getByRole("button", { name: "Clear offline games" }).click();
   await expect(drawer).toContainText("Available offline: none");
   await expect
@@ -102,10 +106,19 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     await expect(page.getByText("Checking the current Service Worker release…")).toBeVisible();
     await expect(page.locator(".site-footer")).toHaveCount(0);
     await page.getByRole("button", { name: "Apply current release" }).click();
-    await expect(page.locator(".site-footer")).toContainText(SYNTHETIC_BUILD_C, {
-      timeout: 20_000,
-    });
-    await page.getByRole("button", { name: "Offline" }).click();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const response = await fetch("./build-info.json", { cache: "no-store" });
+            if (!response.ok) throw new Error(`Build info request failed with ${response.status}`);
+            return ((await response.json()) as { buildId: string }).buildId;
+          }),
+        { timeout: 20_000 },
+      )
+      .toBe(SYNTHETIC_BUILD_C);
+    const updatedRuntimeTools = await openPlayTools(page);
+    await updatedRuntimeTools.getByRole("button", { name: "Offline" }).click();
     await expect(page.locator(".pwa-drawer")).toContainText("Available offline: none");
   } finally {
     await restoreSecondUpdate();
