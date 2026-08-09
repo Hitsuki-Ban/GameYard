@@ -8,7 +8,7 @@ test("the repository-prefix PWA saves and restores one explicit game offline", a
 }) => {
   test.setTimeout(120_000);
   await page.goto("./");
-  await page.locator('.catalog-row__select[href="?game=crown-breaker"]').click();
+  await page.locator('.catalog-card__link[href="?game=crown-breaker"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
   const playTools = await openPlayTools(page);

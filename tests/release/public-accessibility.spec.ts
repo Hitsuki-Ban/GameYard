@@ -96,7 +96,7 @@ test("public keyboard, WCAG, motion, fullscreen, and orientation journey", async
 
   const tumbledrumIndex = REGISTERED_GAMES.findIndex((game) => game.id === "tumbledrum");
   expect(tumbledrumIndex).toBeGreaterThanOrEqual(0);
-  const catalogLinks = page.locator(".catalog-row__select");
+  const catalogLinks = page.locator(".catalog-card__link");
   for (let index = 0; index <= tumbledrumIndex; index += 1) {
     await expectFocused(page, catalogLinks.nth(index));
   }

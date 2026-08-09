@@ -43,7 +43,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
 
   await page.goto("./");
   await page.evaluate(() => window.localStorage.setItem("gameyard.pwa-test-save", "preserve"));
-  await page.locator('.catalog-row__select[href="?game=pulse-link-overdrive"]').click();
+  await page.locator('.catalog-card__link[href="?game=pulse-link-overdrive"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
   const playTools = await openPlayTools(page);
@@ -75,7 +75,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     timeout: 20_000,
   });
   await page.locator(".runtime-toolbar__back").click();
-  await page.locator('.catalog-row__select[href="?game=tumbledrum"]').click();
+  await page.locator('.catalog-card__link[href="?game=tumbledrum"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--failed/, {
     timeout: 20_000,
   });

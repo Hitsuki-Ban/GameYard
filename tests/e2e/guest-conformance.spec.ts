@@ -60,7 +60,7 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await page.locator(".settings-bar select").selectOption("en");
   const manifest = await readManifest(page, gameId);
 
-  await page.locator(`.catalog-row__select[href="?game=${gameId}"]`).click();
+  await page.locator(`.catalog-card__link[href="?game=${gameId}"]`).click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 

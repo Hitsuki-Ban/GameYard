@@ -137,7 +137,7 @@ async function expectRoundRobinRuntimeReady(page: Page) {
 }
 
 async function openRoundRobinRuntime(page: Page, gameId: RoundRobinGame) {
-  await page.locator(`.catalog-row__select[href="?game=${gameId}"]`).click();
+  await page.locator(`.catalog-card__link[href="?game=${gameId}"]`).click();
   await expectRoundRobinRuntimeReady(page);
   const guest = page.frames().find((frame) => frame.url().includes(`/games/${gameId}/`));
   expect(guest, `${gameId} guest frame must exist`).toBeDefined();

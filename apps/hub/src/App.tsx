@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
+import { BrowseCatalog } from "./BrowseCatalog";
 import { GAME_CATALOG, type GameCatalogEntry, type GameId } from "./catalog";
 import {
   describeRoute,
@@ -13,6 +14,7 @@ import {
   type RuntimeDiagnosticState,
 } from "./diagnostics";
 import { i18n } from "./i18n";
+import { GameCover } from "./GameCover";
 import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
 import type { HubLabStartupState } from "./lab";
 import { PwaDrawer } from "./PwaDrawer";
@@ -96,26 +98,6 @@ function gameStageStyle(game: GameCatalogEntry): GameStageStyle {
         }
       : {}),
   };
-}
-
-function GamePoster({ game }: { readonly game: GameCatalogEntry }) {
-  const fallback = game.cover.candidates.at(-1);
-  if (!fallback) throw new Error(`Catalog game ${game.id} is missing a cover candidate`);
-  const srcSet = game.cover.candidates
-    .map((candidate) => `${candidate.url} ${candidate.width}w`)
-    .join(", ");
-  return (
-    <picture className="poster" aria-hidden="true">
-      <img
-        src={fallback.url}
-        srcSet={srcSet}
-        sizes="(max-width: 520px) 100vw, 42vw"
-        width={fallback.width}
-        height={fallback.height}
-        alt=""
-      />
-    </picture>
-  );
 }
 
 interface SettingsBarProps {
@@ -316,47 +298,8 @@ function PlayTools({
   );
 }
 
-function CatalogRow({
-  game,
-  locale,
-  selected,
-  onSelect,
-}: {
-  readonly game: GameCatalogEntry;
-  readonly locale: SupportedLocale;
-  readonly selected: boolean;
-  readonly onSelect: (gameId: GameId) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <li className={`catalog-row${selected ? " is-selected" : ""}`}>
-      <a
-        href={gameSearch(game.id)}
-        className="catalog-row__select"
-        aria-current={selected ? "page" : undefined}
-        onClick={(event) => {
-          event.preventDefault();
-          onSelect(game.id);
-        }}
-      >
-        <span className="catalog-row__number">{String(game.order).padStart(2, "0")}</span>
-        <span className="catalog-row__title">{game.title}</span>
-        <span className="catalog-row__type">{game.taglines[locale]}</span>
-        <span className="catalog-row__arrow" aria-hidden="true">
-          ↗
-        </span>
-      </a>
-      <div className="catalog-row__meta">
-        <span>{t("catalog.order", { order: game.order })}</span>
-        <span>{t("catalog.languages", { languages: game.languages.join(" · ") })}</span>
-      </div>
-    </li>
-  );
-}
-
 interface StageProps {
-  readonly route: HubRoute;
+  readonly route: Exclude<HubRoute, { readonly kind: "index" }>;
   readonly settings: HubSettings | null;
   readonly systemLanguages: readonly string[];
   readonly runtimeRef: React.RefObject<GameRuntimeHandle | null>;
@@ -387,23 +330,6 @@ function Stage({
         <h2 id="route-error-title">{t("route.errorTitle")}</h2>
         <p>{t(`route.${route.code}`)}</p>
         <code>{t("route.received", { value: route.received.join(", ") || "(empty)" })}</code>
-      </section>
-    );
-  }
-
-  if (route.kind === "index") {
-    return (
-      <section className="stage stage--empty" aria-labelledby="empty-stage-title">
-        <div className="empty-stage__axis" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="empty-stage__copy">
-          <span className="micro-label">NO SELECTION / 000</span>
-          <h2 id="empty-stage-title">{t("stage.select")}</h2>
-          <p>{t("stage.selectDetail")}</p>
-        </div>
       </section>
     );
   }
@@ -453,7 +379,13 @@ function Stage({
       </div>
       <div className="stage--settings-error__content">
         <div className="stage__poster-wrap">
-          <GamePoster game={game} />
+          <GameCover
+            className="poster"
+            game={game}
+            loading="eager"
+            fetchPriority="auto"
+            sizes="(max-width: 520px) 100vw, 42vw"
+          />
         </div>
         <div className="stage__body">
           <span className="micro-label">SETTINGS / CONTRACT / STOP</span>
@@ -1025,8 +957,8 @@ export function App() {
             </div>
           ) : null}
 
-          <main>
-            <section className="intro" aria-labelledby="page-title">
+          <main className="browse-mode">
+            <section className="browse-intro" aria-labelledby="page-title">
               <div>
                 <span className="micro-label">{t("index.eyebrow")}</span>
                 <h1 id="page-title">{t("index.title")}</h1>
@@ -1034,26 +966,20 @@ export function App() {
               <p>{t("index.instruction")}</p>
             </section>
 
-            <div className="gallery-layout">
+            {route.kind === "index" ? (
               <section className="catalog" aria-labelledby="catalog-title">
-                <div className="section-rule">
-                  <h2 id="catalog-title">{t("catalog.heading")}</h2>
-                  <span>{t("catalog.count", { count: GAME_CATALOG.length })}</span>
-                </div>
-                <ol>
-                  {GAME_CATALOG.map((game) => (
-                    <CatalogRow
-                      key={game.id}
-                      game={game}
-                      locale={locale}
-                      selected={false}
-                      onSelect={(gameId) => {
-                        void selectGame(gameId).catch(() => undefined);
-                      }}
-                    />
-                  ))}
-                </ol>
+                <h2 className="catalog__heading" id="catalog-title">
+                  {t("catalog.heading")}
+                </h2>
+                <BrowseCatalog
+                  games={GAME_CATALOG}
+                  locale={locale}
+                  onSelect={(gameId) => {
+                    void selectGame(gameId).catch(() => undefined);
+                  }}
+                />
               </section>
+            ) : (
               <Stage
                 route={route}
                 settings={settings}
@@ -1065,7 +991,7 @@ export function App() {
                 onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
                 onEvent={recordEvent}
               />
-            </div>
+            )}
           </main>
 
           <footer className="site-footer">
