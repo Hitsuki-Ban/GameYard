@@ -41,6 +41,7 @@ jobs:
       - name: Install ImageMagick 7
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew update
           brew install imagemagick-full
           imagemagick_bin="$(brew --prefix imagemagick-full)/bin"
           echo "$imagemagick_bin" >> "$GITHUB_PATH"
