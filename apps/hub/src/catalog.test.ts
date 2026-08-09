@@ -1,6 +1,11 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { I18nextProvider } from "react-i18next";
 import { describe, expect, it } from "vite-plus/test";
 
-import { GAME_CATALOG, getGameById, isGameId } from "./catalog";
+import { BrowseCatalog, catalogCoverPolicy } from "./BrowseCatalog";
+import { GAME_CATALOG, getGameById, isGameId, type GameCatalogEntry, type GameId } from "./catalog";
+import { i18n } from "./i18n";
 
 function firstGame() {
   const game = GAME_CATALOG[0];
@@ -30,5 +35,48 @@ describe("game catalog", () => {
     expect(isGameId(game.id)).toBe(true);
     expect(isGameId(game.id.toUpperCase())).toBe(false);
     expect(getGameById(game.id)).toBe(game);
+  });
+
+  it("renders 30- and 100-entry collections in source order without runtime markup", () => {
+    const template = firstGame();
+
+    for (const count of [30, 100]) {
+      const games: readonly GameCatalogEntry[] = Array.from({ length: count }, (_, index) => {
+        const id = `fixture-game-${String(index + 1).padStart(3, "0")}` as GameId;
+        return {
+          ...template,
+          id,
+          order: index + 1,
+          manifestSource: { ...template.manifestSource, id },
+          title: `Fixture game ${index + 1}`,
+        };
+      });
+      const markup = renderToStaticMarkup(
+        createElement(
+          I18nextProvider,
+          { i18n },
+          createElement(BrowseCatalog, { games, locale: "en", onSelect: () => undefined }),
+        ),
+      );
+
+      expect(markup.match(/class="catalog-card__link"/g)).toHaveLength(count);
+      expect(markup).not.toMatch(/<(?:iframe|script)\b/u);
+      let previousOffset = -1;
+      for (const game of games) {
+        const offset = markup.indexOf(`?game=${game.id}`);
+        expect(offset).toBeGreaterThan(previousOffset);
+        previousOffset = offset;
+      }
+      expect(games.map((_, index) => catalogCoverPolicy(index))).toEqual([
+        { loading: "eager", fetchPriority: "high" },
+        { loading: "eager", fetchPriority: "auto" },
+        { loading: "eager", fetchPriority: "auto" },
+        { loading: "eager", fetchPriority: "auto" },
+        ...Array.from({ length: count - 4 }, () => ({
+          loading: "lazy" as const,
+          fetchPriority: "auto" as const,
+        })),
+      ]);
+    }
   });
 });

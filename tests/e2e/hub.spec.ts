@@ -217,7 +217,7 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "OPEN INDEX" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "PLAY THE YARD" })).toBeVisible();
   await page.locator("select").selectOption("en");
   await page.getByRole("link", { name: /PULSE LINK \/\/ OVERDRIVE/ }).click();
 
@@ -432,6 +432,93 @@ test("public language setting persists across reloads", async ({ page }) => {
   expect(runtimeErrors).toEqual([]);
 });
 
+test("Browse Mode is actionable in the first mobile viewport and loads no game runtime", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chromium",
+    "One responsive journey covers Browse Mode",
+  );
+  const runtimeRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.includes("/games/")) runtimeRequests.push(request.url());
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./");
+  const cards = page.locator(".catalog-card__link");
+  await expect(cards).toHaveCount(REGISTERED_GAMES.length);
+  await expect(page.locator(".stage--empty, .runtime-frame iframe")).toHaveCount(0);
+  const firstCard = cards.first();
+  await expect(firstCard).toBeVisible();
+  await expect(firstCard.locator("img")).toHaveJSProperty("complete", true);
+  const covers = page.locator(".catalog-card__cover img");
+  await expect(covers.first()).toHaveAttribute("fetchpriority", "high");
+  for (let index = 0; index < REGISTERED_GAMES.length; index += 1) {
+    await expect(covers.nth(index)).toHaveAttribute("loading", index < 4 ? "eager" : "lazy");
+  }
+  const firstCardBox = await firstCard.boundingBox();
+  expect(firstCardBox).not.toBeNull();
+  expect(firstCardBox!.y).toBeGreaterThanOrEqual(0);
+  expect(firstCardBox!.y + firstCardBox!.height).toBeLessThanOrEqual(844);
+  expect(runtimeRequests).toEqual([]);
+  const initialCoverTransfer = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .filter((entry) => entry.name.includes("catalog-cover"))
+      .reduce((total, entry) => total + (entry as PerformanceResourceTiming).transferSize, 0),
+  );
+  expect(initialCoverTransfer).toBeLessThanOrEqual(300 * 1024);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".catalog-grid")
+        .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length),
+    )
+    .toBeGreaterThanOrEqual(4);
+  const firstFourFit = await page.locator(".catalog-grid").evaluate((grid) => {
+    const firstItem = grid.firstElementChild;
+    if (!firstItem) throw new Error("Browse fixture requires at least one catalog card");
+    const fixtureItems: Element[] = [];
+    while (grid.children.length < 4) {
+      const clone = firstItem.cloneNode(true) as Element;
+      fixtureItems.push(clone);
+      grid.append(clone);
+    }
+    const fits = [...grid.querySelectorAll<HTMLElement>(".catalog-card__link")]
+      .slice(0, 4)
+      .every((card) => card.getBoundingClientRect().bottom <= innerHeight);
+    for (const fixture of fixtureItems) fixture.remove();
+    return fits;
+  });
+  expect(firstFourFit).toBe(true);
+  const visibleCards = await cards.evaluateAll(
+    (elements) =>
+      elements.filter((element) => element.getBoundingClientRect().bottom <= innerHeight).length,
+  );
+  expect(visibleCards).toBe(REGISTERED_GAMES.length);
+
+  await firstCard.focus();
+  await page.keyboard.press("Tab");
+  await expect(cards.nth(1)).toBeFocused();
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+
+  await cards.first().click();
+  await expect(page.locator(".play-mode")).toBeVisible();
+  await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
+});
+
 test("Play Mode keeps one runtime through viewport and overlay changes for both stage strategies", async ({
   page,
 }, testInfo) => {
@@ -450,7 +537,7 @@ test("Play Mode keeps one runtime through viewport and overlay changes for both 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("./");
     await page.locator(".settings-bar select").selectOption("en");
-    await page.locator(`.catalog-row__select[href="?game=${game.id}"]`).click();
+    await page.locator(`.catalog-card__link[href="?game=${game.id}"]`).click();
     await expect(page.locator(".play-mode")).toBeVisible();
     await expect(page.locator(".intro, .catalog, .site-footer")).toHaveCount(0);
     await expect(page.locator(".settings-bar")).toBeHidden();
@@ -535,7 +622,7 @@ test("production shell has no lab and fits the configured viewport", async ({ pa
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "OPEN INDEX" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "PLAY THE YARD" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Lab" })).toHaveCount(0);
 
   const dimensions = await page.evaluate(() => ({

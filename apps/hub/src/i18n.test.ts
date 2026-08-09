@@ -16,7 +16,7 @@ describe("Hub translation catalogs", () => {
     for (const catalog of Object.values(translationCatalogs)) {
       expect(catalog["brand.subtitle"]).not.toMatch(/(?:three|3|三款|三个|3作品)/i);
       expect(catalog["index.instruction"]).not.toMatch(/(?:all three|三款|3作品)/i);
-      expect(catalog["catalog.count"]).toContain("{{count}}");
+      expect(catalog["catalog.start"]).not.toBe("");
       expect(catalog["stage.settingsRequired"]).not.toBe("");
     }
   });
