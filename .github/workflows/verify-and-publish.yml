@@ -180,34 +180,6 @@ jobs:
           tests/release/pulse-release.spec.ts tests/release/public-accessibility.spec.ts
           --config playwright.release.config.ts
 
-  release-snapshot-capture:
-    name: Capture Windows release snapshots
-    if: github.event_name == 'pull_request'
-    runs-on: windows-2025
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-      - uses: voidzero-dev/setup-vp@v1
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: true
-          run-install: false
-      - run: vp install --frozen-lockfile
-      - run: vp run build
-      - run: vp exec playwright install chromium
-      - name: Capture the complete game release matrix
-        run: >-
-          vp exec playwright test tests/release/pulse-release.spec.ts
-          --config playwright.release.config.ts
-          --grep "release matrix"
-          --update-snapshots
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-snapshots-${{ github.sha }}
-          path: tests/release/pulse-release.spec.ts-snapshots
-          if-no-files-found: error
-          retention-days: 1
-
   cloudflare-production:
     name: Cloudflare production from artifact
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
