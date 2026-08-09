@@ -20,7 +20,7 @@ vp run crown-breaker#baseline
 vp run crown-breaker#sim -- --runs <count> --policy <greedy|random> --seed-base <seed>
 ```
 
-- `dev` 在严格端口 5176 提供 `/games/crown-breaker/`。
+- `dev` 在 production registry 声明的严格端口提供 `/games/crown-breaker/`。
 - `build` 写入 `.gameyard/stage/games/crown-breaker`，并检查生产产物中不存在 testkit、旧存储、Manifest 或 Service Worker 残留。
 - `build:testkit` 写入 `.gameyard/testkit/games/crown-breaker`；其同页测试宿主也必须完成真实 `connectGuest` 握手与 ACK 后才开放 QA 接口。
 - `baseline` 包含完整上游行为门禁、生产构建和固定 100-run fixture，属于耗时验证。

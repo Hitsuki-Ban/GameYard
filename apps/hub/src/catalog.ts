@@ -1,102 +1,37 @@
-import {
-  GameManifestSourceSchema,
-  type GameId,
-  type GameManifestSource,
-  type ResolvedLocale,
+import type {
+  GameId,
+  GameManifestSource,
+  GamePresentation,
+  ResolvedLocale,
 } from "@gameyard/game-contract";
-
-import crownBreakerSource from "../../../games/crown-breaker/game.manifest.source.json";
-import pulseLinkOverdriveSource from "../../../games/pulse-link-overdrive/game.manifest.source.json";
-import tumbledrumSource from "../../../games/tumbledrum/game.manifest.source.json";
+import { GAMEYARD_CATALOG } from "virtual:gameyard/catalog";
 
 export type { GameId };
-export type MigrationStatus = "playable" | "queued";
-export type PosterKind = "drum" | "pulse" | "crown";
 
 export interface GameCatalogEntry {
   readonly id: GameId;
+  readonly order: number;
   readonly manifestSource: GameManifestSource;
-  readonly displayTitle: string;
-  readonly typeKey: string;
-  readonly descriptionKey: string;
+  readonly title: string;
+  readonly taglines: Readonly<Record<ResolvedLocale, string>>;
   readonly languages: readonly ResolvedLocale[];
-  readonly status: MigrationStatus;
-  readonly migrationOrder: 1 | 2 | 3;
-  readonly repositoryUrl: string;
-  readonly liveUrl?: string;
-  readonly runtime?: "local";
-  readonly accent: "ultramarine" | "vermilion" | "graphite";
-  readonly poster: PosterKind;
+  readonly accent: string;
+  readonly cover: GamePresentation["cover"];
+  readonly stage: GamePresentation["stage"];
 }
 
-interface GamePresentation {
-  readonly displayTitle: string;
-  readonly typeKey: string;
-  readonly descriptionKey: string;
-  readonly status: MigrationStatus;
-  readonly migrationOrder: 1 | 2 | 3;
-  readonly liveUrl?: string;
-  readonly runtime: "local";
-  readonly accent: "ultramarine" | "vermilion" | "graphite";
-  readonly poster: PosterKind;
-}
-
-const catalogDefinitions: readonly {
-  readonly source: unknown;
-  readonly presentation: GamePresentation;
-}[] = [
-  {
-    source: tumbledrumSource,
-    presentation: {
-      displayTitle: "TUMBLEDRUM",
-      typeKey: "game.tumbledrum.type",
-      descriptionKey: "game.tumbledrum.description",
-      status: "playable",
-      migrationOrder: 2,
-      runtime: "local",
-      accent: "vermilion",
-      poster: "drum",
-    },
-  },
-  {
-    source: pulseLinkOverdriveSource,
-    presentation: {
-      displayTitle: "PULSE LINK // OVERDRIVE",
-      typeKey: "game.pulse.type",
-      descriptionKey: "game.pulse.description",
-      status: "playable",
-      migrationOrder: 1,
-      runtime: "local",
-      accent: "ultramarine",
-      poster: "pulse",
-    },
-  },
-  {
-    source: crownBreakerSource,
-    presentation: {
-      displayTitle: "CROWN//BREAKER",
-      typeKey: "game.crown.type",
-      descriptionKey: "game.crown.description",
-      status: "playable",
-      migrationOrder: 3,
-      runtime: "local",
-      accent: "graphite",
-      poster: "crown",
-    },
-  },
-] as const;
-
-export const GAME_CATALOG: readonly GameCatalogEntry[] = catalogDefinitions.map(
-  ({ source: sourceJson, presentation }) => {
-    const manifestSource = GameManifestSourceSchema.parse(sourceJson);
-    return {
-      ...presentation,
-      id: manifestSource.id,
-      manifestSource,
-      languages: manifestSource.locales.supported,
-      repositoryUrl: manifestSource.provenance.repository,
-    };
-  },
+export const GAME_CATALOG: readonly GameCatalogEntry[] = GAMEYARD_CATALOG.map(
+  ({ order, manifest, presentation }) => ({
+    id: manifest.id,
+    order,
+    manifestSource: manifest,
+    title: presentation.title,
+    taglines: presentation.taglines,
+    languages: manifest.locales.supported,
+    accent: presentation.accent,
+    cover: presentation.cover,
+    stage: presentation.stage,
+  }),
 );
 
 const CATALOG_BY_ID = new Map<GameId, GameCatalogEntry>(

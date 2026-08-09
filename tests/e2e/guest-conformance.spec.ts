@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-const GUESTS = ["pulse-link-overdrive", "tumbledrum", "crown-breaker"] as const;
-type GuestId = (typeof GUESTS)[number];
+import { REGISTERED_GAME_IDS } from "../registered-games";
+
+type GuestId = (typeof REGISTERED_GAME_IDS)[number];
 
 interface ManifestIdentity {
   readonly id: GuestId;
@@ -121,7 +122,7 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await expect(page).not.toHaveURL(new RegExp(`game=${gameId}`));
 }
 
-for (const gameId of GUESTS) {
+for (const gameId of REGISTERED_GAME_IDS) {
   test(`${gameId} passes the shared host/guest conformance driver`, async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "desktop-chromium",

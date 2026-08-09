@@ -6,7 +6,6 @@ import { afterEach, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { createArtifactBuildId, REQUIRED_PRODUCTION_INPUTS } from "./artifact-build-id.mjs";
-import { parseAssemblyConfig } from "./assembly-config.mjs";
 import {
   assembleSite,
   createAssemblyPlan,
@@ -38,21 +37,79 @@ async function createRequiredInputs(root) {
   }
 }
 
-async function createFixture({ game = true } = {}) {
+async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "gameyard-assembly-"));
   temporaryRoots.push(root);
   await createRequiredInputs(root);
-  if (game) {
-    await mkdir(join(root, gameProductionInput), { recursive: true });
-    await writeFile(join(root, gameProductionInput, "game.js"), "production source\n");
-  }
+  await mkdir(join(root, gameProductionInput), { recursive: true });
+  await writeFile(join(root, gameProductionInput, "game.js"), "production source\n");
+  await writeFile(
+    join(root, "games/demo/package.json"),
+    JSON.stringify({ name: "@gameyard/demo", version: "1.0.0", private: true }),
+  );
+  await writeFile(
+    join(root, "games/demo/game.manifest.source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      protocol: 1,
+      id: "demo",
+      version: "1.0.0",
+      entry: "index.html",
+      locales: { source: "en", supported: ["en", "ja", "zh-Hans"] },
+      capabilities: ["keyboard"],
+      provenance: {
+        repository: "https://example.test/demo",
+        revision: "0123456789abcdef0123456789abcdef01234567",
+        license: "MIT",
+      },
+    }),
+  );
+  await writeFile(
+    join(root, "games/demo/game.presentation.source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: "demo",
+      title: "Demo",
+      taglines: { en: "Demo game", ja: "デモゲーム", "zh-Hans": "演示游戏" },
+      accent: "#123456",
+      cover: {
+        candidates: [
+          { path: "cover-small.svg", width: 800, height: 450 },
+          { path: "cover.svg", width: 1600, height: 900 },
+        ],
+      },
+      stage: { kind: "adaptive" },
+    }),
+  );
+  await writeFile(
+    join(root, "games/demo/cover-small.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg"/>',
+  );
+  await writeFile(join(root, "games/demo/cover.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   await writeFile(
     join(root, "site.assembly.json"),
     `${JSON.stringify(
       {
-        schemaVersion: 1,
-        hubStage: ".gameyard/stage/hub",
-        games: game ? [{ stage: gameStagePath, productionInputs: [gameProductionInput] }] : [],
+        schemaVersion: 2,
+        hub: { stage: ".gameyard/stage/hub", devPort: 5173 },
+        games: [
+          {
+            id: "demo",
+            packageName: "@gameyard/demo",
+            stage: gameStagePath,
+            manifestSource: "games/demo/game.manifest.source.json",
+            presentationSource: "games/demo/game.presentation.source.json",
+            devPort: 5174,
+            productionInputs: [
+              "games/demo/cover-small.svg",
+              "games/demo/cover.svg",
+              "games/demo/game.manifest.source.json",
+              "games/demo/game.presentation.source.json",
+              "games/demo/package.json",
+              gameProductionInput,
+            ],
+          },
+        ],
       },
       null,
       2,
@@ -133,7 +190,7 @@ async function createFixture({ game = true } = {}) {
     join(hubStage, "hub.manifest.json"),
     `${JSON.stringify({ schemaVersion: 1, buildId, entry: "index.html" }, null, 2)}\n`,
   );
-  if (game) {
+  {
     const gameStage = join(root, gameStagePath);
     await mkdir(gameStage, { recursive: true });
     const manifest = {
@@ -211,7 +268,7 @@ await test("rejects the Hub's entire case-insensitive games namespace", async ()
   await writeFile(join(nestedFixture.hubStage, "Games/rogue/index.html"), "rogue Hub game");
   await assert.rejects(createAssemblyPlan(nestedFixture.root), /reserved games namespace/);
 
-  const fileFixture = await createFixture({ game: false });
+  const fileFixture = await createFixture();
   await writeFile(join(fileFixture.hubStage, "games"), "reserved top-level file");
   await assert.rejects(createAssemblyPlan(fileFixture.root), /reserved games namespace/);
 });
@@ -254,7 +311,7 @@ await test("copies and verifies declared nested game assets", async () => {
 });
 
 await test("production verification rejects unregistered files in the games namespace", async () => {
-  const fixture = await createFixture({ game: false });
+  const fixture = await createFixture();
   await assembleSite(fixture.root);
   const roguePath = join(fixture.root, "dist/games/rogue.bin");
   await writeFile(roguePath, "rogue artifact");
@@ -424,67 +481,16 @@ await test("keeps the complete new dist when old backup cleanup fails", async ()
 });
 
 await test("rejects unknown assembly configuration fields", async () => {
-  const { root } = await createFixture({ game: false });
+  const { root } = await createFixture();
   await writeFile(
     join(root, "site.assembly.json"),
     JSON.stringify({
-      schemaVersion: 1,
-      hubStage: ".gameyard/stage/hub",
-      games: [],
+      schemaVersion: 2,
+      hub: { stage: ".gameyard/stage/hub", devPort: 5173 },
+      games: (await readJson(join(root, "site.assembly.json"))).games,
       legacyDist: "dist",
     }),
   );
 
   await assert.rejects(createAssemblyPlan(root), /fields must be exactly/);
-});
-
-await test("rejects config-owned identity, traversal, and generated production inputs", () => {
-  const createConfig = (game) => ({
-    schemaVersion: 1,
-    hubStage: ".gameyard/stage/hub",
-    games: [game],
-  });
-  assert.throws(
-    () =>
-      parseAssemblyConfig(
-        createConfig({
-          id: "demo",
-          stage: ".gameyard/stage/games/demo",
-          productionInputs: ["games/demo/src"],
-        }),
-      ),
-    /fields must be exactly/,
-  );
-  assert.throws(
-    () =>
-      parseAssemblyConfig(
-        createConfig({
-          stage: "../outside",
-          productionInputs: ["games/demo/src"],
-        }),
-      ),
-    /repository-relative POSIX path/,
-  );
-  assert.throws(
-    () =>
-      parseAssemblyConfig(
-        createConfig({
-          stage: ".gameyard/stage/games/demo",
-          productionInputs: [".gameyard/stage/games/demo"],
-        }),
-      ),
-    /must not include stage or distribution output/,
-  );
-  for (const path of ["games/demo:src", "games/demo%src", "games/demo?src", "games/demo#src"]) {
-    assert.throws(
-      () =>
-        parseAssemblyConfig(
-          createConfig({
-            stage: ".gameyard/stage/games/demo",
-            productionInputs: [path],
-          }),
-        ),
-      /repository-relative POSIX path/,
-    );
-  }
 });

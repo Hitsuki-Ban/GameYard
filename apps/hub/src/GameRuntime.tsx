@@ -6,7 +6,15 @@ import type {
   LocaleContext,
   SettingsChange,
 } from "@gameyard/game-contract";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry } from "./catalog";
@@ -319,16 +327,24 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
     void operation().catch(() => undefined);
   };
   const canControl = state.phase === "active" || state.phase === "paused";
+  const stageStyle = {
+    "--game-accent": game.accent,
+    ...(game.stage.kind === "fixed-aspect"
+      ? { "--game-stage-aspect": `${game.stage.width} / ${game.stage.height}` }
+      : {}),
+  } as CSSProperties;
 
   return (
     <section
       ref={frameWrapRef}
-      className={`stage stage--runtime stage--${game.accent}`}
+      className="stage stage--runtime"
+      style={stageStyle}
+      data-stage-strategy={game.stage.kind}
       aria-labelledby="selected-game-title"
     >
       <div className="runtime-toolbar">
         <div>
-          <strong id="selected-game-title">{game.displayTitle}</strong>
+          <strong id="selected-game-title">{game.title}</strong>
           <span className={`runtime-state runtime-state--${state.phase}`}>
             {t(`runtime.state.${state.phase}`)}
           </span>
@@ -378,7 +394,7 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
         }}
       >
         {runtime ? (
-          <iframe key={generation} ref={iframeRef} title={game.displayTitle} allow="fullscreen" />
+          <iframe key={generation} ref={iframeRef} title={game.title} allow="fullscreen" />
         ) : null}
         {state.phase === "loading" ? (
           <div className="runtime-overlay" role="status">

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev --host 127.0.0.1 --port 5174 --strictPort",
+    "dev": "vp dev",
     "build": "vp build",
     "check": "vp check",
     "test": "vp exec playwright test --config playwright.baseline.config.ts"

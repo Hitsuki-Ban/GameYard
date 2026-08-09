@@ -2,13 +2,17 @@
 
 ## 产品目标
 
-一个页面完成发现、选择、启动、返回和舒适设置；三个游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
+一个页面完成发现、选择、启动、返回和舒适设置；每个登记游戏保留各自的视觉与玩法语言。Hub 同时是玩家入口和开发工作台：同一问题摘要应能包含 build、game、locale、公共设置 revision、frame 生命周期和最近诊断事件，而不暴露完整存档。
 
-Hub、契约和原子构建边界已经初始化；三个游戏的固定上游历史和 guest adapter 都已进入生产 catalog。PulseLinkOverdrive、TUMBLEDRUM 与 CrownBreaker 均由同一个 Hub runtime 启动、调节、暂停、重载和关闭。
+Hub、契约、严格 production registry 和原子构建边界已经初始化；当前 registry 登记 PulseLinkOverdrive、TUMBLEDRUM 与 CrownBreaker，均由同一个 Hub runtime 启动、调节、暂停、重载和关闭。增加后续展品不再修改 Hub ID 分支、海报类型、颜色联合、开发代理表或部署名单。
 
 ## 架构结论
 
 ```text
+site.assembly.json v2 + game presentation sources
+                    |
+        strict Node production registry
+                    |
 Catalog / Settings / Diagnostics (React Hub)
                     |
         exact v1 MessageChannel contract
@@ -19,6 +23,7 @@ Catalog / Settings / Diagnostics (React Hub)
 ```
 
 - iframe 是长期 DOM/CSS/global/RAF 边界，不是临时兼容层，也不声称隔离恶意代码。
+- `site.assembly.json` v2 是唯一生产准入列表；不扫描 `games/*`。Node loader 在 dev/build 前联结 package、runtime manifest、presentation、cover、端口、stage 与显式 production inputs，v1 或身份漂移直接失败。Hub 浏览器端只消费 Vite 虚拟模块生成的安全 catalog 和 hashed cover URL。
 - Hub 不读取 iframe DOM；Host bridge 先对无 `src`/`srcdoc` iframe 注册 listener，再设置严格相对 entry URL。Guest 随后发送不含实例号的 `gameyard:ready-for-init`，Hub 校验 source/origin/protocol/game/build 后，以唯一 `gameyard:init` 发送完整 context、分配 instance 并转移 `MessagePort`，之后业务只走 port。[postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 - 同时最多一个 frame。离开游戏时发送 dispose，收到 ACK 后移除；超时也移除并记录失败。
 - Hub/game 属于同一个 buildId 和原子 artifact。协议或 build 不一致直接显示缓存/部署混合错误，不做版本协商。
@@ -29,12 +34,14 @@ Catalog / Settings / Diagnostics (React Hub)
 ```text
 apps/hub/                   React 展览与诊断管理面
 games/<id>/                 各游戏独立 HTML 入口、adapter、玩法代码与素材
+games/<id>/game.presentation.source.json  三语展览文案、cover、accent 与 stage strategy
 packages/game-contract/     零 DOM 的 schema/types
 packages/host-bridge/       frame + MessageChannel 生命周期
 packages/guest-bridge/      guest INIT、命令 ACK 与终止清理
 packages/manifest-tools/    由 strict source 生成 dev/production manifest
 packages/testkit/           确定性 window/port/clock、Lab preset 与资源探针
-tooling/*assembler*         严格配置、artifact inspector 与事务装配
+tooling/production-registry* 严格 Node loader、Vite catalog 与 registry task runner
+tooling/*assembler*         artifact inspector 与事务装配
 docs/adr/                   不可逆决策
 provenance/                 上游 URL/revision/license/素材来源
 ```
@@ -53,7 +60,7 @@ dist/games/catalog.json
 dist/build-info.json
 ```
 
-各包不得并行写同一个 `dist`；Hub/game 先写互斥 staging 目录，再由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。当前 production games 为 `pulse-link-overdrive`、`tumbledrum` 与 `crown-breaker`。
+各包不得并行写同一个 `dist`；registry task runner 按登记顺序构建互斥 game staging 目录，再构建 Hub，由 assembler 检查严格 manifest、build ID、声明文件、路径冲突、Service Worker 与根绝对 URL 后事务合并。
 
 最终 `games/` 命名空间只属于 assembler。Hub stage 不得写入任何 `games` 路径，production verifier 也拒绝 catalog 与已登记 game manifest 之外的 game 文件。
 
@@ -67,7 +74,7 @@ host window:  gameyard:init { context } + MessagePort
 guest port:   ready
 ```
 
-Host 必须在 frame 导航之前开始握手，`connectIframe` 因此拒绝预带 `src`/`srcdoc` 的 iframe，并亲自设置属于 `context.baseUrl` 的 entry URL。Build ID 精确为 `gameyard@<16 lowercase hex>`。每游戏唯一 `game.manifest.source.json` 以 strict schema 保存 `schemaVersion`、`protocol`、小写稳定 ID、SemVer、相对 entry、source/supported locales、capabilities 与 repository/revision/license provenance；共享 Vite 插件只在构建时补入 build ID 与完整 files 白名单。Hub catalog、dev proxy、assembler 与 production verifier 都消费这条 validated source/stage 链。未知字段、旧握手或旧 build ID 不协商、不降级。
+Host 必须在 frame 导航之前开始握手，`connectIframe` 因此拒绝预带 `src`/`srcdoc` 的 iframe，并亲自设置属于 `context.baseUrl` 的 entry URL。Build ID 精确为 `gameyard@<16 lowercase hex>`。每游戏唯一 `game.manifest.source.json` 以 strict schema 保存执行身份：`schemaVersion`、`protocol`、小写稳定 ID、SemVer、相对 entry、source/supported locales、capabilities 与 repository/revision/license provenance；`game.presentation.source.json` 独立保存访客展示的 title、完整 `en/ja/zh-Hans` tagline、响应式 cover、开放 accent 和显式 stage strategy。共享 Vite 插件只在构建时补入 build ID 与完整 files 白名单。Hub catalog、route validation、dev proxy、Lab、assembler 与 production verifier 都消费同一条 validated registry/source/stage 链。未知字段、旧 registry、旧握手或旧 build ID 不协商、不降级。
 
 ## 公共 API v1
 

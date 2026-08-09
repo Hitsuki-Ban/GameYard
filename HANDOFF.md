@@ -2,7 +2,7 @@
 
 ## Shipped system
 
-GameYard presents PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker through one React Hub and one active same-origin iframe. The versioned `MessageChannel` contract is the only Hub/Guest runtime path. Public locale, audio/motion settings, focus/pause/fullscreen policy, diagnostics, PWA lifecycle, catalog, deployment, and release identity belong to the Hub; game rules, rendering, input semantics, audio graphs, saves, content, and game-specific accessibility remain local to each game.
+GameYard currently presents PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker through one React Hub and one active same-origin iframe. The strict ordered `site.assembly.json` v2 registry is the only production admission list and supplies package identity, manifest/presentation sources, development ports, stages, and production-input allowlists. The versioned `MessageChannel` contract is the only Hub/Guest runtime path. Public locale, audio/motion settings, focus/pause/fullscreen policy, diagnostics, PWA lifecycle, catalog, deployment, and release identity belong to the Hub; game rules, rendering, input semantics, audio graphs, saves, content, and game-specific accessibility remain local to each game.
 
 Production is served by one Cloudflare Worker from the same immutable artifact:
 

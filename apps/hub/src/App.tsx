@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
 import { GAME_CATALOG, type GameCatalogEntry, type GameId } from "./catalog";
@@ -73,17 +73,37 @@ function currentReducedMotionPreference(): boolean {
   return window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches;
 }
 
-function GamePoster({ kind }: { readonly kind: GameCatalogEntry["poster"] }) {
+type GameStageStyle = CSSProperties & {
+  readonly "--game-accent": string;
+  readonly "--game-stage-aspect"?: string;
+};
+
+function gameStageStyle(game: GameCatalogEntry): GameStageStyle {
+  return {
+    "--game-accent": game.accent,
+    ...(game.stage.kind === "fixed-aspect"
+      ? { "--game-stage-aspect": `${game.stage.width} / ${game.stage.height}` }
+      : {}),
+  };
+}
+
+function GamePoster({ game }: { readonly game: GameCatalogEntry }) {
+  const fallback = game.cover.candidates.at(-1);
+  if (!fallback) throw new Error(`Catalog game ${game.id} is missing a cover candidate`);
+  const srcSet = game.cover.candidates
+    .map((candidate) => `${candidate.url} ${candidate.width}w`)
+    .join(", ");
   return (
-    <div className={`poster poster--${kind}`} aria-hidden="true">
-      <span className="poster__grid" />
-      <span className="poster__shape poster__shape--one" />
-      <span className="poster__shape poster__shape--two" />
-      <span className="poster__shape poster__shape--three" />
-      <span className="poster__mark">
-        GY/{kind === "drum" ? "02" : kind === "pulse" ? "01" : "03"}
-      </span>
-    </div>
+    <picture className="poster" aria-hidden="true">
+      <img
+        src={fallback.url}
+        srcSet={srcSet}
+        sizes="(max-width: 520px) 100vw, 42vw"
+        width={fallback.width}
+        height={fallback.height}
+        alt=""
+      />
+    </picture>
   );
 }
 
@@ -199,10 +219,12 @@ function SettingsBar({ settings, error, locked, onChange }: SettingsBarProps) {
 
 function CatalogRow({
   game,
+  locale,
   selected,
   onSelect,
 }: {
   readonly game: GameCatalogEntry;
+  readonly locale: SupportedLocale;
   readonly selected: boolean;
   readonly onSelect: (gameId: GameId) => void;
 }) {
@@ -219,20 +241,16 @@ function CatalogRow({
           onSelect(game.id);
         }}
       >
-        <span className="catalog-row__number">0{game.migrationOrder}</span>
-        <span className="catalog-row__title">{game.displayTitle}</span>
-        <span className="catalog-row__type">{t(game.typeKey)}</span>
+        <span className="catalog-row__number">{String(game.order).padStart(2, "0")}</span>
+        <span className="catalog-row__title">{game.title}</span>
+        <span className="catalog-row__type">{game.taglines[locale]}</span>
         <span className="catalog-row__arrow" aria-hidden="true">
           ↗
         </span>
       </a>
       <div className="catalog-row__meta">
-        <span>{t("catalog.order", { order: game.migrationOrder })}</span>
-        <span>{t("catalog.languages")}</span>
-        <span className="status-label">
-          <i aria-hidden="true" />
-          {t(game.status === "playable" ? "catalog.playable" : "catalog.queued")}
-        </span>
+        <span>{t("catalog.order", { order: game.order })}</span>
+        <span>{t("catalog.languages", { languages: game.languages.join(" · ") })}</span>
       </div>
     </li>
   );
@@ -290,7 +308,7 @@ function Stage({
   }
 
   const game = route.game;
-  if (game.runtime === "local" && settings !== null) {
+  if (settings !== null) {
     return (
       <GameRuntime
         key={game.id}
@@ -307,36 +325,21 @@ function Stage({
   }
   return (
     <section
-      className={`stage stage--game stage--${game.accent}`}
-      aria-labelledby="selected-game-title"
+      className="stage stage--game stage--settings-error"
+      style={gameStageStyle(game)}
+      data-stage-strategy={game.stage.kind}
+      aria-labelledby="settings-stage-error-title"
+      role="alert"
     >
       <div className="stage__poster-wrap">
-        <GamePoster kind={game.poster} />
+        <GamePoster game={game} />
       </div>
       <div className="stage__body">
-        <span className="micro-label">{t("stage.current")}</span>
-        <div className="kinetic-title" key={game.id}>
-          <h2 id="selected-game-title">{game.displayTitle}</h2>
+        <span className="micro-label">SETTINGS / CONTRACT / STOP</span>
+        <div className="kinetic-title">
+          <h2 id="settings-stage-error-title">{game.title}</h2>
         </div>
-        <p className="stage__type">{t(game.typeKey)}</p>
-        <p className="stage__description">{t(game.descriptionKey)}</p>
-        <div className="queue-notice">
-          <span className="queue-notice__status">
-            <i aria-hidden="true" /> {t("stage.notImported")}
-          </span>
-          <p>{t("stage.notice")}</p>
-        </div>
-        <div className="stage__links">
-          <a href={game.repositoryUrl} target="_blank" rel="noreferrer">
-            {t("catalog.repository")}
-          </a>
-          {game.liveUrl ? (
-            <a href={game.liveUrl} target="_blank" rel="noreferrer">
-              {t("catalog.live")}
-            </a>
-          ) : null}
-        </div>
-        <small>{t("stage.linksNote")}</small>
+        <p className="stage__description">{t("stage.settingsRequired")}</p>
       </div>
     </section>
   );
@@ -644,11 +647,7 @@ export function App() {
     const handlePopState = () => {
       const nextRoute = parseHubRoute(window.location.search);
       const currentRoute = routeRef.current;
-      if (
-        currentRoute.kind === "game" &&
-        currentRoute.game.runtime === "local" &&
-        runtimeRef.current
-      ) {
+      if (currentRoute.kind === "game" && runtimeRef.current) {
         void runtimeRef.current
           .dispose()
           .then(() => {
@@ -672,7 +671,7 @@ export function App() {
 
   const selectGame = async (gameId: GameId) => {
     if (route.kind === "game" && route.game.id === gameId) return;
-    if (route.kind === "game" && route.game.runtime === "local") {
+    if (route.kind === "game") {
       await runtimeRef.current?.dispose();
       setRuntimeDiagnostic(null);
     }
@@ -732,8 +731,8 @@ export function App() {
 
   const closeRuntime = useCallback(async () => {
     const currentRoute = routeRef.current;
-    if (currentRoute.kind !== "game" || currentRoute.game.runtime !== "local") {
-      throw new Error("Cannot close a runtime without an active local game route");
+    if (currentRoute.kind !== "game") {
+      throw new Error("Cannot close a runtime without an active game route");
     }
     const gameId = currentRoute.game.id;
     await runtimeRef.current?.dispose();
@@ -815,7 +814,7 @@ export function App() {
             href="./"
             aria-label="GameYard home"
             onClick={(event) => {
-              if (route.kind !== "game" || route.game.runtime !== "local") return;
+              if (route.kind !== "game") return;
               event.preventDefault();
               void closeRuntime().catch(() => undefined);
             }}
@@ -885,13 +884,14 @@ export function App() {
           <section className="catalog" aria-labelledby="catalog-title">
             <div className="section-rule">
               <h2 id="catalog-title">{t("catalog.heading")}</h2>
-              <span>03 WORKS</span>
+              <span>{t("catalog.count", { count: GAME_CATALOG.length })}</span>
             </div>
             <ol>
               {GAME_CATALOG.map((game) => (
                 <CatalogRow
                   key={game.id}
                   game={game}
+                  locale={locale}
                   selected={game.id === selectedId}
                   onSelect={(gameId) => {
                     void selectGame(gameId).catch(() => undefined);

@@ -3,7 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseAssemblyConfig } from "./assembly-config.mjs";
+import { loadProductionRegistry } from "./production-registry.mjs";
 
 export const REQUIRED_PRODUCTION_INPUTS = Object.freeze([
   { path: "package.json", kind: "file" },
@@ -15,11 +15,12 @@ export const REQUIRED_PRODUCTION_INPUTS = Object.freeze([
   { path: "deployment", kind: "directory" },
   { path: "site.assembly.json", kind: "file" },
   { path: "provenance", kind: "directory" },
-  { path: "tooling/assembly-config.mjs", kind: "file" },
   { path: "tooling/artifact-build-id.mjs", kind: "file" },
   { path: "tooling/artifact-inspector.mjs", kind: "file" },
   { path: "tooling/assemble-site.mjs", kind: "file" },
   { path: "tooling/provenance.mjs", kind: "file" },
+  { path: "tooling/production-registry.mjs", kind: "file" },
+  { path: "tooling/production-registry-vite.mjs", kind: "file" },
   { path: "tooling/site-assembler.mjs", kind: "file" },
   { path: "tooling/verify-published-artifact.mjs", kind: "file" },
   { path: "tooling/verify-production.mjs", kind: "file" },
@@ -99,14 +100,8 @@ export async function listArtifactBuildInputs(projectRoot = defaultProjectRoot) 
     files.push(...directoryFiles);
   }
 
-  let assemblyConfigValue;
-  try {
-    assemblyConfigValue = JSON.parse(await readFile(resolve(root, "site.assembly.json"), "utf8"));
-  } catch (error) {
-    throw new Error(`site.assembly.json is not valid JSON: ${error.message}`);
-  }
-  const assemblyConfig = parseAssemblyConfig(assemblyConfigValue);
-  for (const game of assemblyConfig.games) {
+  const registry = await loadProductionRegistry(root);
+  for (const game of registry.games) {
     for (const productionInput of game.productionInputs) {
       const inputPath = resolve(root, productionInput);
       let inputStat;

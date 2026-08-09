@@ -2,7 +2,6 @@ import { chromium } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const gameIds = ["pulse-link-overdrive", "tumbledrum", "crown-breaker"];
 const runtimeStartupTimeoutMs = 45_000;
 
 function parseArguments(argv) {
@@ -23,7 +22,61 @@ async function assertReleaseIdentity(request, baseUrl, buildId) {
   }
 }
 
-async function assertGame(browser, baseUrl, gameId) {
+function parseCatalogEntry(value, gameId, label) {
+  const prefix = `./${gameId}/`;
+  const manifestEntry = typeof value === "string" ? value.slice(prefix.length) : "";
+  if (
+    typeof value !== "string" ||
+    !value.startsWith(prefix) ||
+    manifestEntry.length === 0 ||
+    manifestEntry.includes("\\") ||
+    manifestEntry.includes(":") ||
+    manifestEntry.includes("%") ||
+    manifestEntry.includes("?") ||
+    manifestEntry.includes("#") ||
+    manifestEntry.endsWith("/") ||
+    manifestEntry.split("/").some((part) => part === "" || part === "." || part === "..")
+  ) {
+    throw new Error(`${label} must be a normalized ./${gameId}/ entry reference`);
+  }
+  return value;
+}
+
+async function loadPublishedGames(request, baseUrl, buildId) {
+  const response = await request.get(new URL("games/catalog.json", baseUrl).href);
+  if (!response.ok()) {
+    throw new Error(`${baseUrl.href}games/catalog.json returned HTTP ${response.status()}`);
+  }
+  const catalog = await response.json();
+  if (
+    catalog?.schemaVersion !== 1 ||
+    catalog.buildId !== buildId ||
+    !Array.isArray(catalog.games) ||
+    catalog.games.length === 0
+  ) {
+    throw new Error(`${baseUrl.href}games/catalog.json is not the deployed runtime catalog`);
+  }
+  const games = catalog.games.map((game, index) => {
+    if (typeof game?.id !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(game.id)) {
+      throw new Error(`${baseUrl.href}games/catalog.json games[${index}] has an invalid id`);
+    }
+    return {
+      id: game.id,
+      entry: parseCatalogEntry(
+        game.entry,
+        game.id,
+        `${baseUrl.href}games/catalog.json games[${index}].entry`,
+      ),
+    };
+  });
+  if (new Set(games.map((game) => game.id)).size !== games.length) {
+    throw new Error(`${baseUrl.href}games/catalog.json contains duplicate game ids`);
+  }
+  return games;
+}
+
+async function assertGame(browser, baseUrl, game) {
+  const { id: gameId, entry } = game;
   const context = await browser.newContext();
   try {
     const page = await context.newPage();
@@ -71,7 +124,7 @@ async function assertGame(browser, baseUrl, gameId) {
     const frameSource = await frame.getAttribute("src");
     if (frameSource === null) throw new Error(`${gameId} iframe is missing its source URL`);
     const frameUrl = new URL(frameSource, page.url());
-    const expectedPath = `${baseUrl.pathname}games/${gameId}/index.html`;
+    const expectedPath = new URL(`games/${entry.slice(2)}`, baseUrl).pathname;
     if (frameUrl.pathname !== expectedPath) {
       throw new Error(`${gameId} loaded ${frameUrl.pathname}; expected ${expectedPath}`);
     }
@@ -97,16 +150,21 @@ async function main() {
   const bases = [new URL("/", origin), new URL("/GameYard/", origin)];
   const browser = await chromium.launch();
   try {
+    const publishedCatalogs = [];
     const requestContext = await browser.newContext();
     try {
       for (const baseUrl of bases) {
         await assertReleaseIdentity(requestContext.request, baseUrl, evidence.buildId);
+        publishedCatalogs.push({
+          baseUrl,
+          games: await loadPublishedGames(requestContext.request, baseUrl, evidence.buildId),
+        });
       }
     } finally {
       await requestContext.close();
     }
-    for (const baseUrl of bases) {
-      for (const gameId of gameIds) await assertGame(browser, baseUrl, gameId);
+    for (const { baseUrl, games } of publishedCatalogs) {
+      for (const game of games) await assertGame(browser, baseUrl, game);
     }
   } finally {
     await browser.close();

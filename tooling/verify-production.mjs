@@ -3,7 +3,7 @@ import { relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { GameCatalogSchema, GameManifestSchema } from "../packages/game-contract/src/index.ts";
-import { parseAssemblyConfig } from "./assembly-config.mjs";
+import { loadProductionRegistry } from "./production-registry.mjs";
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import {
   inspectArtifactFiles,
@@ -242,9 +242,7 @@ export async function verifyProductionArtifact(
     );
   }
   const catalog = parsedCatalog.data;
-  const assemblyConfig = parseAssemblyConfig(
-    await readJson(resolve(reportRoot, "site.assembly.json"), "site.assembly.json"),
-  );
+  const assemblyConfig = await loadProductionRegistry(reportRoot);
   if (catalog.games.length !== assemblyConfig.games.length) {
     throw new Error("games/catalog.json games do not match site.assembly.json.");
   }

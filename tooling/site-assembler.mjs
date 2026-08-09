@@ -4,10 +4,9 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { GameCatalogSchema, GameManifestSchema } from "../packages/game-contract/src/index.ts";
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import { inspectArtifactFiles, listArtifactFiles } from "./artifact-inspector.mjs";
-import { parseAssemblyConfig, parseRepositoryRelativePath } from "./assembly-config.mjs";
+import { loadProductionRegistry, parseRepositoryRelativePath } from "./production-registry.mjs";
 import { loadProvenanceIndex, requireGameDistributionRights } from "./provenance.mjs";
 
-const assemblyConfigFilename = "site.assembly.json";
 const manifestFilename = "game.manifest.json";
 const hubManifestFilename = "hub.manifest.json";
 const provenanceIndexFilename = "provenance/upstreams.json";
@@ -123,9 +122,7 @@ async function inspectStage(files, stage, label, options) {
 
 export async function createAssemblyPlan(projectRoot) {
   const root = resolve(projectRoot);
-  const config = parseAssemblyConfig(
-    await readJson(resolve(root, assemblyConfigFilename), assemblyConfigFilename),
-  );
+  const config = await loadProductionRegistry(root);
   const provenance = await loadProvenanceIndex(root);
   const distributions = new Map();
   for (const repository of provenance.repositories) {
@@ -151,6 +148,11 @@ export async function createAssemblyPlan(projectRoot) {
       );
     }
     const manifest = parsedManifest.data;
+    if (manifest.id !== gameConfig.id) {
+      throw new Error(
+        `${gameConfig.stage}/${manifestFilename} id must match registry game ${gameConfig.id}.`,
+      );
+    }
     const foldedId = manifest.id.toLowerCase();
     if (gameIds.has(foldedId)) throw new Error(`Game ID collision: ${manifest.id}`);
     gameIds.add(foldedId);
@@ -163,7 +165,7 @@ export async function createAssemblyPlan(projectRoot) {
     gameStages.push({ gameConfig, stage, manifest, distribution: distributions.get(manifest.id) });
   }
   const buildId = await createArtifactBuildId(root);
-  const hubStage = resolve(root, config.hubStage);
+  const hubStage = config.hub.stagePath;
   await requireDirectory(hubStage, "Hub stage");
   const hubFiles = await listArtifactFiles(hubStage);
   if (hubFiles.length === 0) throw new Error("Hub stage is empty.");

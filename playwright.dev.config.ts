@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
-const devPort = 5173;
+import { loadProductionRegistry } from "./tooling/production-registry.mjs";
+
+const devPort = (await loadProductionRegistry(import.meta.dirname)).hub.devPort;
 const devUrl = `http://127.0.0.1:${devPort}`;
 
 export default defineConfig({

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">TUMBLEDRUM abstract festival drums</title>
+  <rect width="1600" height="900" fill="#f6dfb9"/><circle cx="800" cy="450" r="310" fill="#e9472d"/><circle cx="800" cy="450" r="205" fill="#f6dfb9" stroke="#531e18" stroke-width="28"/><circle cx="800" cy="450" r="88" fill="#531e18"/>
+  <g stroke="#531e18" stroke-width="30" stroke-linecap="round"><path d="M220 180l310 270-310 270" fill="none"/><path d="M1380 180l-310 270 310 270" fill="none"/></g>
+</svg>

@@ -267,6 +267,75 @@ export const GameManifestSourceSchema = z
   .superRefine(requireUniqueCapabilities);
 export type GameManifestSource = z.infer<typeof GameManifestSourceSchema>;
 
+const trimmedTextSchema = z
+  .string()
+  .min(1)
+  .refine((value) => !/[\r\n]/u.test(value), "Expected single-line text")
+  .refine((value) => value.trim() === value, "Expected trimmed non-empty text");
+
+const coverDimensionsShape = {
+  width: z.number().int().positive().refine(Number.isSafeInteger, "Width must be a safe integer"),
+  height: z.number().int().positive().refine(Number.isSafeInteger, "Height must be a safe integer"),
+};
+
+export const GamePresentationStageSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("adaptive") }),
+  z.strictObject({ kind: z.literal("fixed-aspect"), ...coverDimensionsShape }),
+]);
+export type GamePresentationStage = z.infer<typeof GamePresentationStageSchema>;
+
+const gamePresentationShape = {
+  schemaVersion: z.literal(1),
+  id: GameIdSchema,
+  title: trimmedTextSchema,
+  taglines: z.strictObject({
+    en: trimmedTextSchema,
+    ja: trimmedTextSchema,
+    "zh-Hans": trimmedTextSchema,
+  }),
+  accent: z.string().regex(/^#[0-9a-f]{6}$/),
+  stage: GamePresentationStageSchema,
+};
+
+const uniqueCoverCandidates = <Candidate extends { path?: string; url?: string }>(
+  cover: { candidates: readonly Candidate[] },
+  context: z.core.$RefinementCtx,
+): void => {
+  const identities = cover.candidates.map((candidate) => candidate.path ?? candidate.url);
+  if (new Set(identities).size !== identities.length) {
+    context.addIssue({
+      code: "custom",
+      message: "Cover candidates must be unique",
+      path: ["candidates"],
+      input: cover,
+    });
+  }
+};
+
+export const GamePresentationSourceSchema = z.strictObject({
+  ...gamePresentationShape,
+  cover: z
+    .strictObject({
+      candidates: z
+        .array(z.strictObject({ path: PosixRelativeFilePathSchema, ...coverDimensionsShape }))
+        .min(2),
+    })
+    .superRefine(uniqueCoverCandidates),
+});
+export type GamePresentationSource = z.infer<typeof GamePresentationSourceSchema>;
+
+export const GamePresentationSchema = z.strictObject({
+  ...gamePresentationShape,
+  cover: z
+    .strictObject({
+      candidates: z
+        .array(z.strictObject({ url: trimmedTextSchema, ...coverDimensionsShape }))
+        .min(2),
+    })
+    .superRefine(uniqueCoverCandidates),
+});
+export type GamePresentation = z.infer<typeof GamePresentationSchema>;
+
 export const GameManifestSchema = z
   .strictObject({
     ...gameManifestSourceShape,

@@ -8,6 +8,7 @@ import {
   GameManifestSchema,
   PROTOCOL_VERSION,
 } from "../packages/game-contract/src/index.ts";
+import { loadProductionRegistry } from "./production-registry.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const sourceShaPattern = /^[0-9a-f]{40}$/u;
@@ -54,6 +55,9 @@ export async function createReleaseMetadata(root, sourceSha) {
     throw new Error("Release source SHA must be exactly 40 lowercase hexadecimal characters");
   }
   const dist = resolve(root, "dist");
+  const registry = await loadProductionRegistry(root);
+  const registryPath = "site.assembly.json";
+  const registrySource = await readText(resolve(root, registryPath), registryPath);
   const buildInfo = assertBuildInfo(
     (await readJson(resolve(dist, "build-info.json"), "dist/build-info.json")).value,
   );
@@ -65,9 +69,17 @@ export async function createReleaseMetadata(root, sourceSha) {
   if (catalog.buildId !== buildInfo.buildId) {
     throw new Error("Release catalog and build-info.json use different build IDs");
   }
+  if (
+    catalog.games.length !== registry.games.length ||
+    catalog.games.some((game, index) => game.id !== registry.games[index]?.id)
+  ) {
+    throw new Error("Release catalog IDs and order must match site.assembly.json");
+  }
 
   const manifests = [];
-  for (const game of catalog.games) {
+  for (const [index, game] of catalog.games.entries()) {
+    const registeredGame = registry.games[index];
+    if (!registeredGame) throw new Error(`Registry is missing catalog game ${game.id}`);
     const manifestPath = `games/${game.manifest.slice(2)}`;
     const manifestJson = await readJson(resolve(dist, manifestPath), `dist/${manifestPath}`);
     const manifestResult = GameManifestSchema.safeParse(manifestJson.value);
@@ -77,6 +89,10 @@ export async function createReleaseMetadata(root, sourceSha) {
     if (manifest.id !== game.id || manifest.buildId !== buildInfo.buildId) {
       throw new Error(`dist/${manifestPath} does not belong to the release artifact`);
     }
+    const presentationSource = await readText(
+      registeredGame.presentationSourcePath,
+      registeredGame.presentationSource,
+    );
     manifests.push({
       gameId: manifest.id,
       version: manifest.version,
@@ -85,6 +101,10 @@ export async function createReleaseMetadata(root, sourceSha) {
       repository: manifest.provenance.repository,
       revision: manifest.provenance.revision,
       license: manifest.provenance.license,
+      presentation: {
+        path: registeredGame.presentationSource,
+        sha256: sha256(presentationSource),
+      },
     });
   }
 
@@ -109,6 +129,10 @@ export async function createReleaseMetadata(root, sourceSha) {
     catalog: {
       path: "games/catalog.json",
       sha256: sha256(catalogJson.content),
+    },
+    registry: {
+      path: registryPath,
+      sha256: sha256(registrySource),
     },
     manifests,
     provenance: {

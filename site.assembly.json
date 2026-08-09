@@ -1,12 +1,23 @@
 {
-  "schemaVersion": 1,
-  "hubStage": ".gameyard/stage/hub",
+  "schemaVersion": 2,
+  "hub": {
+    "stage": ".gameyard/stage/hub",
+    "devPort": 5173
+  },
   "games": [
     {
+      "id": "pulse-link-overdrive",
+      "packageName": "@gameyard/pulse-link-overdrive",
       "stage": ".gameyard/stage/games/pulse-link-overdrive",
+      "manifestSource": "games/pulse-link-overdrive/game.manifest.source.json",
+      "presentationSource": "games/pulse-link-overdrive/game.presentation.source.json",
+      "devPort": 5174,
       "productionInputs": [
+        "games/pulse-link-overdrive/assets/catalog-cover.svg",
+        "games/pulse-link-overdrive/assets/catalog-cover-small.svg",
         "games/pulse-link-overdrive/assets/icon.svg",
         "games/pulse-link-overdrive/game.manifest.source.json",
+        "games/pulse-link-overdrive/game.presentation.source.json",
         "games/pulse-link-overdrive/index.html",
         "games/pulse-link-overdrive/package.json",
         "games/pulse-link-overdrive/src",
@@ -16,9 +27,17 @@
       ]
     },
     {
+      "id": "tumbledrum",
+      "packageName": "@gameyard/tumbledrum",
       "stage": ".gameyard/stage/games/tumbledrum",
+      "manifestSource": "games/tumbledrum/game.manifest.source.json",
+      "presentationSource": "games/tumbledrum/game.presentation.source.json",
+      "devPort": 5175,
       "productionInputs": [
+        "games/tumbledrum/assets/catalog-cover.svg",
+        "games/tumbledrum/assets/catalog-cover-small.svg",
         "games/tumbledrum/game.manifest.source.json",
+        "games/tumbledrum/game.presentation.source.json",
         "games/tumbledrum/index.html",
         "games/tumbledrum/package.json",
         "games/tumbledrum/src",
@@ -27,11 +46,19 @@
       ]
     },
     {
+      "id": "crown-breaker",
+      "packageName": "@gameyard/crown-breaker",
       "stage": ".gameyard/stage/games/crown-breaker",
+      "manifestSource": "games/crown-breaker/game.manifest.source.json",
+      "presentationSource": "games/crown-breaker/game.presentation.source.json",
+      "devPort": 5176,
       "productionInputs": [
         "games/crown-breaker/assets/acts",
+        "games/crown-breaker/catalog/catalog-cover.svg",
+        "games/crown-breaker/catalog/catalog-cover-small.svg",
         "games/crown-breaker/game.js",
         "games/crown-breaker/game.manifest.source.json",
+        "games/crown-breaker/game.presentation.source.json",
         "games/crown-breaker/icon-192.png",
         "games/crown-breaker/i18n.js",
         "games/crown-breaker/index.html",

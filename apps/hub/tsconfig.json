@@ -19,5 +19,10 @@
     "noUncheckedIndexedAccess": true,
     "types": ["vite-plus/client"]
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts"],
+  "references": [
+    { "path": "../../packages/game-contract" },
+    { "path": "../../packages/host-bridge" },
+    { "path": "../../packages/testkit" }
+  ]
 }

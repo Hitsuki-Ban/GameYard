@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "browser:install": "vp exec uv run playwright install chromium",
-    "dev": "vp dev --host 127.0.0.1 --port 5175 --strictPort",
+    "dev": "vp dev",
     "build": "vp build",
     "check": "vp check",
     "test": "vp exec uv run python tests/gameyard_baseline.py"

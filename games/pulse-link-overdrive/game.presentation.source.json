@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "pulse-link-overdrive",
+  "title": "PULSE LINK // OVERDRIVE",
+  "taglines": {
+    "en": "Link the pulse. Hold the line. Push into overdrive.",
+    "ja": "パルスを繋ぎ、ラインを守り、オーバードライブへ。",
+    "zh-Hans": "连接脉冲，守住线路，冲入超限状态。"
+  },
+  "accent": "#1646c8",
+  "cover": {
+    "candidates": [
+      { "path": "assets/catalog-cover-small.svg", "width": 800, "height": 450 },
+      { "path": "assets/catalog-cover.svg", "width": 1600, "height": 900 }
+    ]
+  },
+  "stage": { "kind": "adaptive" }
+}

@@ -8,7 +8,7 @@ The Hub exclusively owns locale, master/music/sfx levels, reduced motion, screen
 
 ## Commands
 
-- `vp run crown-breaker#dev` serves `/games/crown-breaker/` on strict port 5176 and exposes its development manifest at `/games/crown-breaker/game.manifest.json`.
+- `vp run crown-breaker#dev` serves `/games/crown-breaker/` on the strict port declared by the production registry and exposes its development manifest at `/games/crown-breaker/game.manifest.json`.
 - `vp run crown-breaker#build` emits the relative production graph and strict manifest to `.gameyard/stage/games/crown-breaker`, then scans it for testkit, mutation, PWA, Service Worker, and legacy-storage residue.
 - `vp run crown-breaker#check` builds the explicit testkit Host and runs the upstream asset, localization, static, stage, enemy, and trait gates.
 - `vp run crown-breaker#baseline` adds the production build and fixed 100-run simulation fixture gate.
