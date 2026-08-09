@@ -52,6 +52,7 @@ interface GameRuntimeProps {
   readonly settings: HubSettings;
   readonly systemLanguages: readonly string[];
   readonly onClose: () => Promise<void>;
+  readonly onOpenTools: () => void;
   readonly onSettingsChange: (patch: HubSettingsPatch) => void;
   readonly onDiagnosticSnapshot: (snapshot: RuntimeDiagnosticState | null) => void;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
@@ -75,7 +76,16 @@ function createInstanceId(gameId: GameCatalogEntry["id"], generation: number): s
 }
 
 export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(function GameRuntime(
-  { game, settings, systemLanguages, onClose, onSettingsChange, onDiagnosticSnapshot, onEvent },
+  {
+    game,
+    settings,
+    systemLanguages,
+    onClose,
+    onOpenTools,
+    onSettingsChange,
+    onDiagnosticSnapshot,
+    onEvent,
+  },
   ref,
 ) {
   const { t } = useTranslation();
@@ -330,7 +340,10 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
   const stageStyle = {
     "--game-accent": game.accent,
     ...(game.stage.kind === "fixed-aspect"
-      ? { "--game-stage-aspect": `${game.stage.width} / ${game.stage.height}` }
+      ? {
+          "--game-stage-ratio": game.stage.width / game.stage.height,
+          "--game-stage-inverse-ratio": game.stage.height / game.stage.width,
+        }
       : {}),
   } as CSSProperties;
 
@@ -343,7 +356,15 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
       aria-labelledby="selected-game-title"
     >
       <div className="runtime-toolbar">
-        <div>
+        <button
+          className="runtime-toolbar__back"
+          type="button"
+          disabled={state.phase === "disposing"}
+          onClick={() => run(onClose)}
+        >
+          <span aria-hidden="true">←</span> {t("runtime.back")}
+        </button>
+        <div className="runtime-toolbar__identity">
           <strong id="selected-game-title">{game.title}</strong>
           <span className={`runtime-state runtime-state--${state.phase}`}>
             {t(`runtime.state.${state.phase}`)}
@@ -367,9 +388,6 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
               {t("runtime.resume")}
             </button>
           )}
-          <button type="button" disabled={state.phase === "disposing"} onClick={() => run(reload)}>
-            {t("runtime.reload")}
-          </button>
           <button
             type="button"
             disabled={!canControl}
@@ -377,8 +395,8 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
           >
             {t("runtime.fullscreen")}
           </button>
-          <button type="button" disabled={state.phase === "disposing"} onClick={() => run(onClose)}>
-            {t("runtime.close")}
+          <button type="button" onClick={onOpenTools}>
+            {t("runtime.more")}
           </button>
         </div>
       </div>

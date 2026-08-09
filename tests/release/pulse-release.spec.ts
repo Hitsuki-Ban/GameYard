@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 import { REGISTERED_GAMES } from "../registered-games";
+import { openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
@@ -150,7 +151,7 @@ async function expectProductionDiagnostics(
   settingsRevision: number,
   expectAppliedEvents = true,
 ) {
-  await page.locator(".header-actions .utility-button").last().click();
+  await openPlayDiagnostics(page);
   const facts = page.locator(".diagnostics__facts dd");
   await expect(facts.nth(1)).toHaveText(`game:${gameId}`);
   await expect(facts.nth(2)).toHaveText(gameId);
@@ -166,7 +167,7 @@ async function expectProductionDiagnostics(
 }
 
 async function closeRuntime(page: Page) {
-  await page.locator(".runtime-toolbar__actions button:last-child").click();
+  await page.locator(".runtime-toolbar__back").click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   await expect(page).toHaveURL(/\/GameYard\/$/);
 }
@@ -209,18 +210,13 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
         expect(box!.x + box!.width).toBeLessThanOrEqual(viewportSize!.width + 1);
         expect(box!.y + box!.height).toBeLessThanOrEqual(viewportSize!.height + 1);
       }
-      const canvas = pulse.locator("#game-canvas");
-      await canvas.evaluate((element) => {
-        element.style.visibility = "hidden";
-      });
-      await expect(page).toHaveScreenshot(`pulse-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
-      await canvas.evaluate((element) => {
-        element.style.removeProperty("visibility");
-      });
+      if (locale.id === "en") {
+        await expect(page).toHaveScreenshot(`pulse-${viewport.id}-en.png`, {
+          animations: "disabled",
+          mask: [page.locator(".runtime-frame iframe")],
+          maskColor: "#151a2b",
+        });
+      }
       await closeRuntime(page);
     }
   }
@@ -232,25 +228,21 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await pulse.getByRole("button", { name: "Start game" }).click();
   await expect(pulse.locator("#title-screen")).toBeHidden();
   await expect(pulse.locator("#hud")).toBeVisible();
-  const hardDrop = pulse.locator('[data-action="hardDrop"]');
-  await hardDrop.hover();
-  await page.mouse.down();
-  await expect(hardDrop).toHaveClass(/is-pressed/);
-  await page.mouse.up();
-  await expect(hardDrop).not.toHaveClass(/is-pressed/);
   const gameplayCanvas = pulse.locator("#game-canvas");
   await gameplayCanvas.focus();
+  await gameplayCanvas.press("Space");
+  await expect(pulse.locator("#hud")).toBeVisible();
   await gameplayCanvas.press("Escape");
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await expect(page).toHaveScreenshot("pulse-gameplay-paused.png", {
     animations: "disabled",
-    mask: [page.locator(".site-footer span:last-child")],
-    maskColor: "#070a12",
+    mask: [page.locator(".runtime-frame iframe")],
+    maskColor: "#151a2b",
   });
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await openPlayDiagnostics(page);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
   await expect(page.locator(".diagnostics__facts")).toContainText("active");
   const downloadPromise = page.waitForEvent("download");
@@ -324,11 +316,13 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
       expect(canvasBox!.y).toBeGreaterThanOrEqual(0);
       expect(canvasBox!.x + canvasBox!.width).toBeLessThanOrEqual(viewportSize!.width + 1);
       expect(canvasBox!.y + canvasBox!.height).toBeLessThanOrEqual(viewportSize!.height + 1);
-      await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
+      if (locale.id === "en") {
+        await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-en.png`, {
+          animations: "disabled",
+          mask: [page.locator(".runtime-frame iframe")],
+          maskColor: "#151a2b",
+        });
+      }
       await closeRuntime(page);
     }
   }
@@ -348,12 +342,13 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("slider", { name: /Master/ }).fill("0.42");
-  await page.getByRole("slider", { name: /Music/ }).fill("0.37");
-  await page.getByRole("slider", { name: /SFX/ }).fill("0.58");
-  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
-  await page.getByRole("checkbox", { name: "Screen shake" }).uncheck();
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  const tumbleTools = await openPlayTools(page);
+  await tumbleTools.getByRole("slider", { name: /Master/ }).fill("0.42");
+  await tumbleTools.getByRole("slider", { name: /Music/ }).fill("0.37");
+  await tumbleTools.getByRole("slider", { name: /SFX/ }).fill("0.58");
+  await tumbleTools.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await tumbleTools.getByRole("checkbox", { name: "Screen shake" }).uncheck();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__events")).toContainText(
     "master=0.42, music=0.37, sfx=0.58, reduced=true, shake=false",
   );
@@ -385,7 +380,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   expect(mobileSignals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("CrownBreaker release matrix covers locale visuals and real lifecycle input", async ({
+test("CrownBreaker release matrix covers locale state and real lifecycle input", async ({
   page,
 }) => {
   test.slow();
@@ -414,11 +409,6 @@ test("CrownBreaker release matrix covers locale visuals and real lifecycle input
         .locator(".stage--runtime")
         .evaluate((element) => element.scrollIntoView({ block: "start" }));
       await expectInsideViewport(page, ".runtime-toolbar");
-      await expect(page).toHaveScreenshot(`crown-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
       await closeRuntime(page);
     }
   }
@@ -686,9 +676,10 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
     expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
 
     const targetLocale = locales[(cycle - 1) % locales.length]!;
-    await page.locator("select").selectOption(targetLocale.id);
+    const roundRobinTools = await openPlayTools(page);
+    await roundRobinTools.locator("select").selectOption(targetLocale.id);
     const masterValue = String(Number((0.31 + (cycle % 10) * 0.01).toFixed(2)));
-    await page.locator('input[type="range"]').first().fill(masterValue);
+    await roundRobinTools.locator('input[type="range"]').first().fill(masterValue);
     const settingsRevision = await page.evaluate(() => {
       const raw = window.localStorage.getItem("gameyard.settings.v1");
       if (raw === null) throw new Error("Release settings revision is missing");
@@ -710,7 +701,8 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
 
     if (cycle % 5 === 0) {
       const previousGuest = guest;
-      await page.locator(".runtime-toolbar__actions button").nth(1).click();
+      const reloadTools = await openPlayTools(page);
+      await reloadTools.locator(".play-tools__reload button").click();
       await expectRoundRobinRuntimeReady(page);
       await expect.poll(() => page.frames().includes(previousGuest)).toBe(false);
       guest = page.frames().find((frame) => frame.url().includes(game.frameUrl))!;

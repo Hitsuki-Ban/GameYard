@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { REGISTERED_GAMES } from "../registered-games";
+import { closePlayTools, openPlayDiagnostics, openPlayTools } from "../play-mode";
 
 const SETTINGS_KEY = "gameyard.settings.v1";
 
@@ -225,26 +226,24 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   const pulse = page.frameLocator(".runtime-frame iframe");
   await expect(frameElement).toHaveCount(1);
   await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /PULSE LINK \/\/ OVERDRIVE/ })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
 
   const firstGuest = page
     .frames()
     .find((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html"));
   expect(firstGuest).toBeDefined();
 
-  await page.locator("select").selectOption("ja");
+  const pulseTools = await openPlayTools(page);
+  const pulseSettings = pulseTools.locator(".settings-bar");
+  await pulseSettings.locator("select").selectOption("ja");
   await expect(pulse.getByRole("button", { name: "ゲームを始める" })).toBeVisible();
-  await page.locator("select").selectOption("zh-Hans");
+  await pulseSettings.locator("select").selectOption("zh-Hans");
   await expect(pulse.getByRole("button", { name: "开始游戏" })).toBeVisible();
-  await page.locator("select").selectOption("en");
+  await pulseSettings.locator("select").selectOption("en");
   await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
 
-  await page.getByRole("slider", { name: /Master/ }).fill("0.31");
-  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await pulseSettings.getByRole("slider", { name: /Master/ }).fill("0.31");
+  await pulseSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await openPlayDiagnostics(page);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
   await expect(page.locator(".diagnostics__facts")).toContainText("game:pulse-link-overdrive");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
@@ -256,14 +255,15 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("button", { name: "Reload" }).click();
+  const reloadTools = await openPlayTools(page);
+  await reloadTools.locator(".play-tools__reload button").click();
   await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
   await expect.poll(() => page.frames().includes(firstGuest!)).toBe(false);
   expect(
     page.frames().filter((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html")),
   ).toHaveLength(1);
 
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Back to works" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(frameElement).toHaveCount(0);
 
@@ -285,19 +285,21 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   await expect(game.locator("#game")).toBeVisible();
   await expect(game.locator("#status")).toContainText("TUMBLEDRUM title screen");
 
-  await page.locator("select").selectOption("ja");
+  const tumbleTools = await openPlayTools(page);
+  const tumbleSettings = tumbleTools.locator(".settings-bar");
+  await tumbleSettings.locator("select").selectOption("ja");
   await expect(game.locator("html")).toHaveAttribute("lang", "ja");
   await expect(game.locator("#status")).toContainText("TUMBLEDRUMのタイトル画面");
-  await page.locator("select").selectOption("zh-Hans");
+  await tumbleSettings.locator("select").selectOption("zh-Hans");
   await expect(game.locator("html")).toHaveAttribute("lang", "zh-Hans");
   await expect(game.locator("#status")).toContainText("TUMBLEDRUM 标题画面");
-  await page.locator("select").selectOption("en");
+  await tumbleSettings.locator("select").selectOption("en");
 
-  await page.getByRole("slider", { name: /Master/ }).fill("0.42");
-  await page.getByRole("slider", { name: /Music/ }).fill("0.37");
-  await page.getByRole("slider", { name: /SFX/ }).fill("0.58");
-  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await tumbleSettings.getByRole("slider", { name: /Master/ }).fill("0.42");
+  await tumbleSettings.getByRole("slider", { name: /Music/ }).fill("0.37");
+  await tumbleSettings.getByRole("slider", { name: /SFX/ }).fill("0.58");
+  await tumbleSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__facts")).toContainText("game:tumbledrum");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
@@ -309,7 +311,7 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Back to works" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(frameElement).toHaveCount(0);
   expect(runtimeErrors).toEqual([]);
@@ -324,8 +326,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   await installCrownResourceProbe(page);
 
   await page.goto("./");
-  const languageSelect = page.locator("select");
-  await languageSelect.selectOption("en");
+  await page.locator("select").selectOption("en");
   const baselineResources = await crownResources(page);
   await page.getByRole("link", { name: /CROWN\/\/BREAKER/ }).click();
 
@@ -341,20 +342,23 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
     .find((frame) => frame.url().includes("/games/crown-breaker/index.html"));
   expect(firstGuest).toBeDefined();
 
-  await languageSelect.selectOption("ja");
+  const crownTools = await openPlayTools(page);
+  const crownSettings = crownTools.locator(".settings-bar");
+  await crownSettings.locator("select").selectOption("ja");
   await expect(crown.locator("html")).toHaveAttribute("lang", "ja");
   await expect(newRunLabel).toHaveText("ニューラン");
-  await languageSelect.selectOption("zh-Hans");
+  await crownSettings.locator("select").selectOption("zh-Hans");
   await expect(crown.locator("html")).toHaveAttribute("lang", "zh-CN");
   await expect(newRunLabel).toHaveText("新局");
-  await languageSelect.selectOption("en");
+  await crownSettings.locator("select").selectOption("en");
 
-  await page.getByRole("slider", { name: /Master/ }).fill("0.46");
-  await page.getByRole("slider", { name: /Music/ }).fill("0.35");
-  await page.getByRole("slider", { name: /SFX/ }).fill("0.57");
-  await page.getByRole("checkbox", { name: "Reduce motion" }).check();
-  await page.getByRole("checkbox", { name: "Screen shake" }).uncheck();
+  await crownSettings.getByRole("slider", { name: /Master/ }).fill("0.46");
+  await crownSettings.getByRole("slider", { name: /Music/ }).fill("0.35");
+  await crownSettings.getByRole("slider", { name: /SFX/ }).fill("0.57");
+  await crownSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
+  await crownSettings.getByRole("checkbox", { name: "Screen shake" }).uncheck();
   await expect(crown.locator("#app")).toHaveAttribute("data-motion", "reduced");
+  await closePlayTools(page);
 
   await crown.locator("#btn-new").click();
   expect(runtimeErrors).toEqual([]);
@@ -372,7 +376,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   await expect.poll(async () => (await crownResources(page)).timeouts).toBeGreaterThan(0);
   const activeHostPorts = (await crownResources(page)).hostPorts;
 
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__facts")).toContainText("game:crown-breaker");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
@@ -403,7 +407,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
     });
   await expect.poll(async () => (await crownResources(page)).timeouts).toBeGreaterThan(0);
 
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Back to works" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(frameElement).toHaveCount(0);
   await expect.poll(() => page.frames().includes(firstGuest!)).toBe(false);
@@ -425,6 +429,83 @@ test("public language setting persists across reloads", async ({ page }) => {
   const stored = await page.evaluate((key) => window.localStorage.getItem(key), SETTINGS_KEY);
   expect(JSON.parse(stored as string)).toMatchObject({ localePreference: "zh-Hans", revision: 2 });
 
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("Play Mode keeps one runtime through viewport and overlay changes for both stage strategies", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop-chromium",
+    "One viewport journey covers both strategies",
+  );
+  test.slow();
+  const runtimeErrors = collectRuntimeErrors(page);
+  const cases = [
+    { id: "pulse-link-overdrive", strategy: "adaptive" },
+    { id: "tumbledrum", strategy: "fixed-aspect" },
+  ] as const;
+
+  for (const game of cases) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("./");
+    await page.locator(".settings-bar select").selectOption("en");
+    await page.locator(`.catalog-row__select[href="?game=${game.id}"]`).click();
+    await expect(page.locator(".play-mode")).toBeVisible();
+    await expect(page.locator(".intro, .catalog, .site-footer")).toHaveCount(0);
+    await expect(page.locator(".settings-bar")).toBeHidden();
+    const stage = page.locator(`.stage--runtime[data-stage-strategy="${game.strategy}"]`);
+    const frame = page.locator(".runtime-frame iframe");
+    await expect(stage).toBeVisible();
+    await expect(page.locator(".runtime-state")).toHaveText("Active");
+    await expect(frame).toHaveCount(1);
+    await frame.evaluate((element) => {
+      (window as typeof window & { __issue42Frame?: Element }).__issue42Frame = element;
+    });
+
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 2560, height: 1440 },
+      { width: 390, height: 844 },
+      { width: 844, height: 390 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const stageBox = await stage.boundingBox();
+      expect(stageBox).not.toBeNull();
+      if (viewport.width >= 1440) {
+        expect(stageBox!.width).toBeGreaterThanOrEqual(viewport.width * 0.8);
+        expect(stageBox!.height).toBeGreaterThanOrEqual(viewport.height * 0.7);
+      }
+      expect(
+        await frame.evaluate(
+          (element) =>
+            (window as typeof window & { __issue42Frame?: Element }).__issue42Frame === element,
+        ),
+      ).toBe(true);
+    }
+
+    await page.getByRole("button", { name: "Pause" }).click();
+    await expect(page.locator(".runtime-state")).toHaveText("Paused");
+    await openPlayTools(page);
+    expect(
+      await frame.evaluate(
+        (element) =>
+          (window as typeof window & { __issue42Frame?: Element }).__issue42Frame === element,
+      ),
+    ).toBe(true);
+    await closePlayTools(page);
+    await page.getByRole("button", { name: "Resume" }).click();
+    await expect(page.locator(".runtime-state")).toHaveText("Active");
+    await page.locator(".runtime-toolbar__back").click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(frame).toHaveCount(0);
+  }
+
+  await page.goto("./?game=tumbledrum");
+  await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await page.locator(".runtime-toolbar__back").click();
+  await expect(page).toHaveURL(/\/$/);
   expect(runtimeErrors).toEqual([]);
 });
 

@@ -35,6 +35,13 @@ import {
 } from "./settings";
 
 const REDUCED_MOTION_MEDIA_QUERY = "(prefers-reduced-motion: reduce)";
+const INDEX_GAME_HISTORY_KIND = "gameyard.index-game";
+
+function isIndexGameHistoryState(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return Object.keys(record).length === 1 && record.kind === INDEX_GAME_HISTORY_KIND;
+}
 
 const LAB_COPY = {
   en: {
@@ -75,14 +82,18 @@ function currentReducedMotionPreference(): boolean {
 
 type GameStageStyle = CSSProperties & {
   readonly "--game-accent": string;
-  readonly "--game-stage-aspect"?: string;
+  readonly "--game-stage-ratio"?: number;
+  readonly "--game-stage-inverse-ratio"?: number;
 };
 
 function gameStageStyle(game: GameCatalogEntry): GameStageStyle {
   return {
     "--game-accent": game.accent,
     ...(game.stage.kind === "fixed-aspect"
-      ? { "--game-stage-aspect": `${game.stage.width} / ${game.stage.height}` }
+      ? {
+          "--game-stage-ratio": game.stage.width / game.stage.height,
+          "--game-stage-inverse-ratio": game.stage.height / game.stage.width,
+        }
       : {}),
   };
 }
@@ -217,6 +228,94 @@ function SettingsBar({ settings, error, locked, onChange }: SettingsBarProps) {
   );
 }
 
+interface PlayToolsProps extends SettingsBarProps {
+  readonly locale: SupportedLocale;
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly onReload: () => Promise<void>;
+  readonly onOpenDiagnostics: () => void;
+  readonly onOpenOffline: () => void;
+  readonly onOpenLab: () => void;
+  readonly onResetSettings: () => void;
+}
+
+function PlayTools({
+  open,
+  locale,
+  settings,
+  error,
+  locked,
+  onChange,
+  onClose,
+  onReload,
+  onOpenDiagnostics,
+  onOpenOffline,
+  onOpenLab,
+  onResetSettings,
+}: PlayToolsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className={`play-tools${open ? " is-open" : ""}`} aria-hidden={!open} inert={!open}>
+      <button
+        className="play-tools__backdrop"
+        type="button"
+        aria-label={t("runtime.toolsClose")}
+        onClick={onClose}
+      />
+      <aside className="play-tools__panel" aria-labelledby="play-tools-title">
+        <div className="play-tools__heading">
+          <div>
+            <span className="micro-label">GAMEYARD / PLAY</span>
+            <h2 id="play-tools-title">{t("runtime.toolsHeading")}</h2>
+          </div>
+          <button type="button" onClick={onClose}>
+            {t("runtime.toolsClose")} ×
+          </button>
+        </div>
+        <SettingsBar settings={settings} error={error} locked={locked} onChange={onChange} />
+        {settings === null ? (
+          <div className="play-tools__contract" role="alert">
+            <p>{t("settings.resetHint")}</p>
+            <button type="button" onClick={onResetSettings}>
+              {t("settings.reset")}
+            </button>
+          </div>
+        ) : null}
+        <div className="play-tools__utilities">
+          {import.meta.env.DEV ? (
+            <button type="button" onClick={onOpenLab}>
+              {LAB_COPY[locale].open}
+            </button>
+          ) : null}
+          {import.meta.env.PROD ? (
+            <button type="button" onClick={onOpenOffline}>
+              {t("nav.offline")}
+            </button>
+          ) : null}
+          <button type="button" onClick={onOpenDiagnostics}>
+            {t("nav.diagnostics")}
+          </button>
+        </div>
+        <div className="play-tools__reload">
+          <div>
+            <strong>{t("runtime.reload")}</strong>
+            <p>{t("runtime.reloadDetail")}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              void onReload().catch(() => undefined);
+            }}
+          >
+            {t("runtime.reload")}
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function CatalogRow({
   game,
   locale,
@@ -262,6 +361,7 @@ interface StageProps {
   readonly systemLanguages: readonly string[];
   readonly runtimeRef: React.RefObject<GameRuntimeHandle | null>;
   readonly onCloseRuntime: () => Promise<void>;
+  readonly onOpenTools: () => void;
   readonly onSettingsChange: (patch: HubSettingsPatch) => void;
   readonly onGuestDiagnosticSnapshot: (snapshot: RuntimeDiagnosticState | null) => void;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
@@ -273,6 +373,7 @@ function Stage({
   systemLanguages,
   runtimeRef,
   onCloseRuntime,
+  onOpenTools,
   onSettingsChange,
   onGuestDiagnosticSnapshot,
   onEvent,
@@ -317,6 +418,7 @@ function Stage({
         settings={settings}
         systemLanguages={systemLanguages}
         onClose={onCloseRuntime}
+        onOpenTools={onOpenTools}
         onSettingsChange={onSettingsChange}
         onDiagnosticSnapshot={onGuestDiagnosticSnapshot}
         onEvent={onEvent}
@@ -331,15 +433,32 @@ function Stage({
       aria-labelledby="settings-stage-error-title"
       role="alert"
     >
-      <div className="stage__poster-wrap">
-        <GamePoster game={game} />
-      </div>
-      <div className="stage__body">
-        <span className="micro-label">SETTINGS / CONTRACT / STOP</span>
-        <div className="kinetic-title">
-          <h2 id="settings-stage-error-title">{game.title}</h2>
+      <div className="runtime-toolbar">
+        <button
+          className="runtime-toolbar__back"
+          type="button"
+          onClick={() => void onCloseRuntime()}
+        >
+          <span aria-hidden="true">←</span> {t("runtime.back")}
+        </button>
+        <div className="runtime-toolbar__identity">
+          <strong id="settings-stage-error-title">{game.title}</strong>
+          <span className="runtime-state runtime-state--failed">{t("runtime.state.failed")}</span>
         </div>
-        <p className="stage__description">{t("stage.settingsRequired")}</p>
+        <div className="runtime-toolbar__actions">
+          <button type="button" onClick={onOpenTools}>
+            {t("runtime.more")}
+          </button>
+        </div>
+      </div>
+      <div className="stage--settings-error__content">
+        <div className="stage__poster-wrap">
+          <GamePoster game={game} />
+        </div>
+        <div className="stage__body">
+          <span className="micro-label">SETTINGS / CONTRACT / STOP</span>
+          <p className="stage__description">{t("stage.settingsRequired")}</p>
+        </div>
       </div>
     </section>
   );
@@ -583,10 +702,12 @@ export function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [pwaOpen, setPwaOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
+  const [playToolsOpen, setPlayToolsOpen] = useState(false);
   const [labSettings, setLabSettings] = useState<HubSettings | null>(null);
   const [labApplyInFlight, setLabApplyInFlight] = useState(false);
   const [runtimeDiagnostic, setRuntimeDiagnostic] = useState<RuntimeDiagnosticState | null>(null);
   const runtimeRef = useRef<GameRuntimeHandle>(null);
+  const playModeRef = useRef<HTMLElement>(null);
   const labApplyInFlightRef = useRef(false);
   const routeRef = useRef(route);
   const [events, setEvents] = useState<readonly DiagnosticEvent[]>(() => [
@@ -648,13 +769,16 @@ export function App() {
       const nextRoute = parseHubRoute(window.location.search);
       const currentRoute = routeRef.current;
       if (currentRoute.kind === "game" && runtimeRef.current) {
-        void runtimeRef.current
-          .dispose()
+        const exitFullscreen =
+          document.fullscreenElement === null ? Promise.resolve() : document.exitFullscreen();
+        void exitFullscreen
+          .then(() => runtimeRef.current?.dispose())
           .then(() => {
             routeRef.current = nextRoute;
             setRoute(nextRoute);
             setLabSettings(null);
             setRuntimeDiagnostic(null);
+            setPlayToolsOpen(false);
             recordEvent("route.popstate", { route: describeRoute(nextRoute) });
           })
           .catch(() => undefined);
@@ -663,11 +787,21 @@ export function App() {
       routeRef.current = nextRoute;
       setRoute(nextRoute);
       setLabSettings(null);
+      setPlayToolsOpen(false);
       recordEvent("route.popstate", { route: describeRoute(nextRoute) });
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [recordEvent]);
+
+  useEffect(() => {
+    if (route.kind !== "game") return;
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      playModeRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [route]);
 
   const selectGame = async (gameId: GameId) => {
     if (route.kind === "game" && route.game.id === gameId) return;
@@ -676,7 +810,8 @@ export function App() {
       setRuntimeDiagnostic(null);
     }
     setLabSettings(null);
-    window.history.pushState(null, "", gameSearch(gameId));
+    setPlayToolsOpen(false);
+    window.history.pushState({ kind: INDEX_GAME_HISTORY_KIND }, "", gameSearch(gameId));
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
     setRoute(nextRoute);
@@ -735,14 +870,21 @@ export function App() {
       throw new Error("Cannot close a runtime without an active game route");
     }
     const gameId = currentRoute.game.id;
+    setPlayToolsOpen(false);
+    if (isIndexGameHistoryState(window.history.state)) {
+      window.history.back();
+      recordEvent("route.back", { gameId, target: "history" });
+      return;
+    }
+    if (document.fullscreenElement !== null) await document.exitFullscreen();
     await runtimeRef.current?.dispose();
     setLabSettings(null);
     setRuntimeDiagnostic(null);
-    window.history.pushState(null, "", "./");
+    window.history.replaceState(null, "", "./");
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
     setRoute(nextRoute);
-    recordEvent("route.close", { gameId });
+    recordEvent("route.back", { gameId, target: "index" });
   }, [recordEvent]);
 
   const openDiagnostics = useCallback(() => {
@@ -806,117 +948,163 @@ export function App() {
   const selectedId = route.kind === "game" ? route.game.id : null;
 
   return (
-    <div className="app-shell">
-      <header className="site-header">
-        <div className="brand-block">
-          <a
-            className="wordmark"
-            href="./"
-            aria-label="GameYard home"
-            onClick={(event) => {
-              if (route.kind !== "game") return;
-              event.preventDefault();
-              void closeRuntime().catch(() => undefined);
-            }}
-          >
-            <span>GAME</span>
-            <span>YARD</span>
-          </a>
-          <div>
-            <p>{t("brand.kicker")}</p>
-            <span>{t("brand.subtitle")}</span>
-          </div>
-        </div>
-        <div className="header-actions">
-          {import.meta.env.DEV ? (
-            <button
-              className="utility-button utility-button--lab"
-              type="button"
-              onClick={() => setLabOpen(true)}
-            >
-              {LAB_COPY[locale].open}
-            </button>
-          ) : null}
-          {import.meta.env.PROD ? (
-            <button className="utility-button" type="button" onClick={() => setPwaOpen(true)}>
-              {t("nav.offline")} <span aria-hidden="true">↓</span>
-            </button>
-          ) : null}
-          <button className="utility-button" type="button" onClick={openDiagnostics}>
-            {t("nav.diagnostics")} <span aria-hidden="true">↘</span>
-          </button>
-        </div>
-      </header>
-
-      <SettingsBar
-        settings={settings}
-        error={settingsError}
-        locked={labApplyInFlight}
-        onChange={updateSettings}
-      />
-      {settingsState.kind === "error" ? (
-        <div className="contract-error" role="alert">
-          <span>SETTINGS / CONTRACT / STOP</span>
-          <div>
-            <strong>{t("settings.errorTitle")}</strong>
-            <p>{t("settings.errorBody")}</p>
-            <code>{settingsState.error}</code>
-            <div className="contract-error__reset">
-              <p>{t("settings.resetHint")}</p>
-              <button type="button" onClick={resetInvalidSettings}>
-                {t("settings.reset")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <main>
-        <section className="intro" aria-labelledby="page-title">
-          <div>
-            <span className="micro-label">{t("index.eyebrow")}</span>
-            <h1 id="page-title">{t("index.title")}</h1>
-          </div>
-          <p>{t("index.instruction")}</p>
-        </section>
-
-        <div className="gallery-layout">
-          <section className="catalog" aria-labelledby="catalog-title">
-            <div className="section-rule">
-              <h2 id="catalog-title">{t("catalog.heading")}</h2>
-              <span>{t("catalog.count", { count: GAME_CATALOG.length })}</span>
-            </div>
-            <ol>
-              {GAME_CATALOG.map((game) => (
-                <CatalogRow
-                  key={game.id}
-                  game={game}
-                  locale={locale}
-                  selected={game.id === selectedId}
-                  onSelect={(gameId) => {
-                    void selectGame(gameId).catch(() => undefined);
-                  }}
-                />
-              ))}
-            </ol>
-          </section>
+    <div className={`app-shell${route.kind === "game" ? " app-shell--play" : ""}`}>
+      {route.kind === "game" ? (
+        <main
+          ref={playModeRef}
+          className="play-mode"
+          tabIndex={-1}
+          aria-label={t("runtime.playMode", { game: route.game.title })}
+        >
           <Stage
             route={route}
             settings={settings}
             systemLanguages={systemLanguages}
             runtimeRef={runtimeRef}
             onCloseRuntime={closeRuntime}
+            onOpenTools={() => setPlayToolsOpen(true)}
             onSettingsChange={updateSettings}
             onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
             onEvent={recordEvent}
           />
-        </div>
-      </main>
+        </main>
+      ) : (
+        <>
+          <header className="site-header">
+            <div className="brand-block">
+              <a className="wordmark" href="./" aria-label="GameYard home">
+                <span>GAME</span>
+                <span>YARD</span>
+              </a>
+              <div>
+                <p>{t("brand.kicker")}</p>
+                <span>{t("brand.subtitle")}</span>
+              </div>
+            </div>
+            <div className="header-actions">
+              {import.meta.env.DEV ? (
+                <button
+                  className="utility-button utility-button--lab"
+                  type="button"
+                  onClick={() => setLabOpen(true)}
+                >
+                  {LAB_COPY[locale].open}
+                </button>
+              ) : null}
+              {import.meta.env.PROD ? (
+                <button className="utility-button" type="button" onClick={() => setPwaOpen(true)}>
+                  {t("nav.offline")} <span aria-hidden="true">↓</span>
+                </button>
+              ) : null}
+              <button className="utility-button" type="button" onClick={openDiagnostics}>
+                {t("nav.diagnostics")} <span aria-hidden="true">↘</span>
+              </button>
+            </div>
+          </header>
 
-      <footer className="site-footer">
-        <span>{t("footer.note")}</span>
-        <span>{__GAMEYARD_BUILD__}</span>
-      </footer>
+          <SettingsBar
+            settings={settings}
+            error={settingsError}
+            locked={labApplyInFlight}
+            onChange={updateSettings}
+          />
+          {settingsState.kind === "error" ? (
+            <div className="contract-error" role="alert">
+              <span>SETTINGS / CONTRACT / STOP</span>
+              <div>
+                <strong>{t("settings.errorTitle")}</strong>
+                <p>{t("settings.errorBody")}</p>
+                <code>{settingsState.error}</code>
+                <div className="contract-error__reset">
+                  <p>{t("settings.resetHint")}</p>
+                  <button type="button" onClick={resetInvalidSettings}>
+                    {t("settings.reset")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <main>
+            <section className="intro" aria-labelledby="page-title">
+              <div>
+                <span className="micro-label">{t("index.eyebrow")}</span>
+                <h1 id="page-title">{t("index.title")}</h1>
+              </div>
+              <p>{t("index.instruction")}</p>
+            </section>
+
+            <div className="gallery-layout">
+              <section className="catalog" aria-labelledby="catalog-title">
+                <div className="section-rule">
+                  <h2 id="catalog-title">{t("catalog.heading")}</h2>
+                  <span>{t("catalog.count", { count: GAME_CATALOG.length })}</span>
+                </div>
+                <ol>
+                  {GAME_CATALOG.map((game) => (
+                    <CatalogRow
+                      key={game.id}
+                      game={game}
+                      locale={locale}
+                      selected={false}
+                      onSelect={(gameId) => {
+                        void selectGame(gameId).catch(() => undefined);
+                      }}
+                    />
+                  ))}
+                </ol>
+              </section>
+              <Stage
+                route={route}
+                settings={settings}
+                systemLanguages={systemLanguages}
+                runtimeRef={runtimeRef}
+                onCloseRuntime={closeRuntime}
+                onOpenTools={() => setPlayToolsOpen(true)}
+                onSettingsChange={updateSettings}
+                onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
+                onEvent={recordEvent}
+              />
+            </div>
+          </main>
+
+          <footer className="site-footer">
+            <span>{t("footer.note")}</span>
+            <span>{__GAMEYARD_BUILD__}</span>
+          </footer>
+        </>
+      )}
+
+      {route.kind === "game" ? (
+        <PlayTools
+          open={playToolsOpen}
+          locale={locale}
+          settings={settings}
+          error={settingsError}
+          locked={labApplyInFlight}
+          onChange={updateSettings}
+          onClose={() => setPlayToolsOpen(false)}
+          onReload={async () => {
+            const handle = runtimeRef.current;
+            if (!handle) throw new Error("Runtime controller is unavailable for reload");
+            await handle.reload();
+            setPlayToolsOpen(false);
+          }}
+          onOpenDiagnostics={() => {
+            setPlayToolsOpen(false);
+            openDiagnostics();
+          }}
+          onOpenOffline={() => {
+            setPlayToolsOpen(false);
+            setPwaOpen(true);
+          }}
+          onOpenLab={() => {
+            setPlayToolsOpen(false);
+            setLabOpen(true);
+          }}
+          onResetSettings={resetInvalidSettings}
+        />
+      ) : null}
 
       <DiagnosticsDrawer
         open={diagnosticsOpen}
