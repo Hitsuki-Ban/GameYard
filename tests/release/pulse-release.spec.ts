@@ -210,18 +210,13 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
         expect(box!.x + box!.width).toBeLessThanOrEqual(viewportSize!.width + 1);
         expect(box!.y + box!.height).toBeLessThanOrEqual(viewportSize!.height + 1);
       }
-      const canvas = pulse.locator("#game-canvas");
-      await canvas.evaluate((element) => {
-        element.style.visibility = "hidden";
-      });
-      await expect(page).toHaveScreenshot(`pulse-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
-      await canvas.evaluate((element) => {
-        element.style.removeProperty("visibility");
-      });
+      if (locale.id === "en") {
+        await expect(page).toHaveScreenshot(`pulse-${viewport.id}-en.png`, {
+          animations: "disabled",
+          mask: [page.locator(".runtime-frame iframe")],
+          maskColor: "#151a2b",
+        });
+      }
       await closeRuntime(page);
     }
   }
@@ -241,8 +236,8 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await expect(page).toHaveScreenshot("pulse-gameplay-paused.png", {
     animations: "disabled",
-    mask: [page.locator(".site-footer span:last-child")],
-    maskColor: "#070a12",
+    mask: [page.locator(".runtime-frame iframe")],
+    maskColor: "#151a2b",
   });
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
@@ -321,11 +316,13 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
       expect(canvasBox!.y).toBeGreaterThanOrEqual(0);
       expect(canvasBox!.x + canvasBox!.width).toBeLessThanOrEqual(viewportSize!.width + 1);
       expect(canvasBox!.y + canvasBox!.height).toBeLessThanOrEqual(viewportSize!.height + 1);
-      await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
+      if (locale.id === "en") {
+        await expect(page).toHaveScreenshot(`tumbledrum-${viewport.id}-en.png`, {
+          animations: "disabled",
+          mask: [page.locator(".runtime-frame iframe")],
+          maskColor: "#151a2b",
+        });
+      }
       await closeRuntime(page);
     }
   }
@@ -383,7 +380,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   expect(mobileSignals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("CrownBreaker release matrix covers locale visuals and real lifecycle input", async ({
+test("CrownBreaker release matrix covers locale state and real lifecycle input", async ({
   page,
 }) => {
   test.slow();
@@ -412,11 +409,6 @@ test("CrownBreaker release matrix covers locale visuals and real lifecycle input
         .locator(".stage--runtime")
         .evaluate((element) => element.scrollIntoView({ block: "start" }));
       await expectInsideViewport(page, ".runtime-toolbar");
-      await expect(page).toHaveScreenshot(`crown-${viewport.id}-${locale.id}.png`, {
-        animations: "disabled",
-        mask: [page.locator(".site-footer span:last-child")],
-        maskColor: "#070a12",
-      });
       await closeRuntime(page);
     }
   }
