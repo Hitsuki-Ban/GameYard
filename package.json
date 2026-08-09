@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp run --parallel --filter @gameyard/pulse-link-overdrive --filter @gameyard/tumbledrum --filter @gameyard/crown-breaker --filter hub dev",
-    "build": "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache tumbledrum#build && vp run --no-cache crown-breaker#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify-source",
+    "dev": "vp exec node tooling/run-production-registry-task.mjs dev",
+    "build": "vp exec node tooling/run-production-registry-task.mjs build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify-source",
     "preview": "vp run artifact:verify-source && vp preview --config tooling/preview.vite.config.mjs",
     "check": "vp check",
     "test": "vp run -r --concurrency-limit 1 test",

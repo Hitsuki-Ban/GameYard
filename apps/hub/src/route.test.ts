@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { GAME_CATALOG } from "./catalog";
 import { gameSearch, parseHubRoute } from "./route";
+
+function gameAt(index: number) {
+  const game = GAME_CATALOG[index];
+  if (!game) throw new Error(`Production catalog is missing game at index ${index}`);
+  return game;
+}
 
 describe("hub route", () => {
   it("leaves the index unselected", () => {
@@ -8,9 +15,10 @@ describe("hub route", () => {
   });
 
   it("selects only an exact catalog id", () => {
-    const route = parseHubRoute("?game=pulse-link-overdrive");
+    const game = gameAt(0);
+    const route = parseHubRoute(gameSearch(game.id));
     expect(route.kind).toBe("game");
-    if (route.kind === "game") expect(route.game.id).toBe("pulse-link-overdrive");
+    if (route.kind === "game") expect(route.game.id).toBe(game.id);
   });
 
   it("reports unknown and duplicate game parameters", () => {
@@ -19,14 +27,17 @@ describe("hub route", () => {
       code: "unknown-game",
       received: ["unknown"],
     });
-    expect(parseHubRoute("?game=tumbledrum&game=crown-breaker")).toEqual({
+    const first = gameAt(0);
+    const second = gameAt(1);
+    expect(parseHubRoute(`?game=${first.id}&game=${second.id}`)).toEqual({
       kind: "error",
       code: "duplicate-game",
-      received: ["tumbledrum", "crown-breaker"],
+      received: [first.id, second.id],
     });
   });
 
   it("creates a relative query route", () => {
-    expect(gameSearch("crown-breaker")).toBe("?game=crown-breaker");
+    const game = gameAt(0);
+    expect(gameSearch(game.id)).toBe(`?game=${game.id}`);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { getGameById } from "./catalog";
+import { GAME_CATALOG } from "./catalog";
 import {
   DIAGNOSTIC_EXPORT_MAX_BYTES,
   HUB_DIAGNOSTIC_EVENT_LIMIT,
@@ -22,6 +22,12 @@ function cssVariables(
   return {
     getPropertyValue: (name) => values[name] ?? "",
   };
+}
+
+function firstGame() {
+  const game = GAME_CATALOG[0];
+  if (!game) throw new Error("The production catalog must contain at least one game");
+  return game;
 }
 
 describe("Lab CSS variable contract", () => {
@@ -52,8 +58,9 @@ describe("Lab CSS variable contract", () => {
 
 describe("Hub Lab scenes", () => {
   it("binds presets to the current manifest identity", () => {
+    const game = firstGame();
     const identity = {
-      gameId: "crown-breaker",
+      gameId: game.id,
       gameVersion: "3.7.1",
       buildId: "gameyard@0123456789abcdef",
     } as const;
@@ -63,6 +70,7 @@ describe("Hub Lab scenes", () => {
       "ready-balanced",
       "paused-accessible",
     ]);
+    expect(presets.every((preset) => preset.parameters.accent === game.accent)).toBe(true);
     expect(registry.parseJson(registry.serialize(presets[0]!))).toEqual(presets[0]);
     expect(() => registry.parsePreset({ ...presets[0]!, gameVersion: "3.7.2" })).toThrow(
       "does not exactly match",
@@ -78,6 +86,7 @@ describe("bounded diagnostic envelope", () => {
   });
 
   it("retains 18 Hub events and derives issue summary and JSON from one strict envelope", () => {
+    const game = firstGame();
     let events: readonly DiagnosticEvent[] = [];
     for (let index = 0; index < 21; index += 1) {
       events = appendDiagnosticEvent(events, event(index));
@@ -85,23 +94,17 @@ describe("bounded diagnostic envelope", () => {
     expect(events).toHaveLength(HUB_DIAGNOSTIC_EVENT_LIMIT);
     expect(events[0]?.type).toBe("test.20");
 
-    const envelope = makeDiagnosticEnvelope(
-      { kind: "game", game: getGameById("crown-breaker") },
-      "en",
-      4,
-      events,
-      {
-        gameId: "crown-breaker",
-        gameVersion: "3.7.1",
-        buildId: __GAMEYARD_BUILD__,
-        snapshot: {
-          lifecycle: "active",
-          settingsRevision: 4,
-          inputEnabled: true,
-          events: [],
-        },
+    const envelope = makeDiagnosticEnvelope({ kind: "game", game }, "en", 4, events, {
+      gameId: game.id,
+      gameVersion: "3.7.1",
+      buildId: __GAMEYARD_BUILD__,
+      snapshot: {
+        lifecycle: "active",
+        settingsRevision: 4,
+        inputEnabled: true,
+        events: [],
       },
-    );
+    });
     const json = serializeDiagnosticEnvelope(envelope);
     const summary = issueSummaryText(envelope);
 
@@ -113,7 +116,7 @@ describe("bounded diagnostic envelope", () => {
       "schemaVersion",
     ]);
     expect(summary).toContain(`buildId=${envelope.buildId}`);
-    expect(summary).toContain("gameId=crown-breaker");
+    expect(summary).toContain(`gameId=${game.id}`);
     expect(summary).toContain("gameVersion=3.7.1");
     expect(json).not.toMatch(/localStorage|save|stack|query|screenshot/i);
   });

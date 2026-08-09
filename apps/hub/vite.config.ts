@@ -1,28 +1,20 @@
 import react from "@vitejs/plugin-react";
-import { GameManifestSchema, GameManifestSourceSchema } from "@gameyard/game-contract";
+import { GameManifestSchema } from "@gameyard/game-contract";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite-plus";
 import { VitePWA } from "vite-plugin-pwa";
 
 import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
-import crownBreakerSource from "../../games/crown-breaker/game.manifest.source.json";
-import pulseLinkOverdriveSource from "../../games/pulse-link-overdrive/game.manifest.source.json";
-import tumbledrumSource from "../../games/tumbledrum/game.manifest.source.json";
+import { loadProductionRegistry } from "../../tooling/production-registry.mjs";
+import { createProductionRegistryVitePlugin } from "../../tooling/production-registry-vite.mjs";
 
+const projectRoot = fileURLToPath(new URL("../..", import.meta.url));
+const productionRegistry = await loadProductionRegistry(projectRoot);
 const artifactBuildId = await createArtifactBuildId();
-const devRuntimes = [
-  {
-    source: GameManifestSourceSchema.parse(pulseLinkOverdriveSource),
-    origin: "http://127.0.0.1:5174",
-  },
-  {
-    source: GameManifestSourceSchema.parse(tumbledrumSource),
-    origin: "http://127.0.0.1:5175",
-  },
-  {
-    source: GameManifestSourceSchema.parse(crownBreakerSource),
-    origin: "http://127.0.0.1:5176",
-  },
-] as const;
+const devRuntimes = productionRegistry.games.map((game) => ({
+  manifest: game.manifest,
+  origin: `http://127.0.0.1:${game.devPort}`,
+}));
 const hubStageManifest = `${JSON.stringify(
   { schemaVersion: 1, buildId: artifactBuildId, entry: "index.html" },
   null,
@@ -33,10 +25,10 @@ const devCatalog = `${JSON.stringify(
   {
     schemaVersion: 1,
     buildId: artifactBuildId,
-    games: devRuntimes.map(({ source }) => ({
-      id: source.id,
-      entry: `./${source.id}/${source.entry}`,
-      manifest: `./${source.id}/game.manifest.json`,
+    games: devRuntimes.map(({ manifest }) => ({
+      id: manifest.id,
+      entry: `./${manifest.id}/${manifest.entry}`,
+      manifest: `./${manifest.id}/game.manifest.json`,
     })),
   },
   null,
@@ -54,9 +46,9 @@ type DevMiddleware = (
 ) => void | Promise<void>;
 
 async function waitForDevRuntime(runtime: (typeof devRuntimes)[number]): Promise<void> {
-  const manifestUrl = `${runtime.origin}/games/${runtime.source.id}/game.manifest.json`;
+  const manifestUrl = `${runtime.origin}/games/${runtime.manifest.id}/game.manifest.json`;
   const deadline = Date.now() + 10_000;
-  let lastFailure = `${runtime.source.id} dev server did not respond`;
+  let lastFailure = `${runtime.manifest.id} dev server did not respond`;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(manifestUrl, {
@@ -67,22 +59,22 @@ async function waitForDevRuntime(runtime: (typeof devRuntimes)[number]): Promise
         const manifest = GameManifestSchema.safeParse(await response.json());
         if (
           manifest.success &&
-          manifest.data.id === runtime.source.id &&
-          manifest.data.entry === runtime.source.entry &&
+          manifest.data.id === runtime.manifest.id &&
+          manifest.data.entry === runtime.manifest.entry &&
           manifest.data.buildId === artifactBuildId
         ) {
           return;
         }
-        lastFailure = `${runtime.source.id} dev manifest does not match the Hub runtime identity`;
+        lastFailure = `${runtime.manifest.id} dev manifest does not match the Hub runtime identity`;
       } else {
-        lastFailure = `${runtime.source.id} dev manifest returned HTTP ${response.status}`;
+        lastFailure = `${runtime.manifest.id} dev manifest returned HTTP ${response.status}`;
       }
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : String(error);
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
   }
-  throw new Error(`${runtime.source.id} dev runtime was not ready after 10000ms: ${lastFailure}`);
+  throw new Error(`${runtime.manifest.id} dev runtime was not ready after 10000ms: ${lastFailure}`);
 }
 
 async function waitForDevRuntimes(): Promise<void> {
@@ -137,10 +129,13 @@ function productionBoundaryPlugin() {
         .find(
           (moduleId) =>
             /[/\\]apps[/\\]hub[/\\]src[/\\]lab(?:\.css|\.ts)$/u.test(moduleId) ||
-            /[/\\]packages[/\\]testkit[/\\]/u.test(moduleId),
+            /[/\\]packages[/\\]testkit[/\\]/u.test(moduleId) ||
+            /[/\\]tooling[/\\]/u.test(moduleId) ||
+            moduleId.includes("node:") ||
+            moduleId.includes("__vite-browser-external"),
         );
       if (forbiddenModule) {
-        throw new Error(`Production Hub includes a Lab/testkit module: ${forbiddenModule}`);
+        throw new Error(`Production Hub includes a development or Node module: ${forbiddenModule}`);
       }
     },
   };
@@ -149,6 +144,7 @@ function productionBoundaryPlugin() {
 export default defineConfig({
   base: "./",
   plugins: [
+    createProductionRegistryVitePlugin(productionRegistry),
     react(),
     VitePWA({
       strategies: "injectManifest",
@@ -159,7 +155,7 @@ export default defineConfig({
         id: "./",
         name: "GameYard — Experimental Game Gallery",
         short_name: "GameYard",
-        description: "Three experimental browser games in one focused same-origin gallery.",
+        description: "Experimental browser games in one focused same-origin gallery.",
         start_url: "./",
         scope: "./",
         display: "standalone",
@@ -203,9 +199,11 @@ export default defineConfig({
     __GAMEYARD_BUILD__: JSON.stringify(artifactBuildId),
   },
   server: {
+    port: productionRegistry.hub.devPort,
+    strictPort: true,
     proxy: Object.fromEntries(
-      devRuntimes.map(({ source, origin }) => [
-        `/games/${source.id}`,
+      devRuntimes.map(({ manifest, origin }) => [
+        `/games/${manifest.id}`,
         {
           target: origin,
           ws: true,
@@ -214,7 +212,7 @@ export default defineConfig({
     ),
   },
   build: {
-    outDir: "../../.gameyard/stage/hub",
+    outDir: productionRegistry.hub.stagePath,
     emptyOutDir: true,
   },
   test: {

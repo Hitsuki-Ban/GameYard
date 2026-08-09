@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
+const { createProductionRegistryTaskCommands } = await import("./run-production-registry-task.mjs");
+
 async function packageManifests(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   return Promise.all(
@@ -33,19 +35,43 @@ async function sourceFiles(directory) {
 await test("build creates every owned stage before the sole assembler", () => {
   assert.equal(
     packageJson.scripts.build,
-    "vp run --no-cache pulse-link-overdrive#build && vp run --no-cache tumbledrum#build && vp run --no-cache crown-breaker#build && vp run --no-cache hub#build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify-source",
+    "vp exec node tooling/run-production-registry-task.mjs build && vp exec node tooling/assemble-site.mjs && vp run artifact:verify-source",
   );
 });
 
 await test("development and browser installation cover every runtime workspace", () => {
   assert.equal(
     packageJson.scripts.dev,
-    "vp run --parallel --filter @gameyard/pulse-link-overdrive --filter @gameyard/tumbledrum --filter @gameyard/crown-breaker --filter hub dev",
+    "vp exec node tooling/run-production-registry-task.mjs dev",
   );
   assert.equal(
     packageJson.scripts["e2e:install"],
     "vp exec playwright install chromium && vp run tumbledrum#browser:install && vp run crown-breaker#browser:install",
   );
+});
+
+await test("registry task runner derives dev and build order without game ID branches", () => {
+  const registry = {
+    games: [{ packageName: "@gameyard/alpha" }, { packageName: "@gameyard/synthetic-sixth" }],
+  };
+  assert.deepEqual(createProductionRegistryTaskCommands(registry, "dev"), [
+    [
+      "run",
+      "--parallel",
+      "--filter",
+      "@gameyard/alpha",
+      "--filter",
+      "@gameyard/synthetic-sixth",
+      "--filter",
+      "hub",
+      "dev",
+    ],
+  ]);
+  assert.deepEqual(createProductionRegistryTaskCommands(registry, "build"), [
+    ["run", "--no-cache", "--filter", "@gameyard/alpha", "build"],
+    ["run", "--no-cache", "--filter", "@gameyard/synthetic-sixth", "build"],
+    ["run", "--no-cache", "--filter", "hub", "build"],
+  ]);
 });
 
 await test("preview verifies the current artifact before serving final dist", () => {

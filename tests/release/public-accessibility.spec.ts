@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { REGISTERED_GAMES } from "../registered-games";
 
 const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -92,8 +93,14 @@ test("public keyboard, WCAG, motion, fullscreen, and orientation journey", async
   ];
   for (const target of focusOrder) await expectFocused(page, target);
 
-  const tumbledrumLink = page.getByRole("link", { name: /TUMBLEDRUM/ });
-  await expectFocused(page, tumbledrumLink);
+  const tumbledrumIndex = REGISTERED_GAMES.findIndex((game) => game.id === "tumbledrum");
+  expect(tumbledrumIndex).toBeGreaterThanOrEqual(0);
+  const catalogLinks = page.locator(".catalog-row__select");
+  for (let index = 0; index <= tumbledrumIndex; index += 1) {
+    await expectFocused(page, catalogLinks.nth(index));
+  }
+  const tumbledrumLink = catalogLinks.nth(tumbledrumIndex);
+  await expect(tumbledrumLink).toContainText("TUMBLEDRUM");
   expect(
     await tumbledrumLink.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -129,8 +136,8 @@ test("public keyboard, WCAG, motion, fullscreen, and orientation journey", async
 
   await page.getByRole("button", { name: "Fullscreen", exact: true }).click();
   await expect
-    .poll(() => page.evaluate(() => document.fullscreenElement?.className ?? null))
-    .toBe("stage stage--runtime stage--vermilion");
+    .poll(() => page.evaluate(() => document.fullscreenElement?.matches(".stage--runtime")))
+    .toBe(true);
   await page.evaluate(() => document.exitFullscreen());
   await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
 

@@ -1,6 +1,7 @@
 import { LabSceneRegistry, type LabPreset, type LabSceneDefinition } from "@gameyard/testkit";
 import type { BuildId, GameId, GameVersion } from "@gameyard/game-contract";
 
+import { GAME_CATALOG, getGameById } from "./catalog";
 import "./lab.css";
 
 export interface LabRuntimeIdentity {
@@ -59,7 +60,7 @@ const PARAMETER_SCHEMAS: LabSceneDefinition["parameters"] = {
   lifecycle: { type: "enum", values: ["active", "paused"] },
   stageRadius: { type: "number", integer: true, minimum: 0, maximum: 64 },
   stageGap: { type: "number", integer: true, minimum: 8, maximum: 64 },
-  accent: { type: "enum", values: ["#1646c8", "#e9472d", "#28282a"] },
+  accent: { type: "enum", values: [...new Set(GAME_CATALOG.map((game) => game.accent))] },
   frameOffset: { type: "number", integer: true, minimum: -48, maximum: 48 },
 };
 
@@ -101,19 +102,6 @@ export function readRequiredHexColorCssVariable(
   return value;
 }
 
-function accentForGame(gameId: GameId): "#1646c8" | "#e9472d" | "#28282a" {
-  switch (gameId) {
-    case "pulse-link-overdrive":
-      return "#1646c8";
-    case "tumbledrum":
-      return "#e9472d";
-    case "crown-breaker":
-      return "#28282a";
-    default:
-      throw new Error(`Unsupported Lab game id: ${gameId}`);
-  }
-}
-
 export function createHubLabScenes(identity: LabRuntimeIdentity): {
   readonly registry: LabSceneRegistry;
   readonly presets: readonly LabPreset[];
@@ -133,7 +121,7 @@ export function createHubLabScenes(identity: LabRuntimeIdentity): {
     },
   ] as const satisfies readonly LabSceneDefinition[];
   const registry = new LabSceneRegistry(definitions);
-  const accent = accentForGame(identity.gameId);
+  const accent = getGameById(identity.gameId).accent;
   return {
     registry,
     presets: [

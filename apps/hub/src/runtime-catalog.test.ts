@@ -1,15 +1,17 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { getGameById, type GameId } from "./catalog";
+import { GAME_CATALOG, getGameById, type GameId } from "./catalog";
 import { loadGameRuntime, parseRuntimeCatalog, type RuntimeFetch } from "./runtime-catalog";
 
 const BUILD_ID = "gameyard@0123456789abcdef";
 
-const playableGameIds = [
-  "pulse-link-overdrive",
-  "tumbledrum",
-  "crown-breaker",
-] as const satisfies readonly GameId[];
+const playableGameIds = GAME_CATALOG.map((game) => game.id);
+
+function gameAt(index: number): GameId {
+  const gameId = playableGameIds[index];
+  if (!gameId) throw new Error(`Production catalog is missing game at index ${index}`);
+  return gameId;
+}
 
 const catalog = {
   schemaVersion: 1,
@@ -50,7 +52,7 @@ describe("runtime catalog", () => {
     ).toThrow(/unknown game id/);
   });
 
-  it("loads and normalizes all three playable runtimes by game id", async () => {
+  it("loads and normalizes every registered runtime by game id", async () => {
     for (const gameId of playableGameIds) {
       const fetcher = vi
         .fn<RuntimeFetch>()
@@ -71,7 +73,8 @@ describe("runtime catalog", () => {
   });
 
   it("fails when the selected manifest does not agree with its catalog identity", async () => {
-    const gameId = "crown-breaker";
+    const gameId = gameAt(0);
+    const otherGameId = gameAt(1);
     const disagreements = [
       {
         value: {
@@ -81,7 +84,7 @@ describe("runtime catalog", () => {
         },
         error: /source does not match/,
       },
-      { value: { ...manifest(gameId), id: "pulse-link-overdrive" }, error: /id mismatch/ },
+      { value: { ...manifest(gameId), id: otherGameId }, error: /id mismatch/ },
       {
         value: { ...manifest(gameId), buildId: "gameyard@fedcba9876543210" },
         error: /build mismatch/,

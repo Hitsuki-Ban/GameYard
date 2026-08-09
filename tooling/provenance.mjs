@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { parseRepositoryRelativePath } from "./assembly-config.mjs";
+import { parseRepositoryRelativePath } from "./production-registry.mjs";
 
 const provenanceIndexPath = "provenance/upstreams.json";
 const gameIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;

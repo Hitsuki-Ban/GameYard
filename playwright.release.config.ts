@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const releasePort = 4188;
+const releasePort = 5188;
 const releaseOrigin = `http://127.0.0.1:${releasePort}`;
 const repositoryBase = `${releaseOrigin}/GameYard/`;
 

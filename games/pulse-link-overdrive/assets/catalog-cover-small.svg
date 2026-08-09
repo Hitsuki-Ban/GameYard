@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">PulseLink Overdrive abstract pulse network</title>
+  <rect width="1600" height="900" fill="#071538"/>
+  <g fill="none" stroke="#2f69ff" stroke-width="18" opacity=".9"><circle cx="800" cy="450" r="115"/><circle cx="800" cy="450" r="245" opacity=".65"/><circle cx="800" cy="450" r="375" opacity=".35"/></g>
+  <path d="M120 450h410l90-120 145 240 130-180 115 60h490" fill="none" stroke="#b9d6ff" stroke-width="24" stroke-linejoin="round"/>
+  <g fill="#fff"><circle cx="530" cy="450" r="26"/><circle cx="895" cy="390" r="26"/><circle cx="1110" cy="450" r="26"/></g>
+</svg>

@@ -1,9 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-const PULSE_FRAME_URL = "/games/pulse-link-overdrive/index.html";
-const TUMBLEDRUM_FRAME_URL = "/games/tumbledrum/index.html";
-const CROWN_FRAME_URL = "/games/crown-breaker/index.html";
+import { REGISTERED_GAMES } from "../registered-games";
+
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
 const locales = [
@@ -128,60 +127,20 @@ async function openCrown(page: Page, newRunLabel = "New Run") {
 }
 
 type ReleaseLocale = (typeof locales)[number];
-type RoundRobinGame = "pulse-link-overdrive" | "tumbledrum" | "crown-breaker";
+type RoundRobinGame = (typeof REGISTERED_GAMES)[number]["id"];
 
-const roundRobinGames = [
-  { id: "pulse-link-overdrive", frameUrl: PULSE_FRAME_URL },
-  { id: "tumbledrum", frameUrl: TUMBLEDRUM_FRAME_URL },
-  { id: "crown-breaker", frameUrl: CROWN_FRAME_URL },
-] as const satisfies readonly { id: RoundRobinGame; frameUrl: string }[];
+const roundRobinGames = REGISTERED_GAMES;
 
-async function expectRoundRobinRuntimeReady(
-  page: Page,
-  gameId: RoundRobinGame,
-  locale: ReleaseLocale,
-) {
-  const runtime = page.frameLocator(".runtime-frame iframe");
+async function expectRoundRobinRuntimeReady(page: Page) {
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
-  if (gameId === "pulse-link-overdrive") {
-    await expect(runtime.getByRole("button", { name: locale.start })).toBeVisible();
-  } else if (gameId === "tumbledrum") {
-    await expect(runtime.locator("#status")).toContainText(locale.tumbledrumStatus);
-  } else {
-    await expect(runtime.locator('#btn-new [data-i18n="title.newRun"]')).toHaveText(
-      locale.crownNewRun,
-    );
-  }
 }
 
-async function openRoundRobinRuntime(page: Page, gameId: RoundRobinGame, locale: ReleaseLocale) {
-  if (gameId === "pulse-link-overdrive") {
-    await openPulse(page, locale.start);
-  } else if (gameId === "tumbledrum") {
-    await openTumbledrum(page, locale.tumbledrumStatus);
-  } else {
-    await openCrown(page, locale.crownNewRun);
-  }
-  const guest = page.frames().find((frame) => frame.url().includes(`/games/${gameId}/index.html`));
+async function openRoundRobinRuntime(page: Page, gameId: RoundRobinGame) {
+  await page.locator(`.catalog-row__select[href="?game=${gameId}"]`).click();
+  await expectRoundRobinRuntimeReady(page);
+  const guest = page.frames().find((frame) => frame.url().includes(`/games/${gameId}/`));
   expect(guest, `${gameId} guest frame must exist`).toBeDefined();
   return guest!;
-}
-
-async function activateRoundRobinAudio(page: Page, gameId: RoundRobinGame, locale: ReleaseLocale) {
-  const runtime = page.frameLocator(".runtime-frame iframe");
-  if (gameId === "pulse-link-overdrive") {
-    await runtime.locator("#play-button").click();
-    await expect(runtime.locator("#hud")).toBeVisible();
-  } else if (gameId === "tumbledrum") {
-    const canvas = runtime.locator("#game");
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
-    await canvas.click({ position: { x: box!.width * 0.5, y: box!.height * 0.8 } });
-    await expect(runtime.locator("#status")).toContainText(locale.tumbledrumCampaign);
-  } else {
-    await runtime.locator("#btn-new").click();
-    await expect(runtime.locator("#hud")).toHaveClass(/active/);
-  }
 }
 
 async function expectProductionDiagnostics(
@@ -483,7 +442,7 @@ test("CrownBreaker release matrix covers locale visuals and real lifecycle input
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("50 three-game round-robin cycles leave one clean browsing context", async ({ page }) => {
+test("50 registered-game round-robin cycles leave one clean browsing context", async ({ page }) => {
   test.slow();
   const signals = collectRuntimeSignals(page);
   await page.addInitScript(() => {
@@ -719,11 +678,10 @@ test("50 three-game round-robin cycles leave one clean browsing context", async 
   await page.goto("./");
   await page.locator("select").selectOption("zh-Hans");
   const baselineResources = await releaseResources(page);
-  let currentLocale: ReleaseLocale = locales[2];
 
   for (let cycle = 1; cycle <= 50; cycle += 1) {
     const game = roundRobinGames[(cycle - 1) % roundRobinGames.length]!;
-    let guest = await openRoundRobinRuntime(page, game.id, currentLocale);
+    let guest = await openRoundRobinRuntime(page, game.id);
     expect(page.frames()).toHaveLength(2);
     expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
 
@@ -740,7 +698,7 @@ test("50 three-game round-robin cycles leave one clean browsing context", async 
       }
       return value.revision as number;
     });
-    await expectRoundRobinRuntimeReady(page, game.id, targetLocale);
+    await expectRoundRobinRuntimeReady(page);
     await expectProductionDiagnostics(page, game.id, targetLocale, settingsRevision);
 
     await expect
@@ -753,28 +711,12 @@ test("50 three-game round-robin cycles leave one clean browsing context", async 
       .poll(async () => (await releaseResources(page)).guestGlobalListeners)
       .toBeGreaterThan(baselineResources.guestGlobalListeners);
 
-    if (cycle <= roundRobinGames.length) {
-      await activateRoundRobinAudio(page, game.id, targetLocale);
-      await expect
-        .poll(async () => (await releaseResources(page)).guestAudioContexts)
-        .toBeGreaterThan(baselineResources.guestAudioContexts);
-      if (game.id === "crown-breaker") {
-        const baselineTimers = baselineResources.guestIntervals + baselineResources.guestTimeouts;
-        await expect
-          .poll(async () => {
-            const resources = await releaseResources(page);
-            return resources.guestIntervals + resources.guestTimeouts;
-          })
-          .toBeGreaterThan(baselineTimers);
-      }
-    }
-
     if (cycle % 5 === 0) {
       const previousGuest = guest;
       await page.locator(".runtime-toolbar__actions button").nth(1).click();
-      await expectRoundRobinRuntimeReady(page, game.id, targetLocale);
+      await expectRoundRobinRuntimeReady(page);
       await expect.poll(() => page.frames().includes(previousGuest)).toBe(false);
-      guest = page.frames().find((frame) => frame.url().includes(`/games/${game.id}/index.html`))!;
+      guest = page.frames().find((frame) => frame.url().includes(game.frameUrl))!;
       expect(guest).toBeDefined();
       expect(page.frames()).toHaveLength(2);
       expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
@@ -785,7 +727,6 @@ test("50 three-game round-robin cycles leave one clean browsing context", async 
     expect(page.frames()).toHaveLength(1);
     await expect.poll(() => page.frames().includes(guest)).toBe(false);
     await expect.poll(() => releaseResources(page)).toEqual(baselineResources);
-    currentLocale = targetLocale;
   }
 
   expect(

@@ -8,5 +8,9 @@
     "target": "ES2023",
     "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts"],
+  "references": [
+    { "path": "../../packages/game-contract" },
+    { "path": "../../packages/manifest-tools" }
+  ]
 }

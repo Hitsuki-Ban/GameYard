@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title">
+  <title id="title">Crown Breaker abstract crown and chessboard</title>
+  <rect width="1600" height="900" fill="#171719"/>
+  <g fill="#28282a" stroke="#d9c798" stroke-width="12">
+    <path d="M430 650h740l70-350-270 170-170-260-170 260-270-170z"/>
+    <path d="M470 650h660v90H470z"/>
+  </g>
+  <g fill="#d9c798"><circle cx="360" cy="300" r="35"/><circle cx="800" cy="210" r="35"/><circle cx="1240" cy="300" r="35"/></g>
+  <path d="M0 820h1600M200 740v160M400 740v160M600 740v160M800 740v160M1000 740v160M1200 740v160M1400 740v160" stroke="#d9c798" stroke-width="8" opacity=".35"/>
+</svg>

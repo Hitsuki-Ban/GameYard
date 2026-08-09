@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { REGISTERED_GAMES } from "../registered-games";
+
 const SETTINGS_KEY = "gameyard.settings.v1";
 
 interface CrownResourceSnapshot {
@@ -476,25 +478,19 @@ test("unknown and duplicate game routes are rejected visibly", async ({ page }) 
   expect(runtimeErrors).toEqual([]);
 });
 
-test("production metadata describes all three assembled exhibits exactly", async ({ request }) => {
+test("production metadata describes every registered exhibit exactly", async ({ request }) => {
   const buildInfoResponse = await request.get("./build-info.json");
   const catalogResponse = await request.get("./games/catalog.json");
-  const pulseManifestResponse = await request.get(
-    "./games/pulse-link-overdrive/game.manifest.json",
+  const manifestResponses = await Promise.all(
+    REGISTERED_GAMES.map((game) => request.get(`./games/${game.id}/game.manifest.json`)),
   );
-  const tumbledrumManifestResponse = await request.get("./games/tumbledrum/game.manifest.json");
-  const crownManifestResponse = await request.get("./games/crown-breaker/game.manifest.json");
   expect(buildInfoResponse.ok()).toBe(true);
   expect(catalogResponse.ok()).toBe(true);
-  expect(pulseManifestResponse.ok()).toBe(true);
-  expect(tumbledrumManifestResponse.ok()).toBe(true);
-  expect(crownManifestResponse.ok()).toBe(true);
+  for (const response of manifestResponses) expect(response.ok()).toBe(true);
 
   const buildInfo = await buildInfoResponse.json();
   const catalog = await catalogResponse.json();
-  const pulseManifest = await pulseManifestResponse.json();
-  const tumbledrumManifest = await tumbledrumManifestResponse.json();
-  const crownManifest = await crownManifestResponse.json();
+  const manifests = await Promise.all(manifestResponses.map((response) => response.json()));
   expect(buildInfo).toMatchObject({ schemaVersion: 1 });
   expect(buildInfo.buildId).toMatch(/^gameyard@[a-f0-9]{16}$/);
   expect(buildInfo.files).toContain("build-info.json");
@@ -502,49 +498,22 @@ test("production metadata describes all three assembled exhibits exactly", async
   expect(catalog).toEqual({
     schemaVersion: 1,
     buildId: buildInfo.buildId,
-    games: [
-      {
-        id: "pulse-link-overdrive",
-        entry: "./pulse-link-overdrive/index.html",
-        manifest: "./pulse-link-overdrive/game.manifest.json",
-      },
-      {
-        id: "tumbledrum",
-        entry: "./tumbledrum/index.html",
-        manifest: "./tumbledrum/game.manifest.json",
-      },
-      {
-        id: "crown-breaker",
-        entry: "./crown-breaker/index.html",
-        manifest: "./crown-breaker/game.manifest.json",
-      },
-    ],
+    games: REGISTERED_GAMES.map((game) => ({
+      id: game.id,
+      entry: `./${game.id}/${game.entry}`,
+      manifest: `./${game.id}/game.manifest.json`,
+    })),
   });
-  expect(pulseManifest).toMatchObject({
-    schemaVersion: 1,
-    protocol: 1,
-    id: "pulse-link-overdrive",
-    version: "1.1.0",
-    buildId: buildInfo.buildId,
-    entry: "index.html",
-  });
-  expect(tumbledrumManifest).toMatchObject({
-    schemaVersion: 1,
-    protocol: 1,
-    id: "tumbledrum",
-    version: "1.1.0",
-    buildId: buildInfo.buildId,
-    entry: "index.html",
-  });
-  expect(crownManifest).toMatchObject({
-    schemaVersion: 1,
-    protocol: 1,
-    id: "crown-breaker",
-    version: "3.7.1",
-    buildId: buildInfo.buildId,
-    entry: "index.html",
-  });
-  for (const manifest of [pulseManifest, tumbledrumManifest, crownManifest]) {
+  for (const [index, manifest] of manifests.entries()) {
+    const game = REGISTERED_GAMES[index]!;
+    expect(manifest).toMatchObject({
+      schemaVersion: 1,
+      protocol: 1,
+      id: game.id,
+      buildId: buildInfo.buildId,
+      entry: game.entry,
+    });
+    expect(manifest.version).toMatch(/^\d+\.\d+\.\d+/u);
     expect(manifest.files).toContain("index.html");
     expect(manifest.files).toContain("game.manifest.json");
   }

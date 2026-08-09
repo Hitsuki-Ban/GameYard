@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
@@ -28,9 +28,79 @@ async function createFixture() {
       await writeFile(join(target, "entry.ts"), `fixture:${input.path}/entry.ts\n`);
     }
   }
+  await mkdir(join(root, "games/demo/src"), { recursive: true });
+  await writeFile(join(root, "games/demo/src/game.js"), "first build\n");
+  await writeFile(
+    join(root, "games/demo/package.json"),
+    JSON.stringify({ name: "@gameyard/demo", version: "1.0.0", private: true }),
+  );
+  await writeFile(
+    join(root, "games/demo/game.manifest.source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      protocol: 1,
+      id: "demo",
+      version: "1.0.0",
+      entry: "index.html",
+      locales: { source: "en", supported: ["en", "ja", "zh-Hans"] },
+      capabilities: ["keyboard"],
+      provenance: {
+        repository: "https://example.test/demo",
+        revision: "0123456789abcdef0123456789abcdef01234567",
+        license: "MIT",
+      },
+    }),
+  );
+  await writeFile(
+    join(root, "games/demo/game.presentation.source.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: "demo",
+      title: "Demo",
+      taglines: { en: "Demo game", ja: "デモゲーム", "zh-Hans": "演示游戏" },
+      accent: "#123456",
+      cover: {
+        candidates: [
+          { path: "cover-small.svg", width: 800, height: 450 },
+          { path: "cover.svg", width: 1600, height: 900 },
+        ],
+      },
+      stage: { kind: "adaptive" },
+    }),
+  );
+  await writeFile(
+    join(root, "games/demo/cover-small.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg"/>',
+  );
+  await writeFile(join(root, "games/demo/cover.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   await writeFile(
     join(root, "site.assembly.json"),
-    `${JSON.stringify({ schemaVersion: 1, hubStage: ".gameyard/stage/hub", games: [] }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        schemaVersion: 2,
+        hub: { stage: ".gameyard/stage/hub", devPort: 5173 },
+        games: [
+          {
+            id: "demo",
+            packageName: "@gameyard/demo",
+            stage: ".gameyard/stage/games/demo",
+            manifestSource: "games/demo/game.manifest.source.json",
+            presentationSource: "games/demo/game.presentation.source.json",
+            devPort: 5174,
+            productionInputs: [
+              "games/demo/cover-small.svg",
+              "games/demo/cover.svg",
+              "games/demo/game.manifest.source.json",
+              "games/demo/game.presentation.source.json",
+              "games/demo/package.json",
+              "games/demo/src",
+            ],
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
   );
 
   return root;
@@ -84,7 +154,7 @@ await test("artifact build ID covers runtime, assembly, and deployment inputs", 
 
   await writeFile(
     join(root, "site.assembly.json"),
-    `${JSON.stringify({ schemaVersion: 1, hubStage: ".gameyard/stage/hub", games: [] })}\n`,
+    `${await readFile(join(root, "site.assembly.json"), "utf8")}\n`,
   );
   assert.notEqual(await createArtifactBuildId(root), previous);
 });
@@ -92,25 +162,6 @@ await test("artifact build ID covers runtime, assembly, and deployment inputs", 
 await test("artifact build ID includes each configured game's production inputs", async () => {
   const root = await createFixture();
   const gameSource = join(root, "games/demo/src");
-  await mkdir(gameSource, { recursive: true });
-  await writeFile(join(gameSource, "game.js"), "first build\n");
-  await writeFile(
-    join(root, "site.assembly.json"),
-    `${JSON.stringify(
-      {
-        schemaVersion: 1,
-        hubStage: ".gameyard/stage/hub",
-        games: [
-          {
-            stage: ".gameyard/stage/games/demo",
-            productionInputs: ["games/demo/src"],
-          },
-        ],
-      },
-      null,
-      2,
-    )}\n`,
-  );
   const first = await createArtifactBuildId(root);
   await writeFile(join(gameSource, "game.js"), "second build\n");
 

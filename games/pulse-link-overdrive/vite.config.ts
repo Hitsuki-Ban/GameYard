@@ -3,10 +3,13 @@ import { createGameManifestPlugin } from "@gameyard/manifest-tools";
 import { defineConfig } from "vite-plus";
 
 import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
+import { getRegisteredGame, loadProductionRegistry } from "../../tooling/production-registry.mjs";
 import manifestSourceJson from "./game.manifest.source.json";
 
 const buildId = await createArtifactBuildId();
 const manifestSource = GameManifestSourceSchema.parse(manifestSourceJson);
+const registry = await loadProductionRegistry(new URL("../../", import.meta.url));
+const registeredGame = getRegisteredGame(registry, manifestSource.id);
 const devBase = `/games/${manifestSource.id}/`;
 const devFiles = [
   "assets/icon.svg",
@@ -29,10 +32,13 @@ export default defineConfig(({ command }) => ({
   },
   plugins: [createGameManifestPlugin({ source: manifestSource, buildId, devFiles })],
   build: {
-    outDir: "../../.gameyard/stage/games/pulse-link-overdrive",
+    outDir: registeredGame.stagePath,
     emptyOutDir: true,
   },
   server: {
+    host: "127.0.0.1",
+    port: registeredGame.devPort,
+    strictPort: true,
     hmr: false,
   },
 }));
