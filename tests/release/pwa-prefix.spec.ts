@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openPlayTools } from "../play-mode";
+import { openSettingsDrawer } from "../play-mode";
 
 test("the repository-prefix PWA saves and restores one explicit game offline", async ({
   context,
@@ -11,13 +11,14 @@ test("the repository-prefix PWA saves and restores one explicit game offline", a
   await page.locator('.catalog-card__link[href="?game=crown-breaker"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  const playTools = await openPlayTools(page);
+  const playTools = await openSettingsDrawer(page);
   await playTools.getByRole("button", { name: "Offline" }).click();
-  const drawer = page.locator(".pwa-drawer");
-  const saveButton = drawer.getByRole("button", { name: "Save selected game" });
+  const drawer = page.locator(".pwa-panel");
+  const crownRow = drawer.getByRole("listitem").filter({ hasText: "CROWN//BREAKER" });
+  const saveButton = crownRow.getByRole("button", { name: "Save offline" });
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
   await saveButton.click();
-  await expect(drawer.getByRole("button", { name: "Saved for offline" })).toBeDisabled({
+  await expect(crownRow.getByRole("button", { name: "Remove copy" })).toBeEnabled({
     timeout: 15_000,
   });
 
@@ -35,7 +36,7 @@ test("the repository-prefix PWA saves and restores one explicit game offline", a
     },
   ]);
 
-  await drawer.getByRole("button", { name: /Close/ }).click();
+  await page.locator(".hub-drawer__heading > button").click();
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/, {
