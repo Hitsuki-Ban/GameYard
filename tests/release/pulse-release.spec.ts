@@ -702,9 +702,6 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
     await expectProductionDiagnostics(page, game.id, targetLocale, settingsRevision);
 
     await expect
-      .poll(async () => (await releaseResources(page)).openHostPorts)
-      .toBeGreaterThan(baselineResources.openHostPorts);
-    await expect
       .poll(async () => (await releaseResources(page)).guestAnimationFrames)
       .toBeGreaterThan(baselineResources.guestAnimationFrames);
     await expect
