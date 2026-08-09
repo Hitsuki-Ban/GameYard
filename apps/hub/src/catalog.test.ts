@@ -6,6 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { BrowseCatalog, catalogCoverPolicy } from "./BrowseCatalog";
 import { GAME_CATALOG, getGameById, isGameId, type GameCatalogEntry, type GameId } from "./catalog";
 import { i18n } from "./i18n";
+import { PUBLIC_LOCALES } from "./locales";
 
 function firstGame() {
   const game = GAME_CATALOG[0];
@@ -23,7 +24,9 @@ describe("game catalog", () => {
     for (const game of GAME_CATALOG) {
       expect(game.id).toBe(game.manifestSource.id);
       expect(game.languages).toEqual(game.manifestSource.locales.supported);
+      expect(game.languages).toEqual(PUBLIC_LOCALES);
       expect(game.title).not.toBe("");
+      expect(Object.keys(game.taglines)).toEqual(PUBLIC_LOCALES);
       expect(Object.values(game.taglines).every((tagline) => tagline.length > 0)).toBe(true);
       expect(game.cover.candidates.length).toBeGreaterThan(0);
       expect(game.cover.candidates.every((candidate) => candidate.url.length > 0)).toBe(true);

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry, GameId } from "./catalog";
 import type { DiagnosticEvent } from "./diagnostics";
+import type { SupportedLocale } from "./locales";
 import {
   activatePwaUpdate,
   assertPwaWorkerBuild,
@@ -36,17 +37,23 @@ type StorageEstimateState =
 
 interface PwaPanelProps {
   readonly games: readonly GameCatalogEntry[];
+  readonly locale: SupportedLocale;
   readonly open: boolean;
   readonly selectedGame: GameId | null;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
 }
 
-function formatMegabytes(bytes: number): string {
-  if (bytes === 0) return "0 MB";
-  return `${Math.max(0.01, bytes / (1024 * 1024)).toFixed(bytes < 1024 * 1024 ? 2 : 1)} MB`;
+function formatMegabytes(bytes: number, locale: SupportedLocale): string {
+  const value = bytes === 0 ? 0 : Math.max(0.01, bytes / (1024 * 1024));
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "megabyte",
+    unitDisplay: "short",
+    maximumFractionDigits: bytes < 1024 * 1024 ? 2 : 1,
+  }).format(value);
 }
 
-export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) {
+export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPanelProps) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("registering");
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -56,7 +63,7 @@ export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) 
   const [waitingRelease, setWaitingRelease] = useState<WaitingRelease | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [storageEstimate, setStorageEstimate] = useState<StorageEstimateState>({ kind: "loading" });
-  const [error, setError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState(false);
   const reloadOnControllerChange = useRef(false);
 
   useEffect(() => {
@@ -102,7 +109,6 @@ export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) 
       .catch((reason: unknown) => {
         if (cancelled) return;
         setPhase("unsupported");
-        setError(reason instanceof Error ? reason.message : String(reason));
         onEvent("pwa.failed", {
           message: reason instanceof Error ? reason.message : String(reason),
         });
@@ -157,13 +163,18 @@ export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) 
   const run = async (nextPhase: Phase, gameId: GameId | null, operation: () => Promise<void>) => {
     setPhase(nextPhase);
     setActiveGame(gameId);
-    setError(null);
+    setOperationError(false);
     try {
       await operation();
       setPhase("ready");
     } catch (reason) {
       setPhase("ready");
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setOperationError(true);
+      onEvent("pwa.operation-failed", {
+        operation: nextPhase,
+        gameId,
+        message: reason instanceof Error ? reason.message : String(reason),
+      });
     } finally {
       setActiveGame(null);
     }
@@ -272,8 +283,8 @@ export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) 
         <p className="pwa-panel__estimate">
           {storageEstimate.kind === "ready"
             ? t("pwa.storageEstimate", {
-                usage: formatMegabytes(storageEstimate.usage),
-                quota: formatMegabytes(storageEstimate.quota),
+                usage: formatMegabytes(storageEstimate.usage, locale),
+                quota: formatMegabytes(storageEstimate.quota, locale),
               })
             : storageEstimate.kind === "loading"
               ? t("pwa.storageEstimating")
@@ -289,9 +300,9 @@ export function PwaPanel({ games, open, selectedGame, onEvent }: PwaPanelProps) 
       </section>
       {phase === "registering" ? <p>{t("pwa.registering")}</p> : null}
       {phase === "unsupported" ? <p>{t("pwa.unavailable")}</p> : null}
-      {error ? (
+      {operationError ? (
         <p className="pwa-panel__error" role="alert">
-          {error}
+          {t("pwa.operationError")}
         </p>
       ) : null}
     </div>

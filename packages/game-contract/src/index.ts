@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import { LOCALE_PREFERENCES, PUBLIC_LOCALES } from "@gameyard/game-contract/locales";
+
+export { LOCALE_PREFERENCES, PUBLIC_LOCALES } from "@gameyard/game-contract/locales";
+export type { LocalePreference, PublicLocale } from "@gameyard/game-contract/locales";
+
 export const PROTOCOL_VERSION = 1 as const;
 
 const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -21,10 +26,10 @@ export type InstanceId = z.infer<typeof InstanceIdSchema>;
 export const CommandIdSchema = z.string().min(1).max(128).regex(identifierPattern);
 export type CommandId = z.infer<typeof CommandIdSchema>;
 
-export const LocaleSchema = z.enum(["system", "en", "ja", "zh-Hans"]);
+export const LocaleSchema = z.enum(LOCALE_PREFERENCES);
 export type Locale = z.infer<typeof LocaleSchema>;
 
-export const ResolvedLocaleSchema = z.enum(["en", "ja", "zh-Hans"]);
+export const ResolvedLocaleSchema = z.enum(PUBLIC_LOCALES);
 export type ResolvedLocale = z.infer<typeof ResolvedLocaleSchema>;
 
 export const LocaleContextSchema = z.strictObject({
@@ -273,6 +278,10 @@ const trimmedTextSchema = z
   .refine((value) => !/[\r\n]/u.test(value), "Expected single-line text")
   .refine((value) => value.trim() === value, "Expected trimmed non-empty text");
 
+const presentationTaglinesShape = Object.fromEntries(
+  PUBLIC_LOCALES.map((locale) => [locale, trimmedTextSchema]),
+) as { [Locale in (typeof PUBLIC_LOCALES)[number]]: typeof trimmedTextSchema };
+
 const coverDimensionsShape = {
   width: z.number().int().positive().refine(Number.isSafeInteger, "Width must be a safe integer"),
   height: z.number().int().positive().refine(Number.isSafeInteger, "Height must be a safe integer"),
@@ -288,11 +297,7 @@ const gamePresentationShape = {
   schemaVersion: z.literal(1),
   id: GameIdSchema,
   title: trimmedTextSchema,
-  taglines: z.strictObject({
-    en: trimmedTextSchema,
-    ja: trimmedTextSchema,
-    "zh-Hans": trimmedTextSchema,
-  }),
+  taglines: z.strictObject(presentationTaglinesShape),
   accent: z.string().regex(/^#[0-9a-f]{6}$/),
   stage: GamePresentationStageSchema,
 };

@@ -1,8 +1,10 @@
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { App } from "./App";
-import "./i18n";
+import { applyHubDocumentPresentation } from "./i18n";
+import { currentSystemLanguages } from "./locales";
 import {
   activatePwaUpdate,
   assertPwaWorkerBuild,
@@ -12,12 +14,24 @@ import {
   watchForPwaUpdate,
   type ArtifactCheck,
 } from "./pwa";
+import { readSettings, resolveLocale, resolveSystemLocale } from "./settings";
 import "./styles.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("GameYard Hub root element is missing.");
 }
+
+const bootstrapLanguages = currentSystemLanguages();
+const bootstrapSettings = readSettings(
+  window.localStorage,
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+);
+const bootstrapLocale =
+  bootstrapSettings.kind === "error"
+    ? resolveSystemLocale(bootstrapLanguages)
+    : resolveLocale(bootstrapSettings.settings.localePreference, bootstrapLanguages);
+applyHubDocumentPresentation(bootstrapLocale, { titleKey: "meta.indexTitle" });
 
 interface WaitingRelease {
   readonly worker: ServiceWorker;
@@ -29,16 +43,19 @@ function ArtifactContractStop({
 }: {
   readonly result: Exclude<ArtifactCheck, { kind: "current" }>;
 }) {
+  const { t } = useTranslation();
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [waitingRelease, setWaitingRelease] = useState<WaitingRelease | null>(null);
   const [updateState, setUpdateState] = useState<"checking" | "ready" | "applying" | "failed">(
     "checking",
   );
-  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateFailed, setUpdateFailed] = useState(false);
   const detail =
     result.kind === "mismatch"
-      ? `Expected ${__GAMEYARD_BUILD__}; received ${result.received}.`
-      : result.reason;
+      ? t("artifact.mismatch", { expected: __GAMEYARD_BUILD__, received: result.received })
+      : result.code === "http"
+        ? t("artifact.error.http", { status: result.status })
+        : t(`artifact.error.${result.code}`);
 
   useEffect(() => {
     if (result.kind !== "mismatch" || !("serviceWorker" in navigator)) {
@@ -71,8 +88,9 @@ function ArtifactContractStop({
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        console.error("GameYard release update check failed", error);
         setUpdateState("failed");
-        setUpdateError(error instanceof Error ? error.message : String(error));
+        setUpdateFailed(true);
       });
     return () => {
       cancelled = true;
@@ -84,7 +102,7 @@ function ArtifactContractStop({
   const applyUpdate = () => {
     if (!waitingRelease || !registration) return;
     setUpdateState("applying");
-    setUpdateError(null);
+    setUpdateFailed(false);
     void (async () => {
       const publishedBuildId = await fetchPublishedBuildId();
       if (publishedBuildId !== waitingRelease.buildId) {
@@ -96,28 +114,29 @@ function ArtifactContractStop({
       await assertPwaWorkerBuild(waitingRelease.worker, publishedBuildId);
       await activatePwaUpdate(waitingRelease.worker, publishedBuildId);
     })().catch((error: unknown) => {
+      console.error("GameYard release activation failed", error);
       setUpdateState("failed");
-      setUpdateError(error instanceof Error ? error.message : String(error));
+      setUpdateFailed(true);
     });
   };
 
   return (
     <main className="artifact-stop" role="alert">
-      <span>ARTIFACT / CONTRACT / STOP</span>
-      <h1>GameYard update required</h1>
-      <p>The loaded Hub shell does not match the currently published atomic artifact.</p>
+      <span>{t("artifact.eyebrow")}</span>
+      <h1>{t("artifact.title")}</h1>
+      <p>{t("artifact.body")}</p>
       <code>{detail}</code>
       {(updateState === "ready" || updateState === "applying") && waitingRelease ? (
         <button type="button" disabled={updateState === "applying"} onClick={applyUpdate}>
-          {updateState === "applying" ? "Applying current release…" : "Apply current release"}
+          {updateState === "applying" ? t("artifact.applying") : t("artifact.apply")}
         </button>
       ) : null}
       {updateState === "checking" && result.kind === "mismatch" ? (
-        <p>Checking the current Service Worker release…</p>
+        <p>{t("artifact.checking")}</p>
       ) : null}
-      {updateError ? <code>{updateError}</code> : null}
+      {updateFailed ? <p>{t("artifact.updateError")}</p> : null}
       <button type="button" onClick={() => window.location.reload()}>
-        Reload current release
+        {t("artifact.reload")}
       </button>
     </main>
   );
@@ -125,5 +144,10 @@ function ArtifactContractStop({
 
 const root = createRoot(rootElement);
 void verifyArtifactBuild().then((result) => {
-  root.render(result.kind === "current" ? <App /> : <ArtifactContractStop result={result} />);
+  if (result.kind === "current") {
+    root.render(<App />);
+    return;
+  }
+  applyHubDocumentPresentation(bootstrapLocale, { titleKey: "meta.artifactTitle" });
+  root.render(<ArtifactContractStop result={result} />);
 });

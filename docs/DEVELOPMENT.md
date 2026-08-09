@@ -124,6 +124,8 @@ stage 根必须包含 `game.manifest.json`，其 `files` 精确声明自身、�
 
 开发模式的 Lab 只通过现有 Host 公共设置/语言/生命周期 API 与显式 CSS token 应用 startup scene，不写 localStorage。preset 严格绑定当前 guest 的 game ID、SemVer、build ID、scene ID/version 与 seed；任何版本不匹配直接拒绝，不迁移也不补默认值。要保留一个方向时，将结果转成经过审查的正式变更；不要让 runtime preset 成为隐式生产配置。
 
+Hub 公共 locale 的唯一集合来自 `@gameyard/game-contract/locales`，当前为 `en`、`ja`、`zh-Hans`；presentation tagline、Host contract、React catalog 与 Service Worker 小型离线 catalog 必须精确覆盖同一集合。System 匹配按浏览器优先序逐项处理：`zh`、`zh-Hans`、`zh-CN`、`zh-SG` 使用简体中文；`zh-Hant`、`zh-TW`、`zh-HK`、`zh-MO` 不得映射为简体，而是继续匹配下一偏好，均不支持时使用明确的英文默认值。保存的显式选择优先于 System。locale 变化同时更新可见/无障碍文本、`title`、description、根 `lang`/`dir` 与活动 Guest；语言自称用自身 BCP 47 `lang` 标注。游戏标题、tagline 和游戏内文案仍分别归 presentation 与 Guest 所有，不进入 Hub 公共 catalog。生产 UI 唯一允许不翻译的内容由 `HUB_UNTRANSLATED_CONTENT` 明列：GAME/YARD 品牌字样、presentation 游戏标题，以及 build/game ID、版本、protocol/schema 与诊断事件标识等机器值；不得临时增加散落例外。
+
 视觉基准：
 
 - desktop 1440×900

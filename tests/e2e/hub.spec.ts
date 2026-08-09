@@ -270,7 +270,9 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   await openPlayDiagnostics(page);
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
-  await expect(page.locator(".diagnostics__facts")).toContainText("game:pulse-link-overdrive");
+  await expect(page.locator(".diagnostics__facts")).toContainText(
+    "Playing PULSE LINK // OVERDRIVE",
+  );
   await expect(page.locator(".diagnostics__facts dd").nth(4)).toHaveText(String(expectedRevision));
   await expect(page.locator(".diagnostics__facts dd").nth(7)).toHaveText(String(expectedRevision));
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
@@ -334,7 +336,7 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   await tumbleSettings.getByRole("slider", { name: /SFX/ }).fill("0.58");
   await tumbleSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
   await openPlayDiagnostics(page);
-  await expect(page.locator(".diagnostics__facts")).toContainText("game:tumbledrum");
+  await expect(page.locator(".diagnostics__facts")).toContainText("Playing TUMBLEDRUM");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
   await closeHubDrawer(page);
@@ -411,7 +413,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   const activeHostPorts = (await crownResources(page)).hostPorts;
 
   await openPlayDiagnostics(page);
-  await expect(page.locator(".diagnostics__facts")).toContainText("game:crown-breaker");
+  await expect(page.locator(".diagnostics__facts")).toContainText("Playing CROWN//BREAKER");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
   await closeHubDrawer(page);
@@ -449,21 +451,90 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   expect(runtimeErrors).toEqual([]);
 });
 
-test("public language setting persists across reloads", async ({ page }) => {
+test("the public locale journey covers metadata, autonyms, persistence, and system policy", async ({
+  page,
+}) => {
   const runtimeErrors = collectRuntimeErrors(page);
+  await page.context().addInitScript(() => {
+    Object.defineProperties(navigator, {
+      language: { configurable: true, get: () => "zh-TW" },
+      languages: { configurable: true, get: () => ["zh-TW"] },
+    });
+  });
 
   await page.goto("./");
-  await setHubLocale(page, "zh-Hans");
-  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
-  await expect(page.getByRole("button", { name: /^设置/ })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  await expect(page).toHaveTitle("GameYard — Open Exhibit");
+
+  const initialSettings = await openSettingsDrawer(page);
+  const languageSelect = initialSettings.locator(".settings-panel select");
+  await expect(languageSelect).toHaveAccessibleName("Language");
+  for (const locale of ["en", "ja", "zh-Hans"] as const) {
+    await expect(languageSelect.locator(`option[value="${locale}"]`)).toHaveAttribute(
+      "lang",
+      locale,
+    );
+  }
+  await closeHubDrawer(page);
+
+  const localeCases = [
+    {
+      locale: "en",
+      title: "GameYard — Open Exhibit",
+      description: "A focused same-origin gallery of experimental browser games.",
+      settings: /^Settings/,
+    },
+    {
+      locale: "ja",
+      title: "GameYard — オープン展示",
+      description: "実験的なブラウザーゲームを同一オリジンで楽しめる展示室。",
+      settings: /^設定/,
+    },
+    {
+      locale: "zh-Hans",
+      title: "GameYard — 开放展览",
+      description: "汇集实验性浏览器游戏的专注同源展览室。",
+      settings: /^设置/,
+    },
+  ] as const;
+
+  for (const localeCase of localeCases) {
+    await setHubLocale(page, localeCase.locale);
+    await expect(page.locator("html")).toHaveAttribute("lang", localeCase.locale);
+    await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+    await expect(page).toHaveTitle(localeCase.title);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      localeCase.description,
+    );
+    await expect(page.getByRole("button", { name: localeCase.settings })).toBeVisible();
+    await openPlayDiagnostics(page);
+    await expect(page.locator("body")).not.toContainText("⟦missing:");
+    await closeHubDrawer(page);
+  }
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
   await expect(page.getByRole("button", { name: /^设置/ })).toBeVisible();
   const stored = await page.evaluate((key) => window.localStorage.getItem(key), SETTINGS_KEY);
-  expect(JSON.parse(stored as string)).toMatchObject({ localePreference: "zh-Hans", revision: 2 });
+  expect(JSON.parse(stored as string)).toMatchObject({ localePreference: "zh-Hans", revision: 4 });
+
+  const secondPage = await page.context().newPage();
+  const secondPageErrors = collectRuntimeErrors(secondPage);
+  await secondPage.goto("./");
+  await expect(secondPage.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  const secondPageSettings = await openSettingsDrawer(secondPage);
+  await secondPageSettings.locator(".settings-panel select").selectOption("system");
+  await closeHubDrawer(secondPage);
+  await expect(secondPage.locator("html")).toHaveAttribute("lang", "en");
+  await expect(secondPage).toHaveTitle("GameYard — Open Exhibit");
+  await secondPage.reload();
+  await expect(secondPage.locator("html")).toHaveAttribute("lang", "en");
+  await secondPage.close();
 
   expect(runtimeErrors).toEqual([]);
+  expect(secondPageErrors).toEqual([]);
 });
 
 test("Browse Mode is actionable in the first mobile viewport and loads no game runtime", async ({

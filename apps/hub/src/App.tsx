@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useTranslation } from "react-i18next";
 
 import { BrowseCatalog } from "./BrowseCatalog";
-import { GAME_CATALOG, type GameCatalogEntry, type GameId } from "./catalog";
+import { GAME_CATALOG, getGameById, type GameCatalogEntry, type GameId } from "./catalog";
 import {
   describeRoute,
   appendDiagnosticEvent,
@@ -13,11 +13,12 @@ import {
   type DiagnosticEnvelope,
   type RuntimeDiagnosticState,
 } from "./diagnostics";
-import { i18n } from "./i18n";
+import { applyHubDocumentPresentation } from "./i18n";
 import { GameCover } from "./GameCover";
 import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
 import { HubDrawer } from "./HubDrawer";
 import type { HubLabStartupState } from "./lab";
+import { currentSystemLanguages, LANGUAGE_AUTONYMS } from "./locales";
 import { PwaPanel } from "./PwaPanel";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
@@ -53,18 +54,24 @@ const LAB_COPY = {
     heading: "Session Lab",
     close: "Close Lab",
     loading: "Loading Tweakpane…",
+    requiresRuntime: "Lab requires a loaded guest manifest.",
+    importFailed: "Lab could not be loaded.",
   },
   ja: {
     open: "Labを開く",
     heading: "セッション Lab",
     close: "Labを閉じる",
     loading: "Tweakpaneを読み込み中…",
+    requiresRuntime: "Lab には読み込み済みのゲストマニフェストが必要です。",
+    importFailed: "Lab を読み込めませんでした。",
   },
   "zh-Hans": {
     open: "打开 Lab",
     heading: "会话 Lab",
     close: "关闭 Lab",
     loading: "正在加载 Tweakpane…",
+    requiresRuntime: "Lab 需要已载入的 Guest manifest。",
+    importFailed: "无法载入 Lab。",
   },
 } as const satisfies Record<
   SupportedLocale,
@@ -73,12 +80,10 @@ const LAB_COPY = {
     readonly heading: string;
     readonly close: string;
     readonly loading: string;
+    readonly requiresRuntime: string;
+    readonly importFailed: string;
   }
 >;
-
-function currentSystemLanguages(): readonly string[] {
-  return navigator.languages.length > 0 ? [...navigator.languages] : [navigator.language];
-}
 
 function currentReducedMotionPreference(): boolean {
   return window.matchMedia(REDUCED_MOTION_MEDIA_QUERY).matches;
@@ -125,9 +130,11 @@ function SettingsPanel({ settings, error, locked, onChange }: SettingsPanelProps
           }
         >
           <option value="system">{t("settings.system")}</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-          <option value="zh-Hans">简体中文</option>
+          {LANGUAGE_AUTONYMS.map(({ locale, label }) => (
+            <option key={locale} value={locale} lang={locale}>
+              {label}
+            </option>
+          ))}
         </select>
       </label>
       <fieldset className="setting setting--audio">
@@ -238,7 +245,11 @@ function Stage({
         <div className="route-error__code">400 / {route.code.toUpperCase()}</div>
         <h2 id="route-error-title">{t("route.errorTitle")}</h2>
         <p>{t(`route.${route.code}`)}</p>
-        <code>{t("route.received", { value: route.received.join(", ") || "(empty)" })}</code>
+        <code>
+          {t("route.received", {
+            value: route.received.join(", ") || t("route.empty"),
+          })}
+        </code>
       </section>
     );
   }
@@ -297,7 +308,7 @@ function Stage({
           />
         </div>
         <div className="stage__body">
-          <span className="micro-label">SETTINGS / CONTRACT / STOP</span>
+          <span className="micro-label">{t("settings.contractStop")}</span>
           <p className="stage__description">{t("stage.settingsRequired")}</p>
         </div>
       </div>
@@ -313,6 +324,17 @@ interface DiagnosticsPanelProps {
 function DiagnosticsPanel({ open, snapshot }: DiagnosticsPanelProps) {
   const { t } = useTranslation();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const routeGame = GAME_CATALOG.find((game) => snapshot.hub.route === `game:${game.id}`);
+  const routeLabel =
+    snapshot.hub.route === "index"
+      ? t("diagnostics.routeIndex")
+      : routeGame
+        ? t("diagnostics.routeGame", { game: routeGame.title })
+        : t("diagnostics.routeError", {
+            code: snapshot.hub.route.startsWith("error:")
+              ? snapshot.hub.route.slice("error:".length)
+              : snapshot.hub.route,
+          });
 
   useEffect(() => {
     if (!open) setFeedback(null);
@@ -356,11 +378,11 @@ function DiagnosticsPanel({ open, snapshot }: DiagnosticsPanelProps) {
           </div>
           <div>
             <dt>{t("diagnostics.route")}</dt>
-            <dd>{snapshot.hub.route}</dd>
+            <dd>{routeLabel}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.selected")}</dt>
-            <dd>{snapshot.game?.id ?? t("diagnostics.none")}</dd>
+            <dd>{snapshot.game ? getGameById(snapshot.game.id).title : t("diagnostics.none")}</dd>
           </div>
           <div>
             <dt>{t("diagnostics.locale")}</dt>
@@ -372,14 +394,18 @@ function DiagnosticsPanel({ open, snapshot }: DiagnosticsPanelProps) {
           </div>
           <div>
             <dt>{t("diagnostics.guestLifecycle")}</dt>
-            <dd>{snapshot.game?.lifecycle ?? t("diagnostics.none")}</dd>
+            <dd>
+              {snapshot.game?.lifecycle
+                ? t(`runtime.state.${snapshot.game.lifecycle}`)
+                : t("diagnostics.none")}
+            </dd>
           </div>
           <div>
             <dt>{t("diagnostics.guestInput")}</dt>
             <dd>
               {snapshot.game?.inputEnabled === null || snapshot.game === null
                 ? t("diagnostics.none")
-                : String(snapshot.game.inputEnabled)}
+                : t(snapshot.game.inputEnabled ? "diagnostics.true" : "diagnostics.false")}
             </dd>
           </div>
           <div>
@@ -391,24 +417,24 @@ function DiagnosticsPanel({ open, snapshot }: DiagnosticsPanelProps) {
             <dd>{snapshot.game?.events.length ?? 0}</dd>
           </div>
           <div>
-            <dt>Schema</dt>
+            <dt>{t("diagnostics.schema")}</dt>
             <dd>{snapshot.schemaVersion}</dd>
           </div>
           <div>
-            <dt>Hub health</dt>
-            <dd>{snapshot.hub.health}</dd>
+            <dt>{t("diagnostics.hubHealth")}</dt>
+            <dd>{t(`diagnostics.health.${snapshot.hub.health}`)}</dd>
           </div>
           <div>
-            <dt>Game version</dt>
+            <dt>{t("diagnostics.gameVersion")}</dt>
             <dd>{snapshot.game?.version ?? t("diagnostics.none")}</dd>
           </div>
           <div>
-            <dt>Game build</dt>
+            <dt>{t("diagnostics.gameBuild")}</dt>
             <dd>{snapshot.game?.buildId ?? t("diagnostics.none")}</dd>
           </div>
           <div>
-            <dt>Game health</dt>
-            <dd>{snapshot.game?.health ?? "unavailable"}</dd>
+            <dt>{t("diagnostics.gameHealth")}</dt>
+            <dd>{t(`diagnostics.health.${snapshot.game?.health ?? "unavailable"}`)}</dd>
           </div>
         </dl>
         <div className="diagnostics__events">
@@ -468,14 +494,16 @@ interface LabPanelProps {
 
 function LabPanel({ open, locale, runtime, onApply, onEvent }: LabPanelProps) {
   const paneHost = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "requiresRuntime" | "importFailed">(
+    "loading",
+  );
   const copy = LAB_COPY[locale];
 
   useEffect(() => {
     if (!import.meta.env.DEV || !open || !paneHost.current) return;
     setStatus("loading");
     if (runtime === null) {
-      setStatus("Lab requires a loaded guest manifest.");
+      setStatus("requiresRuntime");
       return;
     }
     let cancelled = false;
@@ -502,7 +530,10 @@ function LabPanel({ open, locale, runtime, onApply, onEvent }: LabPanelProps) {
         setStatus("ready");
       })
       .catch((error: unknown) => {
-        setStatus(error instanceof Error ? error.message : "Lab import failed");
+        onEvent("lab.import-failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        setStatus("importFailed");
       });
     return () => {
       cancelled = true;
@@ -514,7 +545,15 @@ function LabPanel({ open, locale, runtime, onApply, onEvent }: LabPanelProps) {
 
   return (
     <section className="lab-panel" aria-label={copy.heading}>
-      {status !== "ready" ? <p>{status === "loading" ? copy.loading : status}</p> : null}
+      {status !== "ready" ? (
+        <p>
+          {status === "loading"
+            ? copy.loading
+            : status === "requiresRuntime"
+              ? copy.requiresRuntime
+              : copy.importFailed}
+        </p>
+      ) : null}
       <div ref={paneHost} />
     </section>
   );
@@ -621,11 +660,17 @@ export function App() {
   }, [recordEvent, settingsState]);
 
   useEffect(() => {
-    void i18n.changeLanguage(locale);
-    document.documentElement.lang = locale;
+    applyHubDocumentPresentation(
+      locale,
+      route.kind === "game"
+        ? { titleKey: "meta.gameTitle", game: route.game.title }
+        : route.kind === "error"
+          ? { titleKey: "meta.errorTitle" }
+          : { titleKey: "meta.indexTitle" },
+    );
     document.documentElement.dataset.reducedMotion = String(settings?.reducedMotion ?? false);
     document.documentElement.dataset.screenShake = String(settings?.screenShake ?? false);
-  }, [locale, settings?.reducedMotion, settings?.screenShake]);
+  }, [locale, route, settings?.reducedMotion, settings?.screenShake]);
 
   useEffect(() => {
     const handleLanguageChange = () => {
@@ -872,7 +917,7 @@ export function App() {
           <>
             <header className="site-header">
               <div className="brand-block">
-                <a className="wordmark" href="./" aria-label="GameYard home">
+                <a className="wordmark" href="./" aria-label={t("brand.home")}>
                   <span>GAME</span>
                   <span>YARD</span>
                 </a>
@@ -894,7 +939,7 @@ export function App() {
 
             {settingsState.kind === "error" ? (
               <div className="contract-error" role="alert">
-                <span>SETTINGS / CONTRACT / STOP</span>
+                <span>{t("settings.contractStop")}</span>
                 <div>
                   <strong>{t("settings.errorTitle")}</strong>
                   <p>{t("settings.errorBody")}</p>
@@ -1009,6 +1054,7 @@ export function App() {
           <PwaPanel
             open={activeOverlay === "pwa"}
             games={GAME_CATALOG}
+            locale={locale}
             selectedGame={selectedId}
             onEvent={recordEvent}
           />

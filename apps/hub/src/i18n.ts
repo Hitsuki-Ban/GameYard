@@ -1,9 +1,31 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import { PUBLIC_LOCALES, localeDirection, type SupportedLocale } from "./locales";
+
+export const HUB_UNTRANSLATED_CONTENT = {
+  brandSegments: ["GAME", "YARD"],
+  registryValues: ["gameTitle"],
+  machineValues: [
+    "buildId",
+    "diagnosticEventCode",
+    "diagnosticEventType",
+    "gameId",
+    "gameVersion",
+    "protocolVersion",
+    "schemaVersion",
+  ],
+} as const;
+
 const en = {
   "brand.kicker": "EXPERIMENTAL GAMES / OPEN EXHIBIT",
   "brand.subtitle": "A living collection of playable experiments.",
+  "brand.home": "GameYard home",
+  "meta.indexTitle": "GameYard — Open Exhibit",
+  "meta.gameTitle": "{{game}} — GameYard",
+  "meta.errorTitle": "Route error — GameYard",
+  "meta.artifactTitle": "Update required — GameYard",
+  "meta.description": "A focused same-origin gallery of experimental browser games.",
   "settings.heading": "Public settings",
   "settings.open": "Settings",
   "settings.language": "Language",
@@ -14,6 +36,7 @@ const en = {
   "settings.reducedMotion": "Reduce motion",
   "settings.screenShake": "Screen shake",
   "settings.system": "System",
+  "settings.contractStop": "SETTINGS / CONTRACT / STOP",
   "settings.errorTitle": "Settings contract error",
   "settings.errorBody":
     "The stored value does not match gameyard.settings.v1. It was not repaired or replaced.",
@@ -61,13 +84,15 @@ const en = {
   "pwa.clearing": "Clearing…",
   "pwa.registering": "Preparing the Hub shell for offline use…",
   "pwa.unavailable": "Offline installation is unavailable in this browser or context.",
+  "pwa.operationError": "The offline library action could not be completed.",
   "index.eyebrow": "CURRENT EXHIBITION",
   "index.title": "PLAY THE YARD",
   "index.instruction": "Pick a work and play it here—no install, no detour.",
   "catalog.heading": "Playable works",
-  "catalog.languages": "Available in {{languages}}",
+  "catalog.languages": "Languages",
   "catalog.start": "Start playing",
   "stage.settingsRequired": "The runtime cannot start until the settings contract is valid.",
+  "runtime.state.booting": "Booting",
   "runtime.state.loading": "Loading",
   "runtime.state.ready": "Ready",
   "runtime.state.active": "Active",
@@ -77,6 +102,8 @@ const en = {
   "runtime.state.failed": "Failed",
   "runtime.loading": "Validating local runtime and opening the channel…",
   "runtime.failed": "Runtime stopped",
+  "runtime.failureDetail": "This game instance could not start. Retry with a fresh instance.",
+  "runtime.retry": "Retry",
   "runtime.pause": "Pause",
   "runtime.resume": "Resume",
   "runtime.back": "Back to works",
@@ -91,6 +118,7 @@ const en = {
   "route.unknown-game": "The game id in this URL is not in the GameYard catalog.",
   "route.duplicate-game": "The URL contains more than one game parameter.",
   "route.received": "Received: {{value}}",
+  "route.empty": "empty",
   "diagnostics.heading": "Read-only diagnostics",
   "diagnostics.close": "Close",
   "diagnostics.build": "Build",
@@ -102,6 +130,19 @@ const en = {
   "diagnostics.guestInput": "Guest input enabled",
   "diagnostics.guestRevision": "Guest settings revision",
   "diagnostics.guestEvents": "Guest bounded events",
+  "diagnostics.schema": "Schema",
+  "diagnostics.hubHealth": "Hub health",
+  "diagnostics.gameVersion": "Game version",
+  "diagnostics.gameBuild": "Game build",
+  "diagnostics.gameHealth": "Game health",
+  "diagnostics.routeIndex": "Exhibit index",
+  "diagnostics.routeGame": "Playing {{game}}",
+  "diagnostics.routeError": "Route error: {{code}}",
+  "diagnostics.true": "Yes",
+  "diagnostics.false": "No",
+  "diagnostics.health.healthy": "Healthy",
+  "diagnostics.health.degraded": "Degraded",
+  "diagnostics.health.unavailable": "Unavailable",
   "diagnostics.events": "Recent structured events",
   "diagnostics.empty": "No events recorded.",
   "diagnostics.copy": "Copy summary",
@@ -113,6 +154,20 @@ const en = {
   "diagnostics.privacy": "Export excludes localStorage, saves, and screenshots.",
   "diagnostics.invalid": "INVALID",
   "diagnostics.none": "NONE",
+  "artifact.eyebrow": "ARTIFACT / CONTRACT / STOP",
+  "artifact.title": "GameYard update required",
+  "artifact.body": "The loaded Hub shell does not match the current atomic release.",
+  "artifact.mismatch": "Expected {{expected}}; received {{received}}.",
+  "artifact.error.network": "The current release could not be reached.",
+  "artifact.error.offlineVerification": "The offline release could not be verified.",
+  "artifact.error.http": "Release metadata returned HTTP {{status}}.",
+  "artifact.error.invalidJson": "Release metadata is not valid JSON.",
+  "artifact.error.invalidSchema": "Release metadata does not match its required schema.",
+  "artifact.applying": "Applying current release…",
+  "artifact.apply": "Apply current release",
+  "artifact.checking": "Checking the current Service Worker release…",
+  "artifact.updateError": "The current release could not be applied. Reload and try again.",
+  "artifact.reload": "Reload current release",
   "footer.note": "GAMEYARD / SAME-ORIGIN RUNTIME HOST",
 };
 
@@ -121,6 +176,12 @@ type TranslationCatalog = { readonly [Key in keyof typeof en]: string };
 const ja: TranslationCatalog = {
   "brand.kicker": "実験ゲーム / オープン展示",
   "brand.subtitle": "遊べる実験作を集め、更新し続ける展示室。",
+  "brand.home": "GameYard ホーム",
+  "meta.indexTitle": "GameYard — オープン展示",
+  "meta.gameTitle": "{{game}} — GameYard",
+  "meta.errorTitle": "ルートエラー — GameYard",
+  "meta.artifactTitle": "更新が必要です — GameYard",
+  "meta.description": "実験的なブラウザーゲームを同一オリジンで楽しめる展示室。",
   "settings.heading": "共通設定",
   "settings.open": "設定",
   "settings.language": "言語",
@@ -131,6 +192,7 @@ const ja: TranslationCatalog = {
   "settings.reducedMotion": "動きを減らす",
   "settings.screenShake": "画面振動",
   "settings.system": "システム",
+  "settings.contractStop": "設定 / コントラクト / 停止",
   "settings.errorTitle": "設定コントラクトエラー",
   "settings.errorBody":
     "保存値が gameyard.settings.v1 と一致しません。修復や置換は行っていません。",
@@ -177,13 +239,15 @@ const ja: TranslationCatalog = {
   "pwa.clearing": "消去中…",
   "pwa.registering": "Hub シェルをオフライン利用向けに準備中…",
   "pwa.unavailable": "このブラウザーまたは環境ではオフライン導入を利用できません。",
+  "pwa.operationError": "オフラインライブラリの操作を完了できませんでした。",
   "index.eyebrow": "開催中の展示",
   "index.title": "庭で遊ぶ",
   "index.instruction": "作品を選べば、すぐここで遊べます。",
   "catalog.heading": "遊べる作品",
-  "catalog.languages": "対応言語：{{languages}}",
+  "catalog.languages": "対応言語",
   "catalog.start": "プレイする",
   "stage.settingsRequired": "設定コントラクトが有効になるまでゲームを開始できません。",
+  "runtime.state.booting": "起動中",
   "runtime.state.loading": "読み込み中",
   "runtime.state.ready": "準備完了",
   "runtime.state.active": "実行中",
@@ -193,6 +257,8 @@ const ja: TranslationCatalog = {
   "runtime.state.failed": "失敗",
   "runtime.loading": "ローカル実行環境を検証し、チャンネルを開いています…",
   "runtime.failed": "実行環境が停止しました",
+  "runtime.failureDetail": "ゲームを開始できませんでした。新しいインスタンスで再試行してください。",
+  "runtime.retry": "再試行",
   "runtime.pause": "一時停止",
   "runtime.resume": "再開",
   "runtime.back": "作品一覧へ",
@@ -208,6 +274,7 @@ const ja: TranslationCatalog = {
   "route.unknown-game": "URL のゲーム ID は GameYard カタログに存在しません。",
   "route.duplicate-game": "URL に game パラメーターが複数あります。",
   "route.received": "受信値: {{value}}",
+  "route.empty": "空",
   "diagnostics.heading": "読み取り専用診断",
   "diagnostics.close": "閉じる",
   "diagnostics.build": "ビルド",
@@ -219,6 +286,19 @@ const ja: TranslationCatalog = {
   "diagnostics.guestInput": "ゲスト入力の有効状態",
   "diagnostics.guestRevision": "ゲスト設定リビジョン",
   "diagnostics.guestEvents": "ゲストの制限付きイベント",
+  "diagnostics.schema": "スキーマ",
+  "diagnostics.hubHealth": "Hub の状態",
+  "diagnostics.gameVersion": "ゲーム版",
+  "diagnostics.gameBuild": "ゲームビルド",
+  "diagnostics.gameHealth": "ゲームの状態",
+  "diagnostics.routeIndex": "展示一覧",
+  "diagnostics.routeGame": "{{game}} をプレイ中",
+  "diagnostics.routeError": "ルートエラー：{{code}}",
+  "diagnostics.true": "はい",
+  "diagnostics.false": "いいえ",
+  "diagnostics.health.healthy": "正常",
+  "diagnostics.health.degraded": "低下",
+  "diagnostics.health.unavailable": "利用不可",
   "diagnostics.events": "最近の構造化イベント",
   "diagnostics.empty": "記録されたイベントはありません。",
   "diagnostics.copy": "概要をコピー",
@@ -230,12 +310,32 @@ const ja: TranslationCatalog = {
   "diagnostics.privacy": "書き出しに localStorage、セーブ、スクリーンショットは含まれません。",
   "diagnostics.invalid": "不正",
   "diagnostics.none": "なし",
+  "artifact.eyebrow": "成果物 / コントラクト / 停止",
+  "artifact.title": "GameYard の更新が必要です",
+  "artifact.body": "読み込まれた Hub シェルは現在の一括リリースと一致しません。",
+  "artifact.mismatch": "期待値 {{expected}}、受信値 {{received}}。",
+  "artifact.error.network": "現在のリリースへ接続できませんでした。",
+  "artifact.error.offlineVerification": "オフラインリリースを検証できませんでした。",
+  "artifact.error.http": "リリースメタデータが HTTP {{status}} を返しました。",
+  "artifact.error.invalidJson": "リリースメタデータは有効な JSON ではありません。",
+  "artifact.error.invalidSchema": "リリースメタデータが必須スキーマと一致しません。",
+  "artifact.applying": "現在のリリースを適用中…",
+  "artifact.apply": "現在のリリースを適用",
+  "artifact.checking": "現在の Service Worker リリースを確認中…",
+  "artifact.updateError": "現在のリリースを適用できませんでした。再読み込みしてお試しください。",
+  "artifact.reload": "現在のリリースを再読み込み",
   "footer.note": "GAMEYARD / 同一オリジン実行ホスト",
 };
 
 const zhHans: TranslationCatalog = {
   "brand.kicker": "实验游戏 / 开放展览",
   "brand.subtitle": "持续更新、可直接游玩的实验作品展。",
+  "brand.home": "GameYard 主页",
+  "meta.indexTitle": "GameYard — 开放展览",
+  "meta.gameTitle": "{{game}} — GameYard",
+  "meta.errorTitle": "路由错误 — GameYard",
+  "meta.artifactTitle": "需要更新 — GameYard",
+  "meta.description": "汇集实验性浏览器游戏的专注同源展览室。",
   "settings.heading": "公共设置",
   "settings.open": "设置",
   "settings.language": "语言",
@@ -246,6 +346,7 @@ const zhHans: TranslationCatalog = {
   "settings.reducedMotion": "减少动态",
   "settings.screenShake": "画面震动",
   "settings.system": "跟随系统",
+  "settings.contractStop": "设置 / 契约 / 停止",
   "settings.errorTitle": "设置契约错误",
   "settings.errorBody": "已存值不符合 gameyard.settings.v1，系统未修复或替换它。",
   "settings.reset": "重置设置",
@@ -290,13 +391,15 @@ const zhHans: TranslationCatalog = {
   "pwa.clearing": "正在清理…",
   "pwa.registering": "正在准备可离线使用的 Hub 外壳…",
   "pwa.unavailable": "当前浏览器或上下文无法安装离线功能。",
+  "pwa.operationError": "无法完成离线游戏库操作。",
   "index.eyebrow": "当前展览",
   "index.title": "进入游戏庭院",
   "index.instruction": "选择一件作品，即刻在这里开始游玩。",
   "catalog.heading": "可玩作品",
-  "catalog.languages": "支持：{{languages}}",
+  "catalog.languages": "支持语言",
   "catalog.start": "开始游玩",
   "stage.settingsRequired": "设置契约有效后才能启动游戏。",
+  "runtime.state.booting": "正在启动",
   "runtime.state.loading": "加载中",
   "runtime.state.ready": "已就绪",
   "runtime.state.active": "运行中",
@@ -306,6 +409,8 @@ const zhHans: TranslationCatalog = {
   "runtime.state.failed": "失败",
   "runtime.loading": "正在验证本地运行时并建立通道…",
   "runtime.failed": "运行时已停止",
+  "runtime.failureDetail": "此游戏实例未能启动，请使用新实例重试。",
+  "runtime.retry": "重试",
   "runtime.pause": "暂停",
   "runtime.resume": "恢复",
   "runtime.back": "返回作品列表",
@@ -320,6 +425,7 @@ const zhHans: TranslationCatalog = {
   "route.unknown-game": "URL 中的游戏 id 不在 GameYard catalog 中。",
   "route.duplicate-game": "URL 中包含多个 game 参数。",
   "route.received": "收到：{{value}}",
+  "route.empty": "空",
   "diagnostics.heading": "只读诊断",
   "diagnostics.close": "关闭",
   "diagnostics.build": "构建",
@@ -331,6 +437,19 @@ const zhHans: TranslationCatalog = {
   "diagnostics.guestInput": "Guest 输入是否启用",
   "diagnostics.guestRevision": "Guest 设置 revision",
   "diagnostics.guestEvents": "Guest 有界事件",
+  "diagnostics.schema": "Schema",
+  "diagnostics.hubHealth": "Hub 状态",
+  "diagnostics.gameVersion": "游戏版本",
+  "diagnostics.gameBuild": "游戏构建",
+  "diagnostics.gameHealth": "游戏状态",
+  "diagnostics.routeIndex": "展览索引",
+  "diagnostics.routeGame": "正在游玩 {{game}}",
+  "diagnostics.routeError": "路由错误：{{code}}",
+  "diagnostics.true": "是",
+  "diagnostics.false": "否",
+  "diagnostics.health.healthy": "正常",
+  "diagnostics.health.degraded": "降级",
+  "diagnostics.health.unavailable": "不可用",
   "diagnostics.events": "最近的结构化事件",
   "diagnostics.empty": "暂无事件记录。",
   "diagnostics.copy": "复制摘要",
@@ -342,10 +461,54 @@ const zhHans: TranslationCatalog = {
   "diagnostics.privacy": "导出内容不含 localStorage、存档或截图。",
   "diagnostics.invalid": "无效",
   "diagnostics.none": "无",
+  "artifact.eyebrow": "产物 / 契约 / 停止",
+  "artifact.title": "GameYard 需要更新",
+  "artifact.body": "已载入的 Hub 外壳与当前原子发布版本不一致。",
+  "artifact.mismatch": "预期 {{expected}}；收到 {{received}}。",
+  "artifact.error.network": "无法连接到当前发布版本。",
+  "artifact.error.offlineVerification": "无法验证离线发布版本。",
+  "artifact.error.http": "发布元数据返回 HTTP {{status}}。",
+  "artifact.error.invalidJson": "发布元数据不是有效 JSON。",
+  "artifact.error.invalidSchema": "发布元数据不符合必需的 schema。",
+  "artifact.applying": "正在应用当前发布版本…",
+  "artifact.apply": "应用当前发布版本",
+  "artifact.checking": "正在检查当前 Service Worker 发布版本…",
+  "artifact.updateError": "无法应用当前发布版本，请重新载入后再试。",
+  "artifact.reload": "重新载入当前发布版本",
   "footer.note": "GAMEYARD / 同源运行时宿主",
 };
 
 export const translationCatalogs = { en, ja, "zh-Hans": zhHans } as const;
+
+const PLACEHOLDER_PATTERN = /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/gu;
+
+function placeholders(value: string): readonly string[] {
+  return [...value.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1]!).sort();
+}
+
+export function assertTranslationCatalogs(
+  catalogs: Readonly<Record<SupportedLocale, Readonly<Record<keyof typeof en, string>>>>,
+): void {
+  const expectedKeys = Object.keys(en).sort();
+  for (const locale of PUBLIC_LOCALES) {
+    const catalog = catalogs[locale];
+    const actualKeys = Object.keys(catalog).sort();
+    if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+      throw new Error(`Hub translation catalog ${locale} does not have the exact public key set`);
+    }
+    for (const key of expectedKeys as (keyof typeof en)[]) {
+      const value = catalog[key];
+      if (value.trim().length === 0) {
+        throw new Error(`Hub translation catalog ${locale} has an empty value for ${key}`);
+      }
+      if (JSON.stringify(placeholders(value)) !== JSON.stringify(placeholders(en[key]))) {
+        throw new Error(`Hub translation catalog ${locale} has mismatched placeholders for ${key}`);
+      }
+    }
+  }
+}
+
+assertTranslationCatalogs(translationCatalogs);
 
 void i18n.use(initReactI18next).init({
   resources: {
@@ -354,12 +517,38 @@ void i18n.use(initReactI18next).init({
     "zh-Hans": { translation: translationCatalogs["zh-Hans"] },
   },
   lng: "en",
-  supportedLngs: ["en", "ja", "zh-Hans"],
+  supportedLngs: [...PUBLIC_LOCALES],
   fallbackLng: false,
   initAsync: false,
   returnEmptyString: false,
-  parseMissingKeyHandler: (key: string) => `⟦missing:${key}⟧`,
+  parseMissingKeyHandler: (key: string) => {
+    throw new Error(`Missing Hub translation key: ${key}`);
+  },
   interpolation: { escapeValue: false },
 });
+
+export type HubTranslationKey = keyof typeof en;
+
+export interface HubDocumentPresentation {
+  readonly titleKey:
+    | "meta.indexTitle"
+    | "meta.gameTitle"
+    | "meta.errorTitle"
+    | "meta.artifactTitle";
+  readonly game?: string;
+}
+
+export function applyHubDocumentPresentation(
+  locale: SupportedLocale,
+  presentation: HubDocumentPresentation,
+): void {
+  const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if (!description) throw new Error("GameYard document is missing its description metadata");
+  document.documentElement.lang = locale;
+  document.documentElement.dir = localeDirection(locale);
+  document.title = i18n.t(presentation.titleKey, { lng: locale, game: presentation.game });
+  description.content = i18n.t("meta.description", { lng: locale });
+  void i18n.changeLanguage(locale);
+}
 
 export { i18n };

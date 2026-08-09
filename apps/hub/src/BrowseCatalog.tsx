@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry, GameId } from "./catalog";
 import { GameCover } from "./GameCover";
+import { languageAutonym } from "./locales";
 import { gameSearch } from "./route";
 import type { SupportedLocale } from "./settings";
 
@@ -55,7 +56,13 @@ export function BrowseCatalog({ games, locale, onSelect }: BrowseCatalogProps) {
             />
             <span className="catalog-card__body">
               <span className="catalog-card__languages">
-                {t("catalog.languages", { languages: game.languages.join(" · ") })}
+                {t("catalog.languages")}:{" "}
+                {game.languages.map((language, languageIndex) => (
+                  <span key={language} lang={language}>
+                    {languageIndex > 0 ? " · " : null}
+                    {languageAutonym(language)}
+                  </span>
+                ))}
               </span>
               <span className="catalog-card__title">{game.title}</span>
               <span className="catalog-card__tagline">{game.taglines[locale]}</span>

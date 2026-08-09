@@ -133,7 +133,9 @@ describe("hub settings", () => {
       revision: 2,
     });
     expect(resolveLocale("system", ["ja-JP"])).toBe("ja");
-    expect(resolveLocale("system", ["zh-TW"])).toBe("zh-Hans");
+    expect(resolveLocale("system", ["zh-TW"])).toBe("en");
+    expect(resolveLocale("system", ["zh-Hant", "ja-JP"])).toBe("ja");
+    expect(resolveLocale("system", ["zh-CN"])).toBe("zh-Hans");
     expect(resolveLocale("system", ["de-DE"])).toBe("en");
     expect(resolveLocale("zh-Hans", ["ja-JP"])).toBe("zh-Hans");
   });

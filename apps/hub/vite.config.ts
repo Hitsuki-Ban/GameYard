@@ -153,6 +153,8 @@ export default defineConfig({
       injectRegister: false,
       manifest: {
         id: "./",
+        lang: "en",
+        dir: "ltr",
         name: "GameYard — Experimental Game Gallery",
         short_name: "GameYard",
         description: "Experimental browser games in one focused same-origin gallery.",
