@@ -101,7 +101,20 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--failed/, {
     timeout: 20_000,
   });
-  await expect(page.locator(".runtime-overlay--failed")).toContainText(/503|offline copy/i);
+  await expect(page.locator(".runtime-overlay--failed")).toContainText(
+    "This game instance could not start",
+  );
+
+  const offlineProbe = await context.newPage();
+  const offlineResponse = await offlineProbe.goto(
+    new URL("games/tumbledrum/index.html", page.url()).href,
+  );
+  expect(offlineResponse?.status()).toBe(503);
+  await expect(offlineProbe.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    offlineProbe.getByRole("heading", { name: "Offline game unavailable" }),
+  ).toBeVisible();
+  await offlineProbe.close();
 
   const failedRuntimeTools = await openSettingsDrawer(page);
   await failedRuntimeTools.getByRole("button", { name: "Offline" }).click();

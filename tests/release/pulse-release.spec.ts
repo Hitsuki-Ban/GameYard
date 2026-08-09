@@ -19,6 +19,8 @@ const locales = [
     tumbledrumStatus: "TUMBLEDRUM title screen",
     crownLanguage: "en",
     crownNewRun: "New Run",
+    diagnosticPaused: "Paused",
+    diagnosticFalse: "No",
   },
   {
     id: "ja",
@@ -27,6 +29,8 @@ const locales = [
     tumbledrumStatus: "TUMBLEDRUMのタイトル画面",
     crownLanguage: "ja",
     crownNewRun: "ニューラン",
+    diagnosticPaused: "一時停止",
+    diagnosticFalse: "いいえ",
   },
   {
     id: "zh-Hans",
@@ -35,6 +39,8 @@ const locales = [
     tumbledrumStatus: "TUMBLEDRUM 标题画面",
     crownLanguage: "zh-CN",
     crownNewRun: "新局",
+    diagnosticPaused: "已暂停",
+    diagnosticFalse: "否",
   },
 ] as const;
 
@@ -158,12 +164,20 @@ async function expectProductionDiagnostics(
 ) {
   await openPlayDiagnostics(page);
   const facts = page.locator(".diagnostics__facts dd");
-  await expect(facts.nth(1)).toHaveText(`game:${gameId}`);
-  await expect(facts.nth(2)).toHaveText(gameId);
+  const game = REGISTERED_GAMES.find((candidate) => candidate.id === gameId);
+  if (!game) throw new Error(`Missing registered game ${gameId}`);
+  const routeLabel =
+    locale.id === "ja"
+      ? `${game.title} をプレイ中`
+      : locale.id === "zh-Hans"
+        ? `正在游玩 ${game.title}`
+        : `Playing ${game.title}`;
+  await expect(facts.nth(1)).toHaveText(routeLabel);
+  await expect(facts.nth(2)).toHaveText(game.title);
   await expect(facts.nth(3)).toHaveText(locale.id);
   await expect(facts.nth(4)).toHaveText(String(settingsRevision));
-  await expect(facts.nth(5)).toHaveText("paused");
-  await expect(facts.nth(6)).toHaveText("false");
+  await expect(facts.nth(5)).toHaveText(locale.diagnosticPaused);
+  await expect(facts.nth(6)).toHaveText(locale.diagnosticFalse);
   await expect(facts.nth(7)).toHaveText(String(settingsRevision));
   if (expectAppliedEvents) {
     await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
@@ -251,7 +265,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
 
   await openPlayDiagnostics(page);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
-  await expect(page.locator(".diagnostics__facts")).toContainText("paused");
+  await expect(page.locator(".diagnostics__facts")).toContainText("Paused");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON" }).click();
   const download = await downloadPromise;

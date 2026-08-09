@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./locales": {
+      "types": "./src/locales.ts",
+      "import": "./src/locales.ts"
     }
   },
   "scripts": {

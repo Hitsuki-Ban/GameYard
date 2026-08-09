@@ -1,10 +1,16 @@
 import type { HostSettings, LocaleContext } from "@gameyard/game-contract";
 
+import {
+  LOCALE_PREFERENCES,
+  resolveSystemLocale,
+  type LocalePreference,
+  type SupportedLocale,
+} from "./locales";
+
+export { resolveSystemLocale, type LocalePreference, type SupportedLocale } from "./locales";
+
 export const SETTINGS_STORAGE_KEY = "gameyard.settings.v1";
 export const SETTINGS_SCHEMA_VERSION = 1 as const;
-
-export type LocalePreference = "system" | "en" | "ja" | "zh-Hans";
-export type SupportedLocale = Exclude<LocalePreference, "system">;
 
 export interface HubSettings {
   readonly schemaVersion: typeof SETTINGS_SCHEMA_VERSION;
@@ -61,8 +67,6 @@ const SETTINGS_KEYS = [
   "reducedMotion",
   "screenShake",
 ] as const;
-
-const LOCALE_PREFERENCES: readonly LocalePreference[] = ["system", "en", "ja", "zh-Hans"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -198,16 +202,6 @@ export function toLocaleContext(
     preference,
     resolved: resolveLocale(preference, systemLanguages),
   } satisfies LocaleContext;
-}
-
-export function resolveSystemLocale(languages: readonly string[]): SupportedLocale {
-  for (const language of languages) {
-    const normalized = language.toLowerCase();
-    if (normalized === "ja" || normalized.startsWith("ja-")) return "ja";
-    if (normalized === "zh" || normalized.startsWith("zh-")) return "zh-Hans";
-    if (normalized === "en" || normalized.startsWith("en-")) return "en";
-  }
-  return "en";
 }
 
 export function resolveLocale(

@@ -9,6 +9,7 @@ import {
   type PwaRequest,
   type PwaResponse,
 } from "./pwa-protocol";
+import { offlineCopy, orderedAcceptLanguages } from "./offline-i18n";
 
 declare const self: ServiceWorkerGlobalScope & {
   readonly __WB_MANIFEST: readonly { readonly url: string; readonly revision?: string | null }[];
@@ -253,14 +254,18 @@ async function matchSavedGame(request: Request, gameId: string | null): Promise<
 }
 
 function unavailableResponse(request: Request, path: string): Response {
-  const message = `GameYard offline copy is unavailable for ${path}. Connect and save this game for offline play.`;
+  const requestLanguages = orderedAcceptLanguages(request.headers.get("Accept-Language"));
+  const copy = offlineCopy(
+    requestLanguages.length > 0 ? requestLanguages : self.navigator.languages,
+    path,
+  );
   if (request.mode === "navigate") {
     return new Response(
-      `<!doctype html><html lang="en"><meta charset="utf-8"><title>Offline game unavailable</title><body><main><h1>Offline game unavailable</h1><p>${message}</p></main></body></html>`,
+      `<!doctype html><html lang="${copy.locale}" dir="${copy.direction}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${copy.title}</title><body><main><h1>${copy.title}</h1><p>${copy.message}</p></main></body></html>`,
       { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
     );
   }
-  return new Response(message, {
+  return new Response(copy.message, {
     status: 503,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });

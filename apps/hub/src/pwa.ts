@@ -11,7 +11,11 @@ import {
 export type ArtifactCheck =
   | { readonly kind: "current"; readonly source: "network" | "service-worker" }
   | { readonly kind: "mismatch"; readonly received: string }
-  | { readonly kind: "unavailable"; readonly reason: string };
+  | {
+      readonly kind: "unavailable";
+      readonly code: "network" | "offlineVerification" | "http" | "invalidJson" | "invalidSchema";
+      readonly status?: number;
+    };
 
 function validBuildInfo(
   value: unknown,
@@ -67,7 +71,7 @@ export async function verifyArtifactBuild(): Promise<ArtifactCheck> {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
-  } catch (error) {
+  } catch {
     const controller = "serviceWorker" in navigator ? navigator.serviceWorker.controller : null;
     if (controller) {
       try {
@@ -76,32 +80,23 @@ export async function verifyArtifactBuild(): Promise<ArtifactCheck> {
           buildId: __GAMEYARD_BUILD__,
         });
         return { kind: "current", source: "service-worker" };
-      } catch (workerError) {
-        return {
-          kind: "unavailable",
-          reason: workerError instanceof Error ? workerError.message : String(workerError),
-        };
+      } catch {
+        return { kind: "unavailable", code: "offlineVerification" };
       }
     }
-    return {
-      kind: "unavailable",
-      reason: error instanceof Error ? error.message : String(error),
-    };
+    return { kind: "unavailable", code: "network" };
   }
   if (!response.ok) {
-    return { kind: "unavailable", reason: `build-info.json returned HTTP ${response.status}` };
+    return { kind: "unavailable", code: "http", status: response.status };
   }
   let value: unknown;
   try {
     value = await response.json();
-  } catch (error) {
-    return {
-      kind: "unavailable",
-      reason: `build-info.json is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    };
+  } catch {
+    return { kind: "unavailable", code: "invalidJson" };
   }
   if (!validBuildInfo(value)) {
-    return { kind: "unavailable", reason: "build-info.json violates its required schema" };
+    return { kind: "unavailable", code: "invalidSchema" };
   }
   if (value.buildId !== __GAMEYARD_BUILD__) {
     return { kind: "mismatch", received: value.buildId };

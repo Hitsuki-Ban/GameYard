@@ -76,8 +76,8 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--paused/);
   await openPlayDiagnostics(page);
   const facts = page.locator(".diagnostics__facts dd");
-  await expect(facts.nth(5)).toHaveText("paused");
-  await expect(facts.nth(6)).toHaveText("false");
+  await expect(facts.nth(5)).toHaveText("一時停止");
+  await expect(facts.nth(6)).toHaveText("いいえ");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
 
@@ -113,8 +113,8 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await page.locator(".runtime-toolbar__actions button").first().click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
   await openPlayDiagnostics(page);
-  await expect(facts.nth(5)).toHaveText("paused");
-  await expect(facts.nth(6)).toHaveText("false");
+  await expect(facts.nth(5)).toHaveText("一時停止");
+  await expect(facts.nth(6)).toHaveText("いいえ");
   await closeDiagnostics(page);
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 

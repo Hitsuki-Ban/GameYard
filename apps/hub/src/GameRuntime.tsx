@@ -463,7 +463,10 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
         {state.phase === "failed" ? (
           <div className="runtime-overlay runtime-overlay--failed" role="alert">
             <strong>{t("runtime.failed")}</strong>
-            <code>{state.error}</code>
+            <p>{t("runtime.failureDetail")}</p>
+            <button type="button" onClick={() => run(reload)}>
+              {t("runtime.retry")}
+            </button>
           </div>
         ) : null}
       </div>

@@ -14,10 +14,12 @@ import {
   LifecycleChangeRequestEventSchema,
   LifecycleStateSchema,
   LocaleSchema,
+  LOCALE_PREFERENCES,
   PROTOCOL_VERSION,
   PosixRelativeFilePathSchema,
   ReadyForInitSchema,
   ResolvedLocaleSchema,
+  PUBLIC_LOCALES,
   SettingsChangeRequestEventSchema,
 } from "../src/index";
 
@@ -38,8 +40,8 @@ const context = {
 
 describe("v1 contract", () => {
   it("accepts only public and resolved locale values", () => {
-    expect(LocaleSchema.options).toEqual(["system", "en", "ja", "zh-Hans"]);
-    expect(ResolvedLocaleSchema.options).toEqual(["en", "ja", "zh-Hans"]);
+    expect(LocaleSchema.options).toEqual(LOCALE_PREFERENCES);
+    expect(ResolvedLocaleSchema.options).toEqual(PUBLIC_LOCALES);
     expect(ResolvedLocaleSchema.safeParse("system").success).toBe(false);
   });
 
