@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 import { REGISTERED_GAME_IDS } from "../registered-games";
-import { closePlayTools, openPlayDiagnostics, openPlayTools } from "../play-mode";
+import { closeHubDrawer, openPlayDiagnostics, openSettingsDrawer } from "../play-mode";
 
 type GuestId = (typeof REGISTERED_GAME_IDS)[number];
 
@@ -51,24 +51,26 @@ async function exportDiagnostics(page: Page): Promise<{ json: string; value: Dia
 }
 
 async function closeDiagnostics(page: Page): Promise<void> {
-  await page.locator(".diagnostics__bar button").click();
-  await expect(page.locator(".diagnostics")).not.toHaveClass(/is-open/);
+  await page.locator(".hub-drawer__heading > button").click();
+  await expect(page.locator(".hub-drawer")).not.toHaveClass(/is-open/);
 }
 
 async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await page.goto("./");
-  await page.locator(".settings-bar select").selectOption("en");
+  const browseSettings = await openSettingsDrawer(page);
+  await browseSettings.locator(".settings-panel select").selectOption("en");
+  await closeHubDrawer(page);
   const manifest = await readManifest(page, gameId);
 
   await page.locator(`.catalog-card__link[href="?game=${gameId}"]`).click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  const playTools = await openPlayTools(page);
-  await playTools.locator('.settings-bar input[type="range"]').first().fill("0.44");
-  await playTools.locator('.settings-bar input[type="checkbox"]').first().check();
-  await playTools.locator(".settings-bar select").selectOption("ja");
-  await closePlayTools(page);
+  const playTools = await openSettingsDrawer(page);
+  await playTools.locator('.settings-panel input[type="range"]').first().fill("0.44");
+  await playTools.locator('.settings-panel input[type="checkbox"]').first().check();
+  await playTools.locator(".settings-panel select").selectOption("ja");
+  await closeHubDrawer(page);
 
   await page.locator(".runtime-toolbar__actions button").first().click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--paused/);
@@ -111,9 +113,10 @@ async function runGuestConformance(page: Page, gameId: GuestId): Promise<void> {
   await page.locator(".runtime-toolbar__actions button").first().click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
   await openPlayDiagnostics(page);
-  await expect(facts.nth(5)).toHaveText("active");
-  await expect(facts.nth(6)).toHaveText("true");
+  await expect(facts.nth(5)).toHaveText("paused");
+  await expect(facts.nth(6)).toHaveText("false");
   await closeDiagnostics(page);
+  await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
   await page.locator(".runtime-toolbar__back").click();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);

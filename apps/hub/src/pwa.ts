@@ -195,6 +195,17 @@ export async function clearOfflineGames(
   });
 }
 
+export async function removeGameOffline(
+  registration: ServiceWorkerRegistration,
+  gameId: string,
+): Promise<PwaOfflineStatus> {
+  return sendRequest(registrationWorker(registration), {
+    type: "gameyard:pwa-remove-game",
+    buildId: __GAMEYARD_BUILD__,
+    gameId,
+  });
+}
+
 export async function activatePwaUpdate(
   worker: ServiceWorker,
   expectedBuildId: string,

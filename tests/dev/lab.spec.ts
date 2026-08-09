@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { REGISTERED_GAME_IDS } from "../registered-games";
-import { openPlayDiagnostics, openPlayTools } from "../play-mode";
+import { openPlayDiagnostics, openSettingsDrawer } from "../play-mode";
 
 function collectRuntimeErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -25,9 +25,9 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
       window.localStorage.getItem("gameyard.settings.v1"),
     );
 
-    const initialTools = await openPlayTools(page);
-    await initialTools.locator(".play-tools__utilities button").first().click();
-    const overlay = page.locator(".lab-overlay");
+    const initialTools = await openSettingsDrawer(page);
+    await initialTools.locator(".drawer-utilities button").first().click();
+    const overlay = page.locator(".lab-panel");
     await expect(overlay).toBeVisible();
     await expect(overlay).toHaveCSS("border-top-color", /rgb\(/);
     await expect(page.getByText("Kinetic White / Session")).toBeVisible();
@@ -35,8 +35,7 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
     const scene = page.getByLabel("Lab startup scene");
     await scene.selectOption("paused-accessible");
     await page.getByRole("button", { name: "Apply scene" }).dblclick();
-    const masterVolume = page.locator('.settings-bar input[type="range"]').first();
-    await expect(masterVolume).toBeDisabled();
+    const masterVolume = page.locator('.settings-panel input[type="range"]').first();
     await expect(page.locator(".lab-scenes__status")).toContainText("Applied paused-accessible.", {
       timeout: 15_000,
     });
@@ -117,12 +116,13 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
     await expect(page.locator(".lab-scenes__status")).toContainText("Applied ready-balanced.", {
       timeout: 15_000,
     });
-    await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
+    await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--paused/);
 
-    await page.locator(".lab-overlay__bar button").click();
+    await page.locator(".hub-drawer__heading > button").click();
     await expect(overlay).toBeHidden();
-    const playTools = await openPlayTools(page);
-    await playTools.locator('.settings-bar input[type="checkbox"]').last().uncheck();
+    await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
+    const playTools = await openSettingsDrawer(page);
+    await playTools.locator('.settings-panel input[type="checkbox"]').last().uncheck();
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("gameyard.settings.v1")))
       .not.toBe(persistedSettings);
@@ -148,8 +148,9 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
       { timeout: 15_000 },
     );
     await expect(page.locator(".diagnostics__facts dd").nth(7)).toHaveText(String(afterRevision));
+    await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--paused/);
+    await page.locator(".hub-drawer__heading > button").click();
     await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
-    await page.locator(".diagnostics__bar button").click();
     await page.locator(".runtime-toolbar__back").click();
     await expect(page.locator(".runtime-frame iframe")).toHaveCount(0);
   }

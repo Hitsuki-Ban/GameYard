@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { readFile, writeFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
-import { openPlayTools } from "../play-mode";
+import { openSettingsDrawer } from "../play-mode";
+import { REGISTERED_GAMES } from "../registered-games";
 
 const SYNTHETIC_BUILD_B = "gameyard@ffffffffffffffff";
 const SYNTHETIC_BUILD_C = "gameyard@eeeeeeeeeeeeeeee";
@@ -43,20 +44,41 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
 
   await page.goto("./");
   await page.evaluate(() => window.localStorage.setItem("gameyard.pwa-test-save", "preserve"));
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    const buildResponse = await fetch("./build-info.json");
+    const { buildId } = (await buildResponse.json()) as { buildId: string };
+    const scopePath = new URL(registration.scope).pathname;
+    const scopeKey =
+      scopePath === "/"
+        ? "root"
+        : scopePath
+            .replace(/^\/|\/$/gu, "")
+            .replace(/[^a-z0-9]+/giu, "-")
+            .toLowerCase();
+    await caches.open(`gameyard-${scopeKey}-game-${buildId}-retired-game`);
+  });
+  await page.reload();
   await page.locator('.catalog-card__link[href="?game=pulse-link-overdrive"]').click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
-  const playTools = await openPlayTools(page);
+  const playTools = await openSettingsDrawer(page);
   await playTools.getByRole("button", { name: "Offline" }).click();
-  const drawer = page.locator(".pwa-drawer");
+  const drawer = page.locator(".pwa-panel");
   await expect(drawer).toBeVisible();
-  const saveButton = drawer.getByRole("button", { name: "Save selected game" });
+  await expect(drawer.getByRole("listitem")).toHaveCount(REGISTERED_GAMES.length);
+  await expect(drawer).toContainText("Removed unavailable saved entries: retired-game.");
+  const pulseRow = drawer.getByRole("listitem").filter({ hasText: "PULSE LINK // OVERDRIVE" });
+  const saveButton = pulseRow.getByRole("button", { name: "Save offline" });
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
   await saveButton.click();
-  await expect(drawer.getByRole("button", { name: "Saved for offline" })).toBeDisabled({
-    timeout: 15_000,
-  });
-  await expect(drawer).toContainText("pulse-link-overdrive");
+  const removeButton = pulseRow.getByRole("button", { name: "Remove copy" });
+  await expect(removeButton).toBeEnabled({ timeout: 15_000 });
+  await removeButton.click();
+  await expect(saveButton).toBeEnabled({ timeout: 15_000 });
+  await saveButton.click();
+  await expect(removeButton).toBeEnabled({ timeout: 15_000 });
+  await expect(pulseRow).toContainText("Available offline");
 
   const registrations = await page.evaluate(async () =>
     (await navigator.serviceWorker.getRegistrations()).map((registration) => ({
@@ -68,7 +90,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   expect(registrations[0]?.scope).toBe(new URL("./", page.url()).href);
   expect(registrations[0]?.script).toBe(new URL("service-worker.js", page.url()).href);
 
-  await drawer.getByRole("button", { name: /Close/ }).click();
+  await page.locator(".hub-drawer__heading > button").click();
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/, {
@@ -81,10 +103,12 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   });
   await expect(page.locator(".runtime-overlay--failed")).toContainText(/503|offline copy/i);
 
-  const failedRuntimeTools = await openPlayTools(page);
+  const failedRuntimeTools = await openSettingsDrawer(page);
   await failedRuntimeTools.getByRole("button", { name: "Offline" }).click();
-  await drawer.getByRole("button", { name: "Clear offline games" }).click();
-  await expect(drawer).toContainText("Available offline: none");
+  await drawer.getByRole("button", { name: "Remove all offline games" }).click();
+  await expect(drawer.getByText("Online only", { exact: true })).toHaveCount(
+    REGISTERED_GAMES.length,
+  );
   await expect
     .poll(() => page.evaluate(() => window.localStorage.getItem("gameyard.pwa-test-save")))
     .toBe("preserve");
@@ -117,9 +141,9 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
         { timeout: 20_000 },
       )
       .toBe(SYNTHETIC_BUILD_C);
-    const updatedRuntimeTools = await openPlayTools(page);
+    const updatedRuntimeTools = await openSettingsDrawer(page);
     await updatedRuntimeTools.getByRole("button", { name: "Offline" }).click();
-    await expect(page.locator(".pwa-drawer")).toContainText("Available offline: none");
+    await expect(page.locator(".pwa-panel")).toContainText("Online only");
   } finally {
     await restoreSecondUpdate();
     await restoreFirstUpdate();

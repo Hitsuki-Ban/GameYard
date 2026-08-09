@@ -173,6 +173,15 @@ async function clearGameCaches(): Promise<void> {
   );
 }
 
+async function removeGameCache(
+  request: Extract<PwaRequest, { type: "gameyard:pwa-remove-game" }>,
+): Promise<void> {
+  if (typeof request.gameId !== "string" || !GAME_ID_PATTERN.test(request.gameId)) {
+    throw new Error("Invalid offline game id");
+  }
+  await caches.delete(gameCacheName(request.gameId));
+}
+
 function isPwaRequest(value: unknown): value is PwaRequest {
   if (value === null || typeof value !== "object") return false;
   const request = value as Record<string, unknown>;
@@ -180,6 +189,7 @@ function isPwaRequest(value: unknown): value is PwaRequest {
     typeof request.buildId === "string" &&
     (request.type === "gameyard:pwa-status" ||
       request.type === "gameyard:pwa-save-game" ||
+      request.type === "gameyard:pwa-remove-game" ||
       request.type === "gameyard:pwa-clear-games" ||
       request.type === "gameyard:pwa-activate")
   );
@@ -194,6 +204,7 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
       try {
         assertCurrentRequest(request);
         if (request.type === "gameyard:pwa-save-game") await saveGame(request);
+        else if (request.type === "gameyard:pwa-remove-game") await removeGameCache(request);
         else if (request.type === "gameyard:pwa-clear-games") await clearGameCaches();
         else if (request.type === "gameyard:pwa-activate") await self.skipWaiting();
         port.postMessage(success(await offlineStatus()));

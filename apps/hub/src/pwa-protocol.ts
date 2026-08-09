@@ -4,7 +4,7 @@ export const PWA_MESSAGE_TIMEOUT_MS = 8_000;
 
 export interface PwaOfflineStatus {
   readonly buildId: string;
-  readonly savedGames: readonly GameId[];
+  readonly savedGames: readonly string[];
 }
 
 export type PwaRequest =
@@ -14,6 +14,11 @@ export type PwaRequest =
       readonly buildId: string;
       readonly gameId: GameId;
       readonly files: readonly string[];
+    }
+  | {
+      readonly type: "gameyard:pwa-remove-game";
+      readonly buildId: string;
+      readonly gameId: string;
     }
   | { readonly type: "gameyard:pwa-clear-games"; readonly buildId: string }
   | { readonly type: "gameyard:pwa-activate"; readonly buildId: string };

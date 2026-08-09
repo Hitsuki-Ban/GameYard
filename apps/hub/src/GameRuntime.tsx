@@ -35,6 +35,8 @@ export interface GameRuntimeHandle {
   dispose(): Promise<void>;
   reload(): Promise<void>;
   requestDiagnostics(): Promise<GuestDiagnosticSnapshot | null>;
+  pauseForOverlay(): Promise<boolean>;
+  restoreAfterOverlay(resume: boolean): Promise<void>;
   applyHostState(
     settings: HostSettings,
     locale: LocaleContext,
@@ -103,6 +105,8 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const frameWrapRef = useRef<HTMLElement>(null);
   const controllerRef = useRef<RuntimeController | null>(null);
+  const pendingSettingsRef = useRef<HostSettings | null>(null);
+  const settingsApplyInFlightRef = useRef(false);
   const settingsRef = useRef(settings);
   const systemLanguagesRef = useRef(systemLanguages);
   const onSettingsChangeRef = useRef(onSettingsChange);
@@ -113,6 +117,27 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
   onSettingsChangeRef.current = onSettingsChange;
   onDiagnosticSnapshotRef.current = onDiagnosticSnapshot;
   onEventRef.current = onEvent;
+
+  const flushPendingSettings = useCallback(async () => {
+    if (settingsApplyInFlightRef.current) return;
+    settingsApplyInFlightRef.current = true;
+    try {
+      while (pendingSettingsRef.current !== null) {
+        const next = pendingSettingsRef.current;
+        pendingSettingsRef.current = null;
+        const controller = controllerRef.current;
+        if (!controller) return;
+        await controller.applySettings(next);
+      }
+    } catch {
+      // RuntimeController owns the visible failure state and diagnostic event.
+    } finally {
+      settingsApplyInFlightRef.current = false;
+      if (pendingSettingsRef.current !== null && controllerRef.current !== null) {
+        void flushPendingSettings();
+      }
+    }
+  }, []);
 
   const updateState = useCallback((next: RuntimeState) => {
     if (next.generation !== generationRef.current) return;
@@ -157,6 +182,7 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
   useEffect(() => {
     generationRef.current = generation;
     controllerRef.current = null;
+    pendingSettingsRef.current = null;
     onDiagnosticSnapshot(null);
     setLoadedRuntime(null);
     setState({
@@ -253,10 +279,10 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
   }, [game.id, generation, performFullscreenAction, recordFailure, runtime, updateState]);
 
   useEffect(() => {
-    const controller = controllerRef.current;
-    if (!controller) return;
-    void controller.applySettings(toHostSettings(settings)).catch(() => undefined);
-  }, [settings]);
+    if (!controllerRef.current) return;
+    pendingSettingsRef.current = toHostSettings(settings);
+    void flushPendingSettings();
+  }, [flushPendingSettings, settings]);
 
   useEffect(() => {
     const controller = controllerRef.current;
@@ -316,7 +342,22 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
     () => ({
       dispose,
       reload,
+      pauseForOverlay: async () => {
+        const controller = controllerRef.current;
+        if (!controller) return false;
+        if (controller.state.phase === "active") {
+          await controller.pause();
+          return true;
+        }
+        if (controller.state.phase === "paused") await controller.setInputEnabled(false);
+        return false;
+      },
+      restoreAfterOverlay: async (resume) => {
+        const controller = controllerRef.current;
+        if (resume && controller?.state.phase === "paused") await controller.resume();
+      },
       requestDiagnostics: async () => {
+        await flushPendingSettings();
         const controller = controllerRef.current;
         if (!controller || controller.state.phase === "disposed") return null;
         return controller.requestDiagnostics();
@@ -330,7 +371,7 @@ export const GameRuntime = forwardRef<GameRuntimeHandle, GameRuntimeProps>(funct
         else await controller.resume();
       },
     }),
-    [dispose, reload],
+    [dispose, flushPendingSettings, reload],
   );
 
   const run = (operation: () => Promise<unknown>) => {

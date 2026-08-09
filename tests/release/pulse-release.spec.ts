@@ -2,7 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
 import { REGISTERED_GAMES } from "../registered-games";
-import { openPlayDiagnostics, openPlayTools } from "../play-mode";
+import {
+  closeHubDrawer,
+  openPlayDiagnostics,
+  openSettingsDrawer,
+  setHubLocale,
+} from "../play-mode";
 
 const PRIVATE_STORAGE_SENTINEL = "release-secret-must-not-export";
 
@@ -157,13 +162,15 @@ async function expectProductionDiagnostics(
   await expect(facts.nth(2)).toHaveText(gameId);
   await expect(facts.nth(3)).toHaveText(locale.id);
   await expect(facts.nth(4)).toHaveText(String(settingsRevision));
-  await expect(facts.nth(5)).toHaveText("active");
+  await expect(facts.nth(5)).toHaveText("paused");
+  await expect(facts.nth(6)).toHaveText("false");
   await expect(facts.nth(7)).toHaveText(String(settingsRevision));
   if (expectAppliedEvents) {
     await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
     await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
   }
-  await page.locator(".diagnostics__bar button").click();
+  await closeHubDrawer(page);
+  await expectRoundRobinRuntimeReady(page);
 }
 
 async function closeRuntime(page: Page) {
@@ -192,7 +199,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const locale of locales) {
       await page.goto("./");
-      await page.locator("select").selectOption(locale.id);
+      await setHubLocale(page, locale.id);
       const { pulse } = await openPulse(page, locale.start);
       await page.evaluate(() => document.fonts.ready);
       await pulse.locator("body").evaluate(() => document.fonts.ready);
@@ -223,7 +230,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./");
-  await page.locator("select").selectOption("en");
+  await setHubLocale(page, "en");
   const { pulse } = await openPulse(page);
   await pulse.getByRole("button", { name: "Start game" }).click();
   await expect(pulse.locator("#title-screen")).toBeHidden();
@@ -244,7 +251,7 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
 
   await openPlayDiagnostics(page);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
-  await expect(page.locator(".diagnostics__facts")).toContainText("active");
+  await expect(page.locator(".diagnostics__facts")).toContainText("paused");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON" }).click();
   const download = await downloadPromise;
@@ -274,7 +281,8 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   expect(diagnosticJson).not.toMatch(/localStorage|data:image|screenshot/i);
   await expect(page.getByRole("button", { name: "Open Lab" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeHubDrawer(page);
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
   await closeRuntime(page);
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
@@ -300,7 +308,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const locale of locales) {
       await page.goto("./");
-      await page.locator("select").selectOption(locale.id);
+      await setHubLocale(page, locale.id);
       const { tumbledrum } = await openTumbledrum(page, locale.tumbledrumStatus);
       await page.evaluate(() => document.fonts.ready);
       await tumbledrum.locator("body").evaluate(() => document.fonts.ready);
@@ -329,7 +337,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./");
-  await page.locator("select").selectOption("en");
+  await setHubLocale(page, "en");
   const { tumbledrum } = await openTumbledrum(page);
   const canvas = tumbledrum.locator("#game");
   const canvasBox = await canvas.boundingBox();
@@ -342,7 +350,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  const tumbleTools = await openPlayTools(page);
+  const tumbleTools = await openSettingsDrawer(page);
   await tumbleTools.getByRole("slider", { name: /Master/ }).fill("0.42");
   await tumbleTools.getByRole("slider", { name: /Music/ }).fill("0.37");
   await tumbleTools.getByRole("slider", { name: /SFX/ }).fill("0.58");
@@ -352,7 +360,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   await expect(page.locator(".diagnostics__events")).toContainText(
     "master=0.42, music=0.37, sfx=0.58, reduced=true, shake=false",
   );
-  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeHubDrawer(page);
   await closeRuntime(page);
 
   const mobileContext = await browser.newContext({
@@ -364,7 +372,7 @@ test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings
   const mobilePage = await mobileContext.newPage();
   const mobileSignals = collectRuntimeSignals(mobilePage);
   await mobilePage.goto("./");
-  await mobilePage.locator("select").selectOption("en");
+  await setHubLocale(mobilePage, "en");
   const mobileRuntime = await openTumbledrum(mobilePage);
   const mobileCanvas = await mobileRuntime.tumbledrum.locator("#game").boundingBox();
   expect(mobileCanvas).not.toBeNull();
@@ -400,7 +408,7 @@ test("CrownBreaker release matrix covers locale state and real lifecycle input",
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const locale of locales) {
       await page.goto("./");
-      await page.locator("select").selectOption(locale.id);
+      await setHubLocale(page, locale.id);
       const { crown } = await openCrown(page, locale.crownNewRun);
       await expect(crown.locator("html")).toHaveAttribute("lang", locale.crownLanguage);
       await page.evaluate(() => document.fonts.ready);
@@ -415,7 +423,7 @@ test("CrownBreaker release matrix covers locale state and real lifecycle input",
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./");
-  await page.locator("select").selectOption("en");
+  await setHubLocale(page, "en");
   const { crown } = await openCrown(page);
   await crown.locator("#btn-new").click();
   await expect(crown.locator("#hud")).toHaveClass(/active/);
@@ -666,7 +674,7 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
     };
   });
   await page.goto("./");
-  await page.locator("select").selectOption("zh-Hans");
+  await setHubLocale(page, "zh-Hans");
   const baselineResources = await releaseResources(page);
 
   for (let cycle = 1; cycle <= 50; cycle += 1) {
@@ -676,7 +684,7 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
     expect(page.frames().filter((frame) => frame.url().includes(game.frameUrl))).toHaveLength(1);
 
     const targetLocale = locales[(cycle - 1) % locales.length]!;
-    const roundRobinTools = await openPlayTools(page);
+    const roundRobinTools = await openSettingsDrawer(page);
     await roundRobinTools.locator("select").selectOption(targetLocale.id);
     const masterValue = String(Number((0.31 + (cycle % 10) * 0.01).toFixed(2)));
     await roundRobinTools.locator('input[type="range"]').first().fill(masterValue);
@@ -689,6 +697,7 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
       }
       return value.revision as number;
     });
+    await closeHubDrawer(page);
     await expectRoundRobinRuntimeReady(page);
     await expectProductionDiagnostics(page, game.id, targetLocale, settingsRevision);
 
@@ -701,8 +710,8 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
 
     if (cycle % 5 === 0) {
       const previousGuest = guest;
-      const reloadTools = await openPlayTools(page);
-      await reloadTools.locator(".play-tools__reload button").click();
+      const reloadTools = await openSettingsDrawer(page);
+      await reloadTools.locator(".drawer-reload button").click();
       await expectRoundRobinRuntimeReady(page);
       await expect.poll(() => page.frames().includes(previousGuest)).toBe(false);
       guest = page.frames().find((frame) => frame.url().includes(game.frameUrl))!;

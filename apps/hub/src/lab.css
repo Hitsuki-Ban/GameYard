@@ -2,39 +2,20 @@
   --lab-accent: #1646c8;
 }
 
-.lab-overlay {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 30;
-  width: min(330px, calc(100vw - 36px));
-  padding: 12px;
+.lab-panel {
+  min-height: 100%;
+  padding: 20px;
   border-top: 5px solid var(--lab-accent);
   color: var(--mineral);
   background: #202020;
-  box-shadow: 0 18px 60px rgba(23, 23, 23, 0.4);
 }
 
-.lab-overlay__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  font: 700 11px var(--mono);
-  text-transform: uppercase;
-}
-
-.lab-overlay button {
-  padding: 9px 11px;
-  border: 1px solid currentColor;
+.lab-panel button {
+  border-color: currentColor;
   color: inherit;
-  background: transparent;
-  font: 700 10px var(--mono);
-  text-transform: uppercase;
-  cursor: pointer;
 }
 
-.lab-overlay p {
+.lab-panel p {
   font: 10px var(--mono);
 }
 
@@ -64,7 +45,7 @@
 }
 
 .lab-scenes select {
-  min-height: 34px;
+  min-height: 44px;
   padding: 6px;
 }
 

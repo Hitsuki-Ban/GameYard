@@ -16,8 +16,9 @@ import {
 import { i18n } from "./i18n";
 import { GameCover } from "./GameCover";
 import { GameRuntime, type GameRuntimeHandle } from "./GameRuntime";
+import { HubDrawer } from "./HubDrawer";
 import type { HubLabStartupState } from "./lab";
-import { PwaDrawer } from "./PwaDrawer";
+import { PwaPanel } from "./PwaPanel";
 import { gameSearch, parseHubRoute, type HubRoute } from "./route";
 import {
   SETTINGS_STORAGE_KEY,
@@ -38,6 +39,7 @@ import {
 
 const REDUCED_MOTION_MEDIA_QUERY = "(prefers-reduced-motion: reduce)";
 const INDEX_GAME_HISTORY_KIND = "gameyard.index-game";
+type HubOverlay = "settings" | "diagnostics" | "pwa" | "lab";
 
 function isIndexGameHistoryState(value: unknown): boolean {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
@@ -100,24 +102,19 @@ function gameStageStyle(game: GameCatalogEntry): GameStageStyle {
   };
 }
 
-interface SettingsBarProps {
+interface SettingsPanelProps {
   readonly settings: HubSettings | null;
   readonly error: string | null;
   readonly locked: boolean;
   readonly onChange: (patch: HubSettingsPatch) => void;
 }
 
-function SettingsBar({ settings, error, locked, onChange }: SettingsBarProps) {
+function SettingsPanel({ settings, error, locked, onChange }: SettingsPanelProps) {
   const { t } = useTranslation();
   const disabled = settings === null || locked;
 
   return (
-    <section className="settings-bar" aria-labelledby="settings-title">
-      <div className="settings-bar__heading">
-        <span className="micro-label" id="settings-title">
-          {t("settings.heading")}
-        </span>
-      </div>
+    <section className="settings-panel" aria-label={t("settings.heading")}>
       <label className="setting setting--locale">
         <span>{t("settings.language")}</span>
         <select
@@ -207,94 +204,6 @@ function SettingsBar({ settings, error, locked, onChange }: SettingsBarProps) {
         </div>
       ) : null}
     </section>
-  );
-}
-
-interface PlayToolsProps extends SettingsBarProps {
-  readonly locale: SupportedLocale;
-  readonly open: boolean;
-  readonly onClose: () => void;
-  readonly onReload: () => Promise<void>;
-  readonly onOpenDiagnostics: () => void;
-  readonly onOpenOffline: () => void;
-  readonly onOpenLab: () => void;
-  readonly onResetSettings: () => void;
-}
-
-function PlayTools({
-  open,
-  locale,
-  settings,
-  error,
-  locked,
-  onChange,
-  onClose,
-  onReload,
-  onOpenDiagnostics,
-  onOpenOffline,
-  onOpenLab,
-  onResetSettings,
-}: PlayToolsProps) {
-  const { t } = useTranslation();
-
-  return (
-    <div className={`play-tools${open ? " is-open" : ""}`} aria-hidden={!open} inert={!open}>
-      <button
-        className="play-tools__backdrop"
-        type="button"
-        aria-label={t("runtime.toolsClose")}
-        onClick={onClose}
-      />
-      <aside className="play-tools__panel" aria-labelledby="play-tools-title">
-        <div className="play-tools__heading">
-          <div>
-            <span className="micro-label">GAMEYARD / PLAY</span>
-            <h2 id="play-tools-title">{t("runtime.toolsHeading")}</h2>
-          </div>
-          <button type="button" onClick={onClose}>
-            {t("runtime.toolsClose")} ×
-          </button>
-        </div>
-        <SettingsBar settings={settings} error={error} locked={locked} onChange={onChange} />
-        {settings === null ? (
-          <div className="play-tools__contract" role="alert">
-            <p>{t("settings.resetHint")}</p>
-            <button type="button" onClick={onResetSettings}>
-              {t("settings.reset")}
-            </button>
-          </div>
-        ) : null}
-        <div className="play-tools__utilities">
-          {import.meta.env.DEV ? (
-            <button type="button" onClick={onOpenLab}>
-              {LAB_COPY[locale].open}
-            </button>
-          ) : null}
-          {import.meta.env.PROD ? (
-            <button type="button" onClick={onOpenOffline}>
-              {t("nav.offline")}
-            </button>
-          ) : null}
-          <button type="button" onClick={onOpenDiagnostics}>
-            {t("nav.diagnostics")}
-          </button>
-        </div>
-        <div className="play-tools__reload">
-          <div>
-            <strong>{t("runtime.reload")}</strong>
-            <p>{t("runtime.reloadDetail")}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              void onReload().catch(() => undefined);
-            }}
-          >
-            {t("runtime.reload")}
-          </button>
-        </div>
-      </aside>
-    </div>
   );
 }
 
@@ -396,13 +305,12 @@ function Stage({
   );
 }
 
-interface DiagnosticsDrawerProps {
+interface DiagnosticsPanelProps {
   readonly open: boolean;
   readonly snapshot: DiagnosticEnvelope;
-  readonly onClose: () => void;
 }
 
-function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) {
+function DiagnosticsPanel({ open, snapshot }: DiagnosticsPanelProps) {
   const { t } = useTranslation();
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -436,14 +344,10 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
     }
   };
 
+  if (!open) return null;
+
   return (
-    <aside className={`diagnostics${open ? " is-open" : ""}`} aria-hidden={!open} inert={!open}>
-      <div className="diagnostics__bar">
-        <h2>{t("diagnostics.heading")}</h2>
-        <button type="button" onClick={onClose}>
-          {t("diagnostics.close")} ×
-        </button>
-      </div>
+    <div className="diagnostics-panel">
       <div className="diagnostics__content">
         <dl className="diagnostics__facts">
           <div>
@@ -550,20 +454,19 @@ function DiagnosticsDrawer({ open, snapshot, onClose }: DiagnosticsDrawerProps) 
         </div>
         <p className="diagnostics__privacy">{t("diagnostics.privacy")}</p>
       </div>
-    </aside>
+    </div>
   );
 }
 
-interface LabOverlayProps {
+interface LabPanelProps {
   readonly open: boolean;
   readonly locale: SupportedLocale;
   readonly runtime: RuntimeDiagnosticState | null;
-  readonly onClose: () => void;
   readonly onApply: (state: HubLabStartupState) => Promise<void>;
   readonly onEvent: (type: string, detail: DiagnosticEvent["detail"]) => void;
 }
 
-function LabOverlay({ open, locale, runtime, onClose, onApply, onEvent }: LabOverlayProps) {
+function LabPanel({ open, locale, runtime, onApply, onEvent }: LabPanelProps) {
   const paneHost = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState("loading");
   const copy = LAB_COPY[locale];
@@ -610,13 +513,7 @@ function LabOverlay({ open, locale, runtime, onClose, onApply, onEvent }: LabOve
   if (!open) return null;
 
   return (
-    <section className="lab-overlay" aria-label={copy.heading}>
-      <div className="lab-overlay__bar">
-        <strong>{copy.heading}</strong>
-        <button type="button" onClick={onClose}>
-          {copy.close} ×
-        </button>
-      </div>
+    <section className="lab-panel" aria-label={copy.heading}>
       {status !== "ready" ? <p>{status === "loading" ? copy.loading : status}</p> : null}
       <div ref={paneHost} />
     </section>
@@ -631,15 +528,14 @@ export function App() {
   );
   const [writeError, setWriteError] = useState<string | null>(null);
   const [systemLanguages, setSystemLanguages] = useState<readonly string[]>(currentSystemLanguages);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [pwaOpen, setPwaOpen] = useState(false);
-  const [labOpen, setLabOpen] = useState(false);
-  const [playToolsOpen, setPlayToolsOpen] = useState(false);
+  const [activeOverlay, setActiveOverlay] = useState<HubOverlay | null>(null);
   const [labSettings, setLabSettings] = useState<HubSettings | null>(null);
   const [labApplyInFlight, setLabApplyInFlight] = useState(false);
   const [runtimeDiagnostic, setRuntimeDiagnostic] = useState<RuntimeDiagnosticState | null>(null);
   const runtimeRef = useRef<GameRuntimeHandle>(null);
   const playModeRef = useRef<HTMLElement>(null);
+  const activeOverlayRef = useRef<HubOverlay | null>(null);
+  const overlayPauseRef = useRef<Promise<boolean>>(Promise.resolve(false));
   const labApplyInFlightRef = useRef(false);
   const routeRef = useRef(route);
   const [events, setEvents] = useState<readonly DiagnosticEvent[]>(() => [
@@ -653,6 +549,53 @@ export function App() {
   const recordEvent = useCallback((type: string, detail: DiagnosticEvent["detail"]) => {
     const event: DiagnosticEvent = { at: new Date().toISOString(), type, detail };
     setEvents((current) => appendDiagnosticEvent(current, event));
+  }, []);
+
+  const openOverlay = useCallback(
+    (overlay: HubOverlay): Promise<boolean> => {
+      if (activeOverlayRef.current !== null) {
+        activeOverlayRef.current = overlay;
+        setActiveOverlay(overlay);
+        return overlayPauseRef.current;
+      }
+      activeOverlayRef.current = overlay;
+      setActiveOverlay(overlay);
+      const handle = runtimeRef.current;
+      overlayPauseRef.current = handle
+        ? handle.pauseForOverlay().catch((error: unknown) => {
+            recordEvent("overlay.pause-failed", {
+              message: error instanceof Error ? error.message : String(error),
+            });
+            return false;
+          })
+        : Promise.resolve(false);
+      recordEvent("overlay.open", { overlay });
+      return overlayPauseRef.current;
+    },
+    [recordEvent],
+  );
+
+  const closeOverlay = useCallback(() => {
+    const overlay = activeOverlayRef.current;
+    if (overlay === null) return;
+    const pause = overlayPauseRef.current;
+    activeOverlayRef.current = null;
+    overlayPauseRef.current = Promise.resolve(false);
+    setActiveOverlay(null);
+    recordEvent("overlay.close", { overlay });
+    void pause
+      .then(async (resume) => runtimeRef.current?.restoreAfterOverlay(resume))
+      .catch((error: unknown) => {
+        recordEvent("overlay.resume-failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
+  }, [recordEvent]);
+
+  const abandonOverlay = useCallback(() => {
+    activeOverlayRef.current = null;
+    overlayPauseRef.current = Promise.resolve(false);
+    setActiveOverlay(null);
   }, []);
 
   const persistedSettings = settingsState.kind === "error" ? null : settingsState.settings;
@@ -698,6 +641,7 @@ export function App() {
 
   useEffect(() => {
     const handlePopState = () => {
+      abandonOverlay();
       const nextRoute = parseHubRoute(window.location.search);
       const currentRoute = routeRef.current;
       if (currentRoute.kind === "game" && runtimeRef.current) {
@@ -710,7 +654,6 @@ export function App() {
             setRoute(nextRoute);
             setLabSettings(null);
             setRuntimeDiagnostic(null);
-            setPlayToolsOpen(false);
             recordEvent("route.popstate", { route: describeRoute(nextRoute) });
           })
           .catch(() => undefined);
@@ -719,12 +662,11 @@ export function App() {
       routeRef.current = nextRoute;
       setRoute(nextRoute);
       setLabSettings(null);
-      setPlayToolsOpen(false);
       recordEvent("route.popstate", { route: describeRoute(nextRoute) });
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [recordEvent]);
+  }, [abandonOverlay, recordEvent]);
 
   useEffect(() => {
     if (route.kind !== "game") return;
@@ -737,12 +679,12 @@ export function App() {
 
   const selectGame = async (gameId: GameId) => {
     if (route.kind === "game" && route.game.id === gameId) return;
+    abandonOverlay();
     if (route.kind === "game") {
       await runtimeRef.current?.dispose();
       setRuntimeDiagnostic(null);
     }
     setLabSettings(null);
-    setPlayToolsOpen(false);
     window.history.pushState({ kind: INDEX_GAME_HISTORY_KIND }, "", gameSearch(gameId));
     const nextRoute = parseHubRoute(window.location.search);
     routeRef.current = nextRoute;
@@ -802,7 +744,7 @@ export function App() {
       throw new Error("Cannot close a runtime without an active game route");
     }
     const gameId = currentRoute.game.id;
-    setPlayToolsOpen(false);
+    abandonOverlay();
     if (isIndexGameHistoryState(window.history.state)) {
       window.history.back();
       recordEvent("route.back", { gameId, target: "history" });
@@ -817,18 +759,19 @@ export function App() {
     routeRef.current = nextRoute;
     setRoute(nextRoute);
     recordEvent("route.back", { gameId, target: "index" });
-  }, [recordEvent]);
+  }, [abandonOverlay, recordEvent]);
 
   const openDiagnostics = useCallback(() => {
-    setDiagnosticsOpen(true);
-    const handle = runtimeRef.current;
-    if (!handle) return;
-    void handle.requestDiagnostics().catch((error: unknown) => {
-      recordEvent("diagnostics.guest-failed", {
-        message: error instanceof Error ? error.message : String(error),
+    void openOverlay("diagnostics").then(() => {
+      const handle = runtimeRef.current;
+      if (!handle) return;
+      void handle.requestDiagnostics().catch((error: unknown) => {
+        recordEvent("diagnostics.guest-failed", {
+          message: error instanceof Error ? error.message : String(error),
+        });
       });
     });
-  }, [recordEvent]);
+  }, [openOverlay, recordEvent]);
 
   const applyLabStartupState = useCallback(
     async (state: HubLabStartupState) => {
@@ -853,8 +796,9 @@ export function App() {
         await handle.applyHostState(
           toHostSettings(next),
           toLocaleContext(next.localePreference, systemLanguages),
-          state.lifecycle,
+          "paused",
         );
+        overlayPauseRef.current = Promise.resolve(state.lifecycle === "active");
         setLabSettings(next);
         settingsRef.current = next;
         setWriteError(null);
@@ -878,183 +822,207 @@ export function App() {
     [events, locale, route, runtimeDiagnostic, settings?.revision],
   );
   const selectedId = route.kind === "game" ? route.game.id : null;
+  const drawerTitle =
+    activeOverlay === "diagnostics"
+      ? t("diagnostics.heading")
+      : activeOverlay === "pwa"
+        ? t("pwa.heading")
+        : import.meta.env.DEV && activeOverlay === "lab"
+          ? LAB_COPY[locale].heading
+          : t("settings.heading");
+
+  const reloadRuntimeFromOverlay = () => {
+    const handle = runtimeRef.current;
+    if (!handle) throw new Error("Runtime controller is unavailable for reload");
+    abandonOverlay();
+    void handle.reload().catch((error: unknown) => {
+      recordEvent("runtime.reload-failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
+  };
 
   return (
     <div className={`app-shell${route.kind === "game" ? " app-shell--play" : ""}`}>
-      {route.kind === "game" ? (
-        <main
-          ref={playModeRef}
-          className="play-mode"
-          tabIndex={-1}
-          aria-label={t("runtime.playMode", { game: route.game.title })}
-        >
-          <Stage
-            route={route}
-            settings={settings}
-            systemLanguages={systemLanguages}
-            runtimeRef={runtimeRef}
-            onCloseRuntime={closeRuntime}
-            onOpenTools={() => setPlayToolsOpen(true)}
-            onSettingsChange={updateSettings}
-            onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
-            onEvent={recordEvent}
-          />
-        </main>
-      ) : (
-        <>
-          <header className="site-header">
-            <div className="brand-block">
-              <a className="wordmark" href="./" aria-label="GameYard home">
-                <span>GAME</span>
-                <span>YARD</span>
-              </a>
-              <div>
-                <p>{t("brand.kicker")}</p>
-                <span>{t("brand.subtitle")}</span>
+      <div
+        className="hub-surface"
+        inert={activeOverlay !== null}
+        aria-hidden={activeOverlay !== null}
+      >
+        {route.kind === "game" ? (
+          <main
+            ref={playModeRef}
+            className="play-mode"
+            tabIndex={-1}
+            aria-label={t("runtime.playMode", { game: route.game.title })}
+          >
+            <Stage
+              route={route}
+              settings={settings}
+              systemLanguages={systemLanguages}
+              runtimeRef={runtimeRef}
+              onCloseRuntime={closeRuntime}
+              onOpenTools={() => void openOverlay("settings")}
+              onSettingsChange={updateSettings}
+              onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
+              onEvent={recordEvent}
+            />
+          </main>
+        ) : (
+          <>
+            <header className="site-header">
+              <div className="brand-block">
+                <a className="wordmark" href="./" aria-label="GameYard home">
+                  <span>GAME</span>
+                  <span>YARD</span>
+                </a>
+                <div>
+                  <p>{t("brand.kicker")}</p>
+                  <span>{t("brand.subtitle")}</span>
+                </div>
               </div>
-            </div>
-            <div className="header-actions">
-              {import.meta.env.DEV ? (
+              <div className="header-actions">
                 <button
-                  className="utility-button utility-button--lab"
+                  className="utility-button"
                   type="button"
-                  onClick={() => setLabOpen(true)}
+                  onClick={() => void openOverlay("settings")}
                 >
-                  {LAB_COPY[locale].open}
+                  {t("settings.open")} <span aria-hidden="true">↘</span>
                 </button>
-              ) : null}
-              {import.meta.env.PROD ? (
-                <button className="utility-button" type="button" onClick={() => setPwaOpen(true)}>
-                  {t("nav.offline")} <span aria-hidden="true">↓</span>
-                </button>
-              ) : null}
-              <button className="utility-button" type="button" onClick={openDiagnostics}>
-                {t("nav.diagnostics")} <span aria-hidden="true">↘</span>
-              </button>
-            </div>
-          </header>
+              </div>
+            </header>
 
-          <SettingsBar
+            {settingsState.kind === "error" ? (
+              <div className="contract-error" role="alert">
+                <span>SETTINGS / CONTRACT / STOP</span>
+                <div>
+                  <strong>{t("settings.errorTitle")}</strong>
+                  <p>{t("settings.errorBody")}</p>
+                  <code>{settingsState.error}</code>
+                  <div className="contract-error__reset">
+                    <p>{t("settings.resetHint")}</p>
+                    <button type="button" onClick={resetInvalidSettings}>
+                      {t("settings.reset")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <main className="browse-mode">
+              <section className="browse-intro" aria-labelledby="page-title">
+                <div>
+                  <span className="micro-label">{t("index.eyebrow")}</span>
+                  <h1 id="page-title">{t("index.title")}</h1>
+                </div>
+                <p>{t("index.instruction")}</p>
+              </section>
+
+              {route.kind === "index" ? (
+                <section className="catalog" aria-labelledby="catalog-title">
+                  <h2 className="catalog__heading" id="catalog-title">
+                    {t("catalog.heading")}
+                  </h2>
+                  <BrowseCatalog
+                    games={GAME_CATALOG}
+                    locale={locale}
+                    onSelect={(gameId) => {
+                      void selectGame(gameId).catch(() => undefined);
+                    }}
+                  />
+                </section>
+              ) : (
+                <Stage
+                  route={route}
+                  settings={settings}
+                  systemLanguages={systemLanguages}
+                  runtimeRef={runtimeRef}
+                  onCloseRuntime={closeRuntime}
+                  onOpenTools={() => void openOverlay("settings")}
+                  onSettingsChange={updateSettings}
+                  onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
+                  onEvent={recordEvent}
+                />
+              )}
+            </main>
+
+            <footer className="site-footer">
+              <span>{t("footer.note")}</span>
+              <span>{__GAMEYARD_BUILD__}</span>
+            </footer>
+          </>
+        )}
+      </div>
+
+      <HubDrawer
+        open={activeOverlay !== null}
+        contentKey={activeOverlay ?? "closed"}
+        title={drawerTitle}
+        eyebrow={t("drawer.eyebrow")}
+        closeLabel={t("drawer.close")}
+        onClose={closeOverlay}
+      >
+        <div className="settings-drawer-panel" hidden={activeOverlay !== "settings"}>
+          <SettingsPanel
             settings={settings}
             error={settingsError}
             locked={labApplyInFlight}
             onChange={updateSettings}
           />
-          {settingsState.kind === "error" ? (
-            <div className="contract-error" role="alert">
-              <span>SETTINGS / CONTRACT / STOP</span>
-              <div>
-                <strong>{t("settings.errorTitle")}</strong>
-                <p>{t("settings.errorBody")}</p>
-                <code>{settingsState.error}</code>
-                <div className="contract-error__reset">
-                  <p>{t("settings.resetHint")}</p>
-                  <button type="button" onClick={resetInvalidSettings}>
-                    {t("settings.reset")}
-                  </button>
-                </div>
-              </div>
+          {settings === null ? (
+            <div className="settings-drawer-panel__contract" role="alert">
+              <p>{t("settings.resetHint")}</p>
+              <button type="button" onClick={resetInvalidSettings}>
+                {t("settings.reset")}
+              </button>
             </div>
           ) : null}
-
-          <main className="browse-mode">
-            <section className="browse-intro" aria-labelledby="page-title">
+          <nav className="drawer-utilities" aria-label={t("drawer.utilities")}>
+            {import.meta.env.DEV ? (
+              <button type="button" onClick={() => void openOverlay("lab")}>
+                {LAB_COPY[locale].open}
+              </button>
+            ) : null}
+            {import.meta.env.PROD ? (
+              <button type="button" onClick={() => void openOverlay("pwa")}>
+                {t("nav.offline")}
+              </button>
+            ) : null}
+            <button type="button" onClick={openDiagnostics}>
+              {t("nav.diagnostics")}
+            </button>
+          </nav>
+          {route.kind === "game" ? (
+            <div className="drawer-reload">
               <div>
-                <span className="micro-label">{t("index.eyebrow")}</span>
-                <h1 id="page-title">{t("index.title")}</h1>
+                <strong>{t("runtime.reload")}</strong>
+                <p>{t("runtime.reloadDetail")}</p>
               </div>
-              <p>{t("index.instruction")}</p>
-            </section>
-
-            {route.kind === "index" ? (
-              <section className="catalog" aria-labelledby="catalog-title">
-                <h2 className="catalog__heading" id="catalog-title">
-                  {t("catalog.heading")}
-                </h2>
-                <BrowseCatalog
-                  games={GAME_CATALOG}
-                  locale={locale}
-                  onSelect={(gameId) => {
-                    void selectGame(gameId).catch(() => undefined);
-                  }}
-                />
-              </section>
-            ) : (
-              <Stage
-                route={route}
-                settings={settings}
-                systemLanguages={systemLanguages}
-                runtimeRef={runtimeRef}
-                onCloseRuntime={closeRuntime}
-                onOpenTools={() => setPlayToolsOpen(true)}
-                onSettingsChange={updateSettings}
-                onGuestDiagnosticSnapshot={setRuntimeDiagnostic}
-                onEvent={recordEvent}
-              />
-            )}
-          </main>
-
-          <footer className="site-footer">
-            <span>{t("footer.note")}</span>
-            <span>{__GAMEYARD_BUILD__}</span>
-          </footer>
-        </>
-      )}
-
-      {route.kind === "game" ? (
-        <PlayTools
-          open={playToolsOpen}
-          locale={locale}
-          settings={settings}
-          error={settingsError}
-          locked={labApplyInFlight}
-          onChange={updateSettings}
-          onClose={() => setPlayToolsOpen(false)}
-          onReload={async () => {
-            const handle = runtimeRef.current;
-            if (!handle) throw new Error("Runtime controller is unavailable for reload");
-            await handle.reload();
-            setPlayToolsOpen(false);
-          }}
-          onOpenDiagnostics={() => {
-            setPlayToolsOpen(false);
-            openDiagnostics();
-          }}
-          onOpenOffline={() => {
-            setPlayToolsOpen(false);
-            setPwaOpen(true);
-          }}
-          onOpenLab={() => {
-            setPlayToolsOpen(false);
-            setLabOpen(true);
-          }}
-          onResetSettings={resetInvalidSettings}
-        />
-      ) : null}
-
-      <DiagnosticsDrawer
-        open={diagnosticsOpen}
-        snapshot={diagnosticSnapshot}
-        onClose={() => setDiagnosticsOpen(false)}
-      />
-      {import.meta.env.PROD ? (
-        <PwaDrawer
-          open={pwaOpen}
-          selectedGame={selectedId}
-          onClose={() => setPwaOpen(false)}
-          onEvent={recordEvent}
-        />
-      ) : null}
-      {import.meta.env.DEV ? (
-        <LabOverlay
-          open={labOpen}
-          locale={locale}
-          runtime={runtimeDiagnostic}
-          onClose={() => setLabOpen(false)}
-          onApply={applyLabStartupState}
-          onEvent={recordEvent}
-        />
-      ) : null}
+              <button type="button" onClick={reloadRuntimeFromOverlay}>
+                {t("runtime.reload")}
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <DiagnosticsPanel open={activeOverlay === "diagnostics"} snapshot={diagnosticSnapshot} />
+        {import.meta.env.PROD ? (
+          <PwaPanel
+            open={activeOverlay === "pwa"}
+            games={GAME_CATALOG}
+            selectedGame={selectedId}
+            onEvent={recordEvent}
+          />
+        ) : null}
+        {import.meta.env.DEV ? (
+          <LabPanel
+            open={activeOverlay === "lab"}
+            locale={locale}
+            runtime={runtimeDiagnostic}
+            onApply={applyLabStartupState}
+            onEvent={recordEvent}
+          />
+        ) : null}
+      </HubDrawer>
     </div>
   );
 }

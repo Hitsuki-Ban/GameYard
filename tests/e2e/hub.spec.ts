@@ -1,7 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { REGISTERED_GAMES } from "../registered-games";
-import { closePlayTools, openPlayDiagnostics, openPlayTools } from "../play-mode";
+import {
+  closeHubDrawer,
+  openPlayDiagnostics,
+  openSettingsDrawer,
+  setHubLocale,
+} from "../play-mode";
 
 const SETTINGS_KEY = "gameyard.settings.v1";
 
@@ -218,7 +223,7 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
 
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "PLAY THE YARD" })).toBeVisible();
-  await page.locator("select").selectOption("en");
+  await setHubLocale(page, "en");
   await page.getByRole("link", { name: /PULSE LINK \/\/ OVERDRIVE/ }).click();
 
   await expect(page).toHaveURL(/\?game=pulse-link-overdrive$/);
@@ -232,8 +237,9 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
     .find((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html"));
   expect(firstGuest).toBeDefined();
 
-  const pulseTools = await openPlayTools(page);
-  const pulseSettings = pulseTools.locator(".settings-bar");
+  const pulseTools = await openSettingsDrawer(page);
+  const pulseSettings = pulseTools.locator(".settings-panel");
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await pulseSettings.locator("select").selectOption("ja");
   await expect(pulse.getByRole("button", { name: "ゲームを始める" })).toBeVisible();
   await pulseSettings.locator("select").selectOption("zh-Hans");
@@ -241,27 +247,55 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   await pulseSettings.locator("select").selectOption("en");
   await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
 
-  await pulseSettings.getByRole("slider", { name: /Master/ }).fill("0.31");
+  const masterVolume = pulseSettings.getByRole("slider", { name: /Master/ });
+  await masterVolume.evaluate(async (element) => {
+    const slider = element as HTMLInputElement;
+    const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    if (valueDescriptor?.set === undefined) {
+      throw new Error("Native range value setter is unavailable");
+    }
+    for (let step = 0; step < 24; step += 1) {
+      valueDescriptor.set.call(slider, String(0.1 + step * 0.03));
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+  });
+  await masterVolume.fill("0.31");
   await pulseSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
+  const expectedRevision = await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) throw new Error("Persisted Hub settings are missing");
+    return (JSON.parse(raw) as { revision: number }).revision;
+  }, SETTINGS_KEY);
   await openPlayDiagnostics(page);
+  await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Read-only diagnostics" })).toBeVisible();
   await expect(page.locator(".diagnostics__facts")).toContainText("game:pulse-link-overdrive");
+  await expect(page.locator(".diagnostics__facts dd").nth(4)).toHaveText(String(expectedRevision));
+  await expect(page.locator(".diagnostics__facts dd").nth(7)).toHaveText(String(expectedRevision));
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
-  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeHubDrawer(page);
+  await expect(page.locator(".runtime-state")).toHaveText("Active");
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
-  const reloadTools = await openPlayTools(page);
-  await reloadTools.locator(".play-tools__reload button").click();
+  const reloadTools = await openSettingsDrawer(page);
+  await reloadTools.locator(".drawer-reload button").click();
   await expect(pulse.getByRole("button", { name: "Start game" })).toBeVisible();
   await expect.poll(() => page.frames().includes(firstGuest!)).toBe(false);
-  expect(
-    page.frames().filter((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html")),
-  ).toHaveLength(1);
+  await expect
+    .poll(
+      () =>
+        page
+          .frames()
+          .filter((frame) => frame.url().includes("/games/pulse-link-overdrive/index.html")).length,
+      { message: "reload must settle on exactly one navigated Pulse guest" },
+    )
+    .toBe(1);
 
   await page.getByRole("button", { name: "Back to works" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -275,7 +309,7 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto("./");
-  await page.getByLabel("Language").selectOption("en");
+  await setHubLocale(page, "en");
   await page.getByRole("link", { name: /TUMBLEDRUM/ }).click();
 
   await expect(page).toHaveURL(/\?game=tumbledrum$/);
@@ -285,14 +319,14 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   await expect(game.locator("#game")).toBeVisible();
   await expect(game.locator("#status")).toContainText("TUMBLEDRUM title screen");
 
-  const tumbleTools = await openPlayTools(page);
-  const tumbleSettings = tumbleTools.locator(".settings-bar");
+  const tumbleTools = await openSettingsDrawer(page);
+  const tumbleSettings = tumbleTools.locator(".settings-panel");
   await tumbleSettings.locator("select").selectOption("ja");
   await expect(game.locator("html")).toHaveAttribute("lang", "ja");
-  await expect(game.locator("#status")).toContainText("TUMBLEDRUMのタイトル画面");
+  await expect(game.locator("main.stage")).toHaveAttribute("aria-label", "TUMBLEDRUM ゲーム");
   await tumbleSettings.locator("select").selectOption("zh-Hans");
   await expect(game.locator("html")).toHaveAttribute("lang", "zh-Hans");
-  await expect(game.locator("#status")).toContainText("TUMBLEDRUM 标题画面");
+  await expect(game.locator("main.stage")).toHaveAttribute("aria-label", "TUMBLEDRUM 游戏");
   await tumbleSettings.locator("select").selectOption("en");
 
   await tumbleSettings.getByRole("slider", { name: /Master/ }).fill("0.42");
@@ -303,7 +337,7 @@ test("TUMBLEDRUM runs through the shared Hub contract", async ({ page }) => {
   await expect(page.locator(".diagnostics__facts")).toContainText("game:tumbledrum");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
-  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeHubDrawer(page);
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
@@ -326,7 +360,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   await installCrownResourceProbe(page);
 
   await page.goto("./");
-  await page.locator("select").selectOption("en");
+  await setHubLocale(page, "en");
   const baselineResources = await crownResources(page);
   await page.getByRole("link", { name: /CROWN\/\/BREAKER/ }).click();
 
@@ -342,8 +376,8 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
     .find((frame) => frame.url().includes("/games/crown-breaker/index.html"));
   expect(firstGuest).toBeDefined();
 
-  const crownTools = await openPlayTools(page);
-  const crownSettings = crownTools.locator(".settings-bar");
+  const crownTools = await openSettingsDrawer(page);
+  const crownSettings = crownTools.locator(".settings-panel");
   await crownSettings.locator("select").selectOption("ja");
   await expect(crown.locator("html")).toHaveAttribute("lang", "ja");
   await expect(newRunLabel).toHaveText("ニューラン");
@@ -358,7 +392,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   await crownSettings.getByRole("checkbox", { name: "Reduce motion" }).check();
   await crownSettings.getByRole("checkbox", { name: "Screen shake" }).uncheck();
   await expect(crown.locator("#app")).toHaveAttribute("data-motion", "reduced");
-  await closePlayTools(page);
+  await closeHubDrawer(page);
 
   await crown.locator("#btn-new").click();
   expect(runtimeErrors).toEqual([]);
@@ -380,7 +414,7 @@ test("CrownBreaker completes one real Hub contract and resource lifecycle", asyn
   await expect(page.locator(".diagnostics__facts")).toContainText("game:crown-breaker");
   await expect(page.locator(".diagnostics__events")).toContainText("locale.applied");
   await expect(page.locator(".diagnostics__events")).toContainText("settings.applied");
-  await page.getByRole("button", { name: "Close ×" }).click();
+  await closeHubDrawer(page);
 
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
@@ -419,13 +453,13 @@ test("public language setting persists across reloads", async ({ page }) => {
   const runtimeErrors = collectRuntimeErrors(page);
 
   await page.goto("./");
-  await page.getByLabel("Language").selectOption("zh-Hans");
+  await setHubLocale(page, "zh-Hans");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
-  await expect(page.getByRole("button", { name: /诊断/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^设置/ })).toBeVisible();
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
-  await expect(page.getByRole("button", { name: /诊断/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^设置/ })).toBeVisible();
   const stored = await page.evaluate((key) => window.localStorage.getItem(key), SETTINGS_KEY);
   expect(JSON.parse(stored as string)).toMatchObject({ localePreference: "zh-Hans", revision: 2 });
 
@@ -514,6 +548,28 @@ test("Browse Mode is actionable in the first mobile viewport and loads no game r
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 
+  const zoomedSettings = await openSettingsDrawer(page);
+  await expect
+    .poll(async () => {
+      const box = await page.locator(".hub-drawer__dialog").boundingBox();
+      if (box === null) throw new Error("Drawer dialog is missing");
+      return box.x + box.width;
+    })
+    .toBeLessThanOrEqual(321);
+  const dialogBox = await page.locator(".hub-drawer__dialog").boundingBox();
+  const closeBox = await page.locator(".hub-drawer__heading > button").boundingBox();
+  const languageBox = await zoomedSettings.locator(".settings-panel select").boundingBox();
+  for (const [label, box] of [
+    ["drawer", dialogBox],
+    ["close", closeBox],
+    ["language", languageBox],
+  ] as const) {
+    expect(box, `${label} control must remain visible at 320px / 200%`).not.toBeNull();
+    expect(box!.x, `${label} left edge`).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(321);
+  }
+  await closeHubDrawer(page);
+
   await cards.first().click();
   await expect(page.locator(".play-mode")).toBeVisible();
   await expect(page.locator(".runtime-frame iframe")).toHaveCount(1);
@@ -536,11 +592,13 @@ test("Play Mode keeps one runtime through viewport and overlay changes for both 
   for (const game of cases) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("./");
-    await page.locator(".settings-bar select").selectOption("en");
+    const browseSettings = await openSettingsDrawer(page);
+    await browseSettings.locator(".settings-panel select").selectOption("en");
+    await closeHubDrawer(page);
     await page.locator(`.catalog-card__link[href="?game=${game.id}"]`).click();
     await expect(page.locator(".play-mode")).toBeVisible();
     await expect(page.locator(".intro, .catalog, .site-footer")).toHaveCount(0);
-    await expect(page.locator(".settings-bar")).toBeHidden();
+    await expect(page.locator(".settings-panel")).toBeHidden();
     const stage = page.locator(`.stage--runtime[data-stage-strategy="${game.strategy}"]`);
     const frame = page.locator(".runtime-frame iframe");
     await expect(stage).toBeVisible();
@@ -573,14 +631,14 @@ test("Play Mode keeps one runtime through viewport and overlay changes for both 
 
     await page.getByRole("button", { name: "Pause" }).click();
     await expect(page.locator(".runtime-state")).toHaveText("Paused");
-    await openPlayTools(page);
+    await openSettingsDrawer(page);
     expect(
       await frame.evaluate(
         (element) =>
           (window as typeof window & { __issue42Frame?: Element }).__issue42Frame === element,
       ),
     ).toBe(true);
-    await closePlayTools(page);
+    await closeHubDrawer(page);
     await page.getByRole("button", { name: "Resume" }).click();
     await expect(page.locator(".runtime-state")).toHaveText("Active");
     await page.locator(".runtime-toolbar__back").click();
@@ -613,7 +671,7 @@ test("invalid settings stop visibly and reset only after an explicit click", asy
   const repaired = await page.evaluate((key) => window.localStorage.getItem(key), SETTINGS_KEY);
   expect(JSON.parse(repaired as string)).toMatchObject({ schemaVersion: 1, revision: 1 });
 
-  await page.getByRole("button", { name: /Diagnostics/ }).click();
+  await openPlayDiagnostics(page);
   await expect(page.locator(".diagnostics__events")).toContainText("settings.reset");
   expect(runtimeErrors).toEqual([]);
 });
