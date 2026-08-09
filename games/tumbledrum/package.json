@@ -8,7 +8,7 @@
     "dev": "vp dev",
     "build": "vp build",
     "check": "vp check",
-    "test": "vp exec uv run python tests/gameyard_baseline.py"
+    "test": "vp run build && vp exec uv run python tests/gameyard_baseline.py"
   },
   "dependencies": {
     "@gameyard/game-contract": "workspace:*",
