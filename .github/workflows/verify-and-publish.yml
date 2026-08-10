@@ -91,9 +91,25 @@ jobs:
       - name: Preserve registered game behavior baseline
         run: vp run "${{ matrix.packageName }}#test"
 
+  kamifuda-source-baseline:
+    name: Source baseline · kamifuda-runner
+    needs: registry
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run @gameyard/kamifuda-runner#browser:install
+      - run: vp run @gameyard/kamifuda-runner#test
+
   artifact:
     name: Build the immutable artifact
-    needs: [quality, game-baseline]
+    needs: [quality, game-baseline, kamifuda-source-baseline]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:

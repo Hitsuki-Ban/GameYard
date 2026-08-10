@@ -39,7 +39,25 @@ const crownBreakerUpstreamStyleFiles = [
   "games/crown-breaker/tools/svg-contract.mjs",
 ];
 
-const upstreamStyleFiles = [...tumbledrumUpstreamStyleFiles, ...crownBreakerUpstreamStyleFiles];
+const kamifudaRunnerUpstreamStyleFiles = [
+  "games/kamifuda-runner/ACCEPTANCE_RESULTS.json",
+  "games/kamifuda-runner/DESIGN_NOTES.md",
+  "games/kamifuda-runner/LEVEL_CONTENT_AUDIT.md",
+  "games/kamifuda-runner/PRESENTATION_SPEC.md",
+  "games/kamifuda-runner/TEST_REPORT.md",
+  "games/kamifuda-runner/VISUAL_PRESENTATION_AUDIT.md",
+  "games/kamifuda-runner/build.py",
+  "games/kamifuda-runner/game.js",
+  "games/kamifuda-runner/index.html",
+  "games/kamifuda-runner/kamifuda-runner-v4-standalone.html",
+  "games/kamifuda-runner/style.css",
+];
+
+const upstreamStyleFiles = [
+  ...tumbledrumUpstreamStyleFiles,
+  ...crownBreakerUpstreamStyleFiles,
+  ...kamifudaRunnerUpstreamStyleFiles,
+];
 
 export default defineConfig({
   fmt: {

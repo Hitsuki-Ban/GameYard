@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Hitsuki-Ban/GameYard/provenance/schema/source-snapshot-record.schema.json",
+  "title": "GameYard owner-provided source snapshot record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordId",
+    "gameId",
+    "authorization",
+    "sourceSnapshot",
+    "permissions",
+    "productionBoundary"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "recordId": { "type": "string", "minLength": 1 },
+    "gameId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "recordedAt", "taskId", "grantText", "grantTextSha256"],
+      "properties": {
+        "source": { "const": "owner-project-direction" },
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "grantText": { "type": "string", "minLength": 1 },
+        "grantTextSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "sourceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "archive",
+        "inventory",
+        "importedRoot",
+        "repository",
+        "revision",
+        "license"
+      ],
+      "properties": {
+        "kind": { "const": "owner-provided-archive" },
+        "archive": { "$ref": "#/$defs/archiveEvidence" },
+        "inventory": { "$ref": "#/$defs/fileEvidence" },
+        "importedRoot": { "type": "string", "minLength": 1 },
+        "repository": { "type": "null" },
+        "revision": { "type": "null" },
+        "license": { "type": "null" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions", "venues", "licenseScope"],
+      "properties": {
+        "actions": {
+          "const": [
+            "copy",
+            "modify",
+            "build",
+            "public-host",
+            "display-and-run",
+            "distribute-source",
+            "distribute-static-artifact"
+          ]
+        },
+        "venues": {
+          "const": ["https://github.com/Hitsuki-Ban/GameYard", "GitHub Pages", "Cloudflare"]
+        },
+        "licenseScope": { "const": "GameYard-project-only" }
+      }
+    },
+    "productionBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
+      "properties": {
+        "status": { "const": "source-evidence-only" },
+        "runtimeAdmissionIssue": { "const": 55 },
+        "excludedFromProductionInputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fileEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "archiveEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "entryCount", "uncompressedBytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "entryCount": { "type": "integer", "minimum": 1 },
+        "uncompressedBytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
