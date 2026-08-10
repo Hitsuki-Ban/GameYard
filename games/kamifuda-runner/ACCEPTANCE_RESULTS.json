@@ -1,0 +1,443 @@
+{
+  "version": "3.0.0",
+  "generatedAt": "2026-07-30",
+  "scope": "level/content redesign, hard mode, regression and deterministic agent validation",
+  "content": {
+    "normalEncounters": 9,
+    "hardEncounters": 9,
+    "bossPrepGatesPerRun": 3,
+    "gatesPerRun": 12,
+    "bosses": 3,
+    "bossStages": 9,
+    "charms": 8,
+    "formations": 4,
+    "assertions": {
+      "all_modes_finish": true,
+      "twelve_gates_each": true,
+      "three_boss_prep_each": true,
+      "nine_waves_each": true,
+      "twenty_seven_beats_each": true,
+      "all_variants_seen": true,
+      "normal_enemy_roster": true,
+      "normal_boss_three_stages": true,
+      "hard_enemy_roster": true,
+      "hard_boss_three_stages": true,
+      "no_browser_errors": true
+    },
+    "normalSample": {
+      "time": 180.85000000003606,
+      "bossTimes": [
+        9.73333333333278,
+        19.3499999999989,
+        11.500000000009152
+      ],
+      "waves": 9,
+      "beats": 27
+    },
+    "hardSample": {
+      "time": 197.28333333338247,
+      "bossTimes": [
+        11.283333333332692,
+        10.900000000000645,
+        10.400000000008276
+      ],
+      "waves": 9,
+      "beats": 27
+    }
+  },
+  "agentMatrix": {
+    "normal:center": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 1.0,
+      "median_lost": 18.0,
+      "median_tier3": 0.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 21
+    },
+    "normal:left": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 2.0,
+      "median_lost": 80.0,
+      "median_tier3": 8.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 22
+    },
+    "normal:right": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 2.0,
+      "median_lost": 80.5,
+      "median_tier3": 8.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 22
+    },
+    "normal:novice": {
+      "runs": 12,
+      "clears": 12,
+      "rate": 1.0,
+      "median_time": 145.48,
+      "median_score": 51193,
+      "median_act": 3.0,
+      "median_lost": 15.0,
+      "median_tier3": 10.0,
+      "median_manual_stamp": 5.5,
+      "timeouts": 0,
+      "max_combined": 18
+    },
+    "normal:late": {
+      "runs": 20,
+      "clears": 20,
+      "rate": 1.0,
+      "median_time": 202.69,
+      "median_score": 51286,
+      "median_act": 3.0,
+      "median_lost": 0.0,
+      "median_tier3": 0.0,
+      "median_manual_stamp": 8.5,
+      "timeouts": 0,
+      "max_combined": 15
+    },
+    "normal:noStamp": {
+      "runs": 20,
+      "clears": 20,
+      "rate": 1.0,
+      "median_time": 191.28,
+      "median_score": 50910,
+      "median_act": 3.0,
+      "median_lost": 0.0,
+      "median_tier3": 12.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 16
+    },
+    "normal:skilled": {
+      "runs": 20,
+      "clears": 20,
+      "rate": 1.0,
+      "median_time": 190.48,
+      "median_score": 51412,
+      "median_act": 3.0,
+      "median_lost": 0.0,
+      "median_tier3": 12.0,
+      "median_manual_stamp": 8.0,
+      "timeouts": 0,
+      "max_combined": 16
+    },
+    "hard:center": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 1.0,
+      "median_lost": 16.0,
+      "median_tier3": 0.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 32
+    },
+    "hard:left": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 2.0,
+      "median_lost": 57.0,
+      "median_tier3": 8.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 35
+    },
+    "hard:right": {
+      "runs": 12,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 1.0,
+      "median_lost": 26.0,
+      "median_tier3": 4.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 34
+    },
+    "hard:novice": {
+      "runs": 12,
+      "clears": 2,
+      "rate": 0.167,
+      "median_time": 174.64,
+      "median_score": 98661,
+      "median_act": 1.0,
+      "median_lost": 16.0,
+      "median_tier3": 2.5,
+      "median_manual_stamp": 3.0,
+      "timeouts": 0,
+      "max_combined": 22
+    },
+    "hard:late": {
+      "runs": 20,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 1.0,
+      "median_lost": 34.0,
+      "median_tier3": 0.0,
+      "median_manual_stamp": 2.0,
+      "timeouts": 0,
+      "max_combined": 26
+    },
+    "hard:noStamp": {
+      "runs": 20,
+      "clears": 0,
+      "rate": 0.0,
+      "median_time": null,
+      "median_score": null,
+      "median_act": 1.0,
+      "median_lost": 32.0,
+      "median_tier3": 3.0,
+      "median_manual_stamp": 0.0,
+      "timeouts": 0,
+      "max_combined": 26
+    },
+    "hard:skilled": {
+      "runs": 20,
+      "clears": 17,
+      "rate": 0.85,
+      "median_time": 191.68,
+      "median_score": 75792,
+      "median_act": 3.0,
+      "median_lost": 22.5,
+      "median_tier3": 11.0,
+      "median_manual_stamp": 10.0,
+      "timeouts": 0,
+      "max_combined": 26
+    }
+  },
+  "mechanics": {
+    "formationDamage": {
+      "fanArmor": 42,
+      "spearArmor": 265.00000000000006,
+      "fanChaff": 13.300000000000011,
+      "ok": true
+    },
+    "footprints": {
+      "widths": {
+        "fan": 93.22,
+        "spear": 52.14,
+        "spiral": 69.52,
+        "drum": 75.84
+      },
+      "ok": true
+    },
+    "drum": {
+      "knock": 16,
+      "splash": 7.055999999999983,
+      "ok": true
+    },
+    "spiral": {
+      "shots": 0,
+      "momentum": 3.5,
+      "ok": true
+    },
+    "crane": {
+      "count": 1,
+      "shield": 3,
+      "used": true,
+      "ok": true
+    },
+    "echo": {
+      "echo": 3.25,
+      "stamp": 2.25,
+      "ok": true
+    },
+    "fox": {
+      "plain": 5,
+      "fox": 6.75,
+      "ok": true
+    },
+    "banner": {
+      "count": 26,
+      "uses": 3,
+      "total": 6,
+      "ok": true
+    },
+    "bell": {
+      "shield": 1,
+      "noHit": 1,
+      "ok": true
+    },
+    "rice": {
+      "count": 36,
+      "act": 2,
+      "owned": true,
+      "ok": true
+    },
+    "knot": {
+      "baseTier": 2,
+      "knot": 3,
+      "ok": true
+    },
+    "ink": {
+      "noInk": 0.12,
+      "ink": 0.44999999999999996,
+      "ok": true
+    },
+    "all": true,
+    "noErrors": true
+  },
+  "enemyBehaviors": {
+    "charger": {
+      "before": "aim",
+      "marked": true,
+      "locked": 0.3845348644793738,
+      "state": "dash",
+      "ok": true
+    },
+    "drummer": {
+      "pulses": 0,
+      "y0": 190.528,
+      "y": 279.3440000000006,
+      "ok": true
+    },
+    "thrower": {
+      "pulses": 0,
+      "y0": 190.528,
+      "y": 226.29466666666673,
+      "shots": 0,
+      "ok": true
+    },
+    "splitter": {
+      "regular": 2,
+      "sealed": 0,
+      "ok": true
+    },
+    "shield": {
+      "protectedHp": 0,
+      "protectedShield": 10,
+      "openHp": 10,
+      "spearHp": 8,
+      "ok": true
+    },
+    "sweep": {
+      "pre": 1,
+      "post": 0,
+      "ok": true
+    },
+    "all": true,
+    "noErrors": true
+  },
+  "profileAssertions": {
+    "initial_hard_locked": true,
+    "normal_clear_unlocks_hard": true,
+    "normal_persists": true,
+    "hard_clear_separate_record": true,
+    "hard_clear_unlocks_ember": true,
+    "hard_persists": true,
+    "v2_migration": true,
+    "no_errors": true
+  },
+  "uiPerformance": {
+    "assertions": {
+      "responsive_all": true,
+      "orientation_nx_stable": true,
+      "perf_under_16_7ms": true,
+      "no_errors": true
+    },
+    "measurements": [
+      {
+        "view": [
+          320,
+          568
+        ],
+        "quality": "high",
+        "ms": 959,
+        "perFrame": 2.6638888888888888,
+        "enemies": 220,
+        "bullets": 62,
+        "particles": 74
+      },
+      {
+        "view": [
+          320,
+          568
+        ],
+        "quality": "low",
+        "ms": 772,
+        "perFrame": 2.1444444444444444,
+        "enemies": 220,
+        "bullets": 62,
+        "particles": 23
+      },
+      {
+        "view": [
+          1280,
+          720
+        ],
+        "quality": "high",
+        "ms": 1176.5,
+        "perFrame": 3.2680555555555557,
+        "enemies": 220,
+        "bullets": 138,
+        "particles": 0
+      },
+      {
+        "view": [
+          1280,
+          720
+        ],
+        "quality": "low",
+        "ms": 965.3000000002794,
+        "perFrame": 2.681388888889665,
+        "enemies": 220,
+        "bullets": 138,
+        "particles": 0
+      }
+    ]
+  },
+  "limitations": [
+    "Automated agents validate deterministic rules, balance boundaries, state coverage and soft-lock resistance; they do not prove subjective fun.",
+    "No physical iOS/Android device thermal, Safari audio-unlock or long-session battery test was performed.",
+    "No blind test with children or first-time multiplier-runner players was available in this environment."
+  ],
+  "releaseVerification": {
+    "standaloneTitle": "紙札疾走録・百鬼祭陣",
+    "normalBoot": {
+      "mode": "playing",
+      "phase": "gate",
+      "count": 18,
+      "difficulty": "normal"
+    },
+    "hardBoot": {
+      "mode": "playing",
+      "phase": "gate",
+      "count": 16,
+      "shield": 1,
+      "difficulty": "hard"
+    },
+    "consoleErrors": [],
+    "externalRequests": [],
+    "assertions": {
+      "standalone_loads": true,
+      "normal_mode_boots": true,
+      "hard_mode_boots": true,
+      "no_console_errors": true,
+      "no_external_requests": true
+    }
+  }
+}

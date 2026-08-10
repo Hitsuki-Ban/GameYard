@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#e9dfc8" />
+  <meta name="color-scheme" content="light" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2710%27 fill=%27%23eadfc7%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2723%27 fill=%27%23b33a2f%27/%3E%3Cpath d=%27M22 18h20v5H35v7h7v5h-7v11h-6V35h-7v-5h7v-7h-7z%27 fill=%27%23fff8e8%27/%3E%3C/svg%3E" />
+  <title>紙札疾走録・百鬼祭陣</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app" aria-label="紙札疾走録・百鬼祭陣">
+    <canvas id="gameCanvas" aria-label="左右に動き、紙札の門を選び、百鬼を退けるゲーム"></canvas>
+
+    <div id="hudControls" class="hud-controls" aria-label="ゲーム操作">
+      <button id="pauseButton" class="round-control pause-control" type="button" aria-label="一時停止">
+        <span aria-hidden="true">Ⅱ</span>
+      </button>
+      <button id="stampButton" class="stamp-control" type="button" aria-label="祭印を使う">
+        <span class="stamp-ring" aria-hidden="true"></span>
+        <span class="stamp-face" aria-hidden="true">祭</span>
+      </button>
+    </div>
+
+    <section id="titleOverlay" class="overlay is-active" aria-labelledby="gameTitle">
+      <div class="title-stage">
+        <div class="title-kamon" aria-hidden="true"><span>走</span></div>
+        <p class="eyebrow">木版アクション・ラン</p>
+        <h1 id="gameTitle"><span>紙札疾走録</span><small>百鬼祭陣 <em>演</em></small></h1>
+        <p class="title-lead">門を育て、敵波を読み、百鬼を駆け抜けろ。</p>
+        <div class="mode-starts" aria-label="遊び方を選ぶ">
+          <button id="startButton" class="start-button mode-start-button" type="button">
+            <span class="start-icon" aria-hidden="true">▶</span>
+            <span class="mode-copy"><b>道中へ</b><small>百鬼祭陣 <em>演</em></small></span>
+          </button>
+          <button id="hardModeButton" class="hard-mode-button is-locked" type="button" aria-describedby="hardModeHint">
+            <span class="hard-seal" aria-hidden="true">烈</span>
+            <span class="mode-copy"><b>烈祭</b><small id="hardModeHint">踏破で開く</small></span>
+          </button>
+        </div>
+        <div class="title-actions">
+          <button id="recordsButton" class="paper-button" type="button">記録</button>
+          <button id="settingsButton" class="paper-button" type="button">設定</button>
+        </div>
+        <div class="control-hint" aria-hidden="true">
+          <span class="hint-track"><i></i></span>
+          <span>ドラッグ / ← →</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="pauseOverlay" class="overlay" aria-labelledby="pauseTitle">
+      <div class="paper-card compact-card">
+        <div class="card-seal" aria-hidden="true">休</div>
+        <h2 id="pauseTitle">ひと休み</h2>
+        <button id="resumeButton" class="primary-button" type="button">戻る</button>
+        <button id="pauseSettingsButton" class="paper-button" type="button">設定</button>
+        <button id="quitButton" class="text-button" type="button">道中を終える</button>
+      </div>
+    </section>
+
+    <section id="choiceOverlay" class="overlay" aria-labelledby="choiceTitle">
+      <div class="choice-shell">
+        <div class="choice-heading">
+          <span class="choice-knot" aria-hidden="true"></span>
+          <div>
+            <p id="choiceActLabel" class="eyebrow">一ノ幕　結</p>
+            <h2 id="choiceTitle">ひとつ、結ぶ</h2>
+          </div>
+          <span class="choice-knot mirror" aria-hidden="true"></span>
+        </div>
+        <div id="choiceList" class="choice-list" role="list"></div>
+      </div>
+    </section>
+
+    <section id="resultOverlay" class="overlay" aria-labelledby="resultTitle">
+      <div class="result-card paper-card">
+        <div id="resultSeal" class="result-seal" aria-hidden="true">了</div>
+        <p id="resultKicker" class="eyebrow">道中記録</p>
+        <div id="resultMode" class="result-mode">百鬼祭陣</div>
+        <h2 id="resultTitle">祭は続く</h2>
+        <div id="resultGrade" class="result-grade" aria-label="評価">木</div>
+        <div id="resultStats" class="result-stats"></div>
+        <div id="resultCause" class="result-cause"></div>
+        <button id="retryButton" class="primary-button" type="button">もう一度</button>
+        <button id="resultTitleButton" class="paper-button" type="button">表紙へ</button>
+      </div>
+    </section>
+
+    <section id="settingsOverlay" class="overlay" aria-labelledby="settingsTitle">
+      <div class="paper-card settings-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">仕立て</p>
+            <h2 id="settingsTitle">設定</h2>
+          </div>
+          <button class="close-button" data-close="settings" type="button" aria-label="閉じる">×</button>
+        </div>
+        <label class="setting-row">
+          <span>音</span>
+          <input id="soundToggle" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <label class="setting-row">
+          <span>振動</span>
+          <input id="hapticToggle" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <label class="setting-row">
+          <span>動きを控える</span>
+          <input id="motionToggle" type="checkbox" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+        <label class="setting-row select-row">
+          <span>画質</span>
+          <select id="qualitySelect">
+            <option value="auto">自動</option>
+            <option value="high">高</option>
+            <option value="low">軽</option>
+          </select>
+        </label>
+        <label class="setting-row select-row">
+          <span>紙色</span>
+          <select id="skinSelect"></select>
+        </label>
+        <button id="fullscreenButton" class="paper-button wide-button" type="button">全画面</button>
+        <button id="resetButton" class="text-button danger-text" type="button">記録を初期化</button>
+      </div>
+    </section>
+
+    <section id="recordsOverlay" class="overlay" aria-labelledby="recordsTitle">
+      <div class="paper-card records-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">道中帳</p>
+            <h2 id="recordsTitle">記録</h2>
+          </div>
+          <button class="close-button" data-close="records" type="button" aria-label="閉じる">×</button>
+        </div>
+        <div id="recordSummary" class="record-summary"></div>
+        <h3>紙色</h3>
+        <div id="skinGallery" class="skin-gallery"></div>
+        <p class="records-note">印は見た目だけを開く。道中の強さは毎回まっさら。</p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
