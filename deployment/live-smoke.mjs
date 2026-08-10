@@ -1,8 +1,11 @@
 import { chromium } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const runtimeStartupTimeoutMs = 45_000;
+const releaseReadinessTimeoutMs = 60_000;
+const releaseReadinessIntervalMs = 2_000;
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--evidence" || !argv[1]) {
@@ -11,15 +14,25 @@ function parseArguments(argv) {
   return resolve(argv[1]);
 }
 
-async function assertReleaseIdentity(request, baseUrl, buildId) {
+async function probePublishedRelease(request, baseUrl, buildId) {
   const response = await request.get(new URL("build-info.json", baseUrl).href);
   if (!response.ok()) {
-    throw new Error(`${baseUrl.href}build-info.json returned HTTP ${response.status()}`);
+    return {
+      ready: false,
+      diagnostic: `${baseUrl.href}build-info.json returned HTTP ${response.status()}`,
+    };
   }
   const buildInfo = await response.json();
-  if (buildInfo?.schemaVersion !== 1 || buildInfo.buildId !== buildId) {
-    throw new Error(`${baseUrl.href} does not serve the deployed build ${buildId}`);
+  if (buildInfo?.schemaVersion !== 1 || typeof buildInfo.buildId !== "string") {
+    throw new Error(`${baseUrl.href}build-info.json violates the production contract`);
   }
+  if (buildInfo.buildId !== buildId) {
+    return {
+      ready: false,
+      diagnostic: `${baseUrl.href} still serves ${buildInfo.buildId}`,
+    };
+  }
+  return loadPublishedGames(request, baseUrl, buildId);
 }
 
 function parseCatalogEntry(value, gameId, label) {
@@ -45,16 +58,23 @@ function parseCatalogEntry(value, gameId, label) {
 async function loadPublishedGames(request, baseUrl, buildId) {
   const response = await request.get(new URL("games/catalog.json", baseUrl).href);
   if (!response.ok()) {
-    throw new Error(`${baseUrl.href}games/catalog.json returned HTTP ${response.status()}`);
+    return {
+      ready: false,
+      diagnostic: `${baseUrl.href}games/catalog.json returned HTTP ${response.status()}`,
+    };
   }
   const catalog = await response.json();
-  if (
-    catalog?.schemaVersion !== 1 ||
-    catalog.buildId !== buildId ||
-    !Array.isArray(catalog.games) ||
-    catalog.games.length === 0
-  ) {
-    throw new Error(`${baseUrl.href}games/catalog.json is not the deployed runtime catalog`);
+  if (catalog?.schemaVersion !== 1 || typeof catalog.buildId !== "string") {
+    throw new Error(`${baseUrl.href}games/catalog.json violates the production contract`);
+  }
+  if (catalog.buildId !== buildId) {
+    return {
+      ready: false,
+      diagnostic: `${baseUrl.href}games/catalog.json still serves ${catalog.buildId}`,
+    };
+  }
+  if (!Array.isArray(catalog.games) || catalog.games.length === 0) {
+    throw new Error(`${baseUrl.href}games/catalog.json has no deployed runtime games`);
   }
   const games = catalog.games.map((game, index) => {
     if (typeof game?.id !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(game.id)) {
@@ -72,7 +92,38 @@ async function loadPublishedGames(request, baseUrl, buildId) {
   if (new Set(games.map((game) => game.id)).size !== games.length) {
     throw new Error(`${baseUrl.href}games/catalog.json contains duplicate game ids`);
   }
-  return games;
+  return { ready: true, games };
+}
+
+export async function waitForPublishedRelease(
+  request,
+  baseUrl,
+  buildId,
+  { timeoutMs, intervalMs },
+) {
+  const deadline = Date.now() + timeoutMs;
+  let attempts = 0;
+  let diagnostic = "no response received";
+  while (true) {
+    attempts += 1;
+    const result = await probePublishedRelease(request, baseUrl, buildId);
+    if (result.ready) {
+      if (attempts > 1) {
+        console.log(`${baseUrl.href} reached ${buildId} after ${attempts} readiness probes.`);
+      }
+      return result.games;
+    }
+    diagnostic = result.diagnostic;
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw new Error(
+        `${baseUrl.href} did not reach deployed build ${buildId} within ${timeoutMs}ms; last observation: ${diagnostic}`,
+      );
+    }
+    await new Promise((resolveDelay) =>
+      setTimeout(resolveDelay, Math.min(intervalMs, remainingMs)),
+    );
+  }
 }
 
 async function assertGame(browser, baseUrl, game) {
@@ -156,10 +207,12 @@ async function main() {
     const requestContext = await browser.newContext();
     try {
       for (const baseUrl of bases) {
-        await assertReleaseIdentity(requestContext.request, baseUrl, evidence.buildId);
         publishedCatalogs.push({
           baseUrl,
-          games: await loadPublishedGames(requestContext.request, baseUrl, evidence.buildId),
+          games: await waitForPublishedRelease(requestContext.request, baseUrl, evidence.buildId, {
+            timeoutMs: releaseReadinessTimeoutMs,
+            intervalMs: releaseReadinessIntervalMs,
+          }),
         });
       }
     } finally {
@@ -192,4 +245,6 @@ async function main() {
   );
 }
 
-await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}
