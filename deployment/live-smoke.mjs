@@ -181,98 +181,106 @@ async function pageDiagnostic(page) {
   return `title=${JSON.stringify(title)}; body=${JSON.stringify(body)}`;
 }
 
-async function waitForTargetHubShell(page, pageUrl, buildId, resetFailures) {
+async function createObservedPage(browser) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const failures = [];
+  page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") failures.push(`console: ${message.text()}`);
+  });
+  page.on("requestfailed", (request) => {
+    failures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) failures.push(`${response.status()} ${response.url()}`);
+  });
+  return { context, page, failures };
+}
+
+async function waitForTargetHubShell(browser, pageUrl, buildId) {
   const deadline = Date.now() + hubShellReadinessTimeoutMs;
   let attempts = 0;
   let diagnostic = "no Hub document received";
   while (true) {
     attempts += 1;
-    resetFailures();
-    const response =
-      attempts === 1
-        ? await page.goto(pageUrl, { waitUntil: "domcontentloaded" })
-        : await page.reload({ waitUntil: "domcontentloaded" });
-    if (response === null || !response.ok()) {
-      throw new Error(`${pageUrl} did not return a successful document`);
-    }
+    const observedPage = await createObservedPage(browser);
+    const { context, page } = observedPage;
+    let contextClosed = false;
+    try {
+      const response = await page.goto(pageUrl, { waitUntil: "domcontentloaded" });
+      if (response === null || !response.ok()) {
+        throw new Error(`${pageUrl} did not return a successful document`);
+      }
 
-    const remainingForMarker = deadline - Date.now();
-    if (remainingForMarker > 0) {
-      await page
-        .locator("html[data-gameyard-build]")
-        .waitFor({
-          state: "attached",
-          timeout: Math.min(hubShellMarkerTimeoutMs, remainingForMarker),
-        })
-        .catch(() => undefined);
-    }
-    let observation = await readHubShellObservation(page);
-    if (observation.shellBuildId === buildId) {
-      const remainingForRuntime = deadline - Date.now();
-      if (remainingForRuntime <= 0) {
-        diagnostic = `the ${buildId} Hub shell did not render before the readiness deadline`;
-      } else {
-        try {
-          await page
-            .locator(".runtime-state--active, .runtime-state--failed, .artifact-stop")
-            .waitFor({
-              state: "visible",
-              timeout: Math.min(runtimeStartupTimeoutMs, remainingForRuntime),
-            });
-        } catch (cause) {
-          throw new Error(
-            `${pageUrl} loaded ${buildId} but did not render a runtime or artifact stop after ${runtimeStartupTimeoutMs}ms; ${await pageDiagnostic(page)}`,
-            { cause },
-          );
+      const remainingForMarker = deadline - Date.now();
+      if (remainingForMarker > 0) {
+        await page
+          .locator("html[data-gameyard-build]")
+          .waitFor({
+            state: "attached",
+            timeout: Math.min(hubShellMarkerTimeoutMs, remainingForMarker),
+          })
+          .catch(() => undefined);
+      }
+      let observation = await readHubShellObservation(page);
+      if (observation.shellBuildId === buildId) {
+        const remainingForRuntime = deadline - Date.now();
+        if (remainingForRuntime <= 0) {
+          diagnostic = `the ${buildId} Hub shell did not render before the readiness deadline`;
+        } else {
+          try {
+            await page
+              .locator(".runtime-state--active, .runtime-state--failed, .artifact-stop")
+              .waitFor({
+                state: "visible",
+                timeout: Math.min(runtimeStartupTimeoutMs, remainingForRuntime),
+              });
+          } catch (cause) {
+            throw new Error(
+              `${pageUrl} loaded ${buildId} but did not render a runtime or artifact stop after ${runtimeStartupTimeoutMs}ms; ${await pageDiagnostic(page)}`,
+              { cause },
+            );
+          }
+          observation = await readHubShellObservation(page);
         }
-        observation = await readHubShellObservation(page);
       }
-    }
 
-    const readiness = classifyHubShellObservation(observation, buildId);
-    if (readiness.kind === "ready") {
-      if (attempts > 1) {
-        console.log(`${pageUrl} loaded the ${buildId} Hub shell after ${attempts} attempts.`);
+      const readiness = classifyHubShellObservation(observation, buildId);
+      if (readiness.kind === "ready") {
+        if (attempts > 1) {
+          console.log(`${pageUrl} loaded the ${buildId} Hub shell after ${attempts} attempts.`);
+        }
+        return observedPage;
       }
-      return;
-    }
-    if (readiness.kind === "failure") {
-      throw new Error(`${pageUrl} ${readiness.diagnostic}; ${await pageDiagnostic(page)}`);
-    }
-    diagnostic = readiness.diagnostic;
-    const remainingMs = deadline - Date.now();
-    if (remainingMs <= 0) {
-      throw new Error(
-        `${pageUrl} did not load deployed Hub shell ${buildId} within ${hubShellReadinessTimeoutMs}ms; last observation: ${diagnostic}; ${await pageDiagnostic(page)}`,
+      if (readiness.kind === "failure") {
+        throw new Error(`${pageUrl} ${readiness.diagnostic}; ${await pageDiagnostic(page)}`);
+      }
+      diagnostic = readiness.diagnostic;
+      const remainingMs = deadline - Date.now();
+      const lastPageDiagnostic = await pageDiagnostic(page);
+      await context.close();
+      contextClosed = true;
+      if (remainingMs <= 0) {
+        throw new Error(
+          `${pageUrl} did not load deployed Hub shell ${buildId} within ${hubShellReadinessTimeoutMs}ms; last observation: ${diagnostic}; ${lastPageDiagnostic}`,
+        );
+      }
+      await new Promise((resolveDelay) =>
+        setTimeout(resolveDelay, Math.min(hubShellReadinessIntervalMs, remainingMs)),
       );
+    } catch (error) {
+      if (!contextClosed) await context.close();
+      throw error;
     }
-    await new Promise((resolveDelay) =>
-      setTimeout(resolveDelay, Math.min(hubShellReadinessIntervalMs, remainingMs)),
-    );
   }
 }
 
 async function assertGame(browser, baseUrl, game, buildId) {
   const { id: gameId, entry } = game;
-  const context = await browser.newContext();
+  const pageUrl = new URL(`?game=${gameId}`, baseUrl).href;
+  const { context, page, failures } = await waitForTargetHubShell(browser, pageUrl, buildId);
   try {
-    const page = await context.newPage();
-    const failures = [];
-    page.on("pageerror", (error) => failures.push(`pageerror: ${error.message}`));
-    page.on("console", (message) => {
-      if (message.type() === "error") failures.push(`console: ${message.text()}`);
-    });
-    page.on("requestfailed", (request) => {
-      failures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
-    });
-    page.on("response", (response) => {
-      if (response.status() >= 400) failures.push(`${response.status()} ${response.url()}`);
-    });
-
-    const pageUrl = new URL(`?game=${gameId}`, baseUrl).href;
-    await waitForTargetHubShell(page, pageUrl, buildId, () => {
-      failures.length = 0;
-    });
     const runtimeState = page.locator(".runtime-state");
     if (
       await runtimeState.evaluate((element) => element.classList.contains("runtime-state--failed"))
