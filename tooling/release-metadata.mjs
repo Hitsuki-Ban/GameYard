@@ -8,6 +8,8 @@ import {
   GameManifestSchema,
   PROTOCOL_VERSION,
 } from "../packages/game-contract/src/index.ts";
+import { verifyArtifactReport } from "./artifact-report.mjs";
+import { loadProvenanceIndex, requireGameDistributionRights } from "./provenance.mjs";
 import { loadProductionRegistry } from "./production-registry.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -76,6 +78,23 @@ export async function createReleaseMetadata(root, sourceSha) {
     throw new Error("Release catalog IDs and order must match site.assembly.json");
   }
 
+  const provenancePath = "provenance/upstreams.json";
+  const provenance = await readText(resolve(root, provenancePath), provenancePath);
+  const provenanceIndex = await loadProvenanceIndex(root);
+  const policyPath = "deployment/static-asset-policy.json";
+  const policy = await readText(resolve(root, policyPath), policyPath);
+  const artifactReportPath = ".gameyard/artifact-report.json";
+  const artifactReportFile = resolve(root, artifactReportPath);
+  const artifactReport = await verifyArtifactReport(
+    dist,
+    resolve(root, policyPath),
+    artifactReportFile,
+  );
+  const artifactReportSource = await readText(artifactReportFile, artifactReportPath);
+  if (artifactReport.current.buildId !== buildInfo.buildId) {
+    throw new Error("Artifact report and build-info.json use different build IDs");
+  }
+
   const manifests = [];
   for (const [index, game] of catalog.games.entries()) {
     const registeredGame = registry.games[index];
@@ -89,6 +108,14 @@ export async function createReleaseMetadata(root, sourceSha) {
     if (manifest.id !== game.id || manifest.buildId !== buildInfo.buildId) {
       throw new Error(`dist/${manifestPath} does not belong to the release artifact`);
     }
+    const repository = await requireGameDistributionRights(root, provenanceIndex, manifest.id);
+    if (
+      repository.url !== manifest.provenance.repository ||
+      repository.revision !== manifest.provenance.revision ||
+      repository.license !== manifest.provenance.license
+    ) {
+      throw new Error(`Provenance index does not match dist/${manifestPath}`);
+    }
     const presentationSource = await readText(
       registeredGame.presentationSourcePath,
       registeredGame.presentationSource,
@@ -101,6 +128,29 @@ export async function createReleaseMetadata(root, sourceSha) {
       repository: manifest.provenance.repository,
       revision: manifest.provenance.revision,
       license: manifest.provenance.license,
+      provenanceRecord: {
+        indexPath: provenancePath,
+        entrySha256: sha256(
+          `${JSON.stringify({
+            id: repository.id,
+            url: repository.url,
+            revision: repository.revision,
+            tree: repository.tree,
+            license: repository.license,
+            rightsRecord: repository.rightsRecord,
+            publicImportAllowed: repository.publicImportAllowed,
+          })}\n`,
+        ),
+        rights:
+          repository.rightsRecord === null
+            ? null
+            : {
+                path: repository.rightsRecord,
+                sha256: sha256(
+                  await readText(resolve(root, repository.rightsRecord), repository.rightsRecord),
+                ),
+              },
+      },
       presentation: {
         path: registeredGame.presentationSource,
         sha256: sha256(presentationSource),
@@ -108,8 +158,6 @@ export async function createReleaseMetadata(root, sourceSha) {
     });
   }
 
-  const provenancePath = "provenance/upstreams.json";
-  const provenance = await readText(resolve(root, provenancePath), provenancePath);
   const deploymentConfigPath = "wrangler.jsonc";
   const deploymentConfig = await readText(
     resolve(root, deploymentConfigPath),
@@ -121,7 +169,7 @@ export async function createReleaseMetadata(root, sourceSha) {
     deploymentWorkerPath,
   );
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     sourceSha,
     buildId: buildInfo.buildId,
     protocol: PROTOCOL_VERSION,
@@ -138,6 +186,14 @@ export async function createReleaseMetadata(root, sourceSha) {
     provenance: {
       path: provenancePath,
       sha256: sha256(provenance),
+    },
+    staticAssetPolicy: {
+      path: policyPath,
+      sha256: sha256(policy),
+    },
+    artifactReport: {
+      path: artifactReportPath,
+      sha256: sha256(artifactReportSource),
     },
     deployment: {
       config: {

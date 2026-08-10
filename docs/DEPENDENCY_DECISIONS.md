@@ -23,7 +23,7 @@
 - single-spa / Module Federation：它们解决多团队独立部署，本项目需要的是一个原子 artifact。[single-spa](https://single-spa.js.org/docs/microfrontends-concept/)、[Module Federation](https://webpack.js.org/concepts/module-federation/)
 - Storybook：其 Manager/Preview channel 是重要参考，但引入整套工具会和 GameYard 自己的运行舞台、诊断抽屉重复。[addon architecture](https://storybook.js.org/docs/addons)
 - Sentry：先完成本地结构化诊断和导出；只有明确启用真实用户遥测时再做一条显式集成路径，不保留空 DSN 或静默关闭分支。
-- Howler、通用 game engine、微前端 RPC：当前三个游戏没有稳定共同引擎语义。
+- Howler、通用 game engine、微前端 RPC：已登记游戏没有稳定共同引擎语义。
 
 ## 同类项目带来的设计输入
 
@@ -46,4 +46,4 @@
 
 路由使用 `./?game=<id>`，资源 `base: "./"`，因此 artifact 本身保持相对路径；这是产物属性，不是维护第二个部署实现。
 
-COOP/COEP 不全站开启。三个现有游戏不需要 SharedArrayBuffer；若未来某个 game 明确需要 Wasm threads，将为其重新做资源与 frame 边界决策，而不是预先影响全部外部资源。
+COOP/COEP 不全站开启。当前目录没有展品需要 SharedArrayBuffer；若未来某个 game 明确需要 Wasm threads，将为其重新做资源与 frame 边界决策，而不是预先影响全部外部资源。

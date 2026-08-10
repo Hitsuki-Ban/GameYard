@@ -26,15 +26,26 @@ function runVp(args, cwd) {
 export function createProductionRegistryTaskCommands(registry, task) {
   if (task === "dev") {
     const filters = registry.games.flatMap((game) => ["--filter", game.packageName]);
-    return [["run", "--parallel", ...filters, "--filter", "hub", "dev"]];
+    return [["run", "--parallel", "--fail-if-no-match", ...filters, "--filter", "hub", "dev"]];
   }
   if (task === "build") {
     return [
-      ...registry.games.map((game) => ["run", "--no-cache", "--filter", game.packageName, "build"]),
-      ["run", "--no-cache", "--filter", "hub", "build"],
+      ...registry.games.map((game) => ["run", "--no-cache", `${game.packageName}#build`]),
+      ["run", "--no-cache", "hub#build"],
     ];
   }
-  throw new Error('Registry task must be exactly "dev" or "build".');
+  if (task === "browser:install") {
+    return registry.games.map((game) => {
+      const command = game.packageScripts[task];
+      if (typeof command !== "string" || command.trim() === "") {
+        throw new Error(
+          `Registered game ${game.id} package ${game.packageName} is missing task ${task}.`,
+        );
+      }
+      return ["run", "--no-cache", `${game.packageName}#${task}`];
+    });
+  }
+  throw new Error('Registry task must be exactly "dev", "build", or "browser:install".');
 }
 
 export async function runProductionRegistryTask(task, root = projectRoot) {
@@ -46,7 +57,7 @@ export async function runProductionRegistryTask(task, root = projectRoot) {
 
 async function main() {
   if (process.argv.length !== 3) {
-    throw new Error("Usage: run-production-registry-task.mjs <dev|build>");
+    throw new Error("Usage: run-production-registry-task.mjs <dev|build|browser:install>");
   }
   await runProductionRegistryTask(process.argv[2]);
 }

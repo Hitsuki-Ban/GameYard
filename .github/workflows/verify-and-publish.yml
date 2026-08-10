@@ -11,17 +11,61 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   NODE_VERSION: 24.18.1
   RELEASE_ARTIFACT: gameyard-site-${{ github.sha }}
   RELEASE_METADATA: .gameyard/release-metadata.json
+  ARTIFACT_REPORT: .gameyard/artifact-report.json
 
 jobs:
-  quality:
-    name: Quality and game baselines
+  registry:
+    name: Resolve production registry
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
+    outputs:
+      game-matrix: ${{ steps.registry.outputs.game-matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - name: Export registered game matrix
+        id: registry
+        run: vp exec node tooling/production-registry-ci.mjs --github-output "$GITHUB_OUTPUT"
+
+  quality:
+    name: Shared quality gates
+    needs: registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp check
+      - run: vp run tooling:test
+      - name: Preserve shared package behavior baselines
+        run: >-
+          vp run --filter "./apps/**" --filter "./packages/**"
+          --fail-if-no-match --concurrency-limit 1 test
+
+  game-baseline:
+    name: Game baseline · ${{ matrix.gameId }}
+    needs: registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.registry.outputs.game-matrix) }}
     steps:
       - uses: actions/checkout@v6
       - uses: voidzero-dev/setup-vp@v1
@@ -32,12 +76,10 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
-          working-directory: games/tumbledrum
+          cache-dependency-glob: "**/uv.lock"
       - run: vp install --frozen-lockfile
-      - run: vp check
-      - run: vp run tooling:test
-      - name: Install pinned browsers
-        run: vp run e2e:install
+      - name: Install package-pinned browser
+        run: vp run "${{ matrix.packageName }}#browser:install"
       - name: Install ImageMagick 7
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
@@ -46,12 +88,12 @@ jobs:
           imagemagick_bin="$(brew --prefix imagemagick-full)/bin"
           echo "$imagemagick_bin" >> "$GITHUB_PATH"
           "$imagemagick_bin/magick" -version | tee /dev/stderr | grep -qw rsvg
-      - name: Preserve workspace and game behavior baselines
-        run: vp run test
+      - name: Preserve registered game behavior baseline
+        run: vp run "${{ matrix.packageName }}#test"
 
   artifact:
     name: Build the immutable artifact
-    needs: quality
+    needs: [quality, game-baseline]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -66,6 +108,24 @@ jobs:
           run-install: false
       - run: vp install --frozen-lockfile
       - run: vp run build
+      - name: Download the prior successful main artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_run="$(gh run list --workflow verify-and-publish.yml --branch main --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"')"
+          read -r previous_run_id previous_source_sha <<< "$previous_run"
+          test "$previous_run_id" != "null"
+          test "$previous_source_sha" != "null"
+          mkdir -p .gameyard/previous
+          gh run download "$previous_run_id" --name "gameyard-site-$previous_source_sha" --dir .gameyard/previous
+      - name: Report static asset budget and source-artifact delta
+        run: >-
+          vp exec node tooling/artifact-report.mjs write
+          --directory dist
+          --previous-directory .gameyard/previous/dist
+          --policy deployment/static-asset-policy.json
+          --output "${{ env.ARTIFACT_REPORT }}"
+          --github-summary "$GITHUB_STEP_SUMMARY"
       - name: Record release identity
         run: >-
           vp exec node tooling/release-metadata.mjs write
@@ -86,6 +146,7 @@ jobs:
             deployment
             provenance
             wrangler.jsonc
+            ${{ env.ARTIFACT_REPORT }}
             ${{ env.RELEASE_METADATA }}
           include-hidden-files: true
           if-no-files-found: error
@@ -126,7 +187,8 @@ jobs:
           --config playwright.config.ts --project desktop-chromium
       - name: Repository-prefix launch and PWA lifecycle
         run: >-
-          vp exec playwright test tests/release/pwa-prefix.spec.ts
+          vp exec playwright test
+          tests/release/catalog-prefix.spec.ts tests/release/pwa-prefix.spec.ts
           --config playwright.release.config.ts
 
   cloudflare-dry-run:
@@ -233,8 +295,10 @@ jobs:
         run: vp exec node deployment/live-smoke.mjs --evidence .gameyard/cloudflare-production.json
       - name: Publish production evidence
         run: |
+          game_count="$(jq '.manifests | length' "${{ env.RELEASE_METADATA }}")"
+          launch_count="$((game_count * 2))"
           echo "### Cloudflare production" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build: \`${{ steps.deployment-evidence.outputs.build-id }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Version: \`${{ steps.deployment-evidence.outputs.version-id }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Target: ${{ steps.deployment-evidence.outputs.target }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Root and \`/GameYard/\`: all published game launches passed without page, console, request, or HTTP failures." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Root and \`/GameYard/\`: ${launch_count} launches from ${game_count} catalog games passed without page, console, request, or HTTP failures." >> "$GITHUB_STEP_SUMMARY"

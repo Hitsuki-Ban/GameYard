@@ -199,6 +199,7 @@ export default defineConfig({
   ],
   define: {
     __GAMEYARD_BUILD__: JSON.stringify(artifactBuildId),
+    __GAMEYARD_GAME_IDS__: JSON.stringify(productionRegistry.games.map((game) => game.id)),
   },
   server: {
     port: productionRegistry.hub.devPort,

@@ -10,6 +10,7 @@ import {
 const registryFilename = "site.assembly.json";
 const gameIdPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const packageNamePattern = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u;
+export const REQUIRED_GAME_TASKS = Object.freeze(["build", "check", "test"]);
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -103,6 +104,10 @@ function parseGame(value, index) {
     throw new Error(`${label}.packageName must be a lowercase npm package name.`);
   }
   const stage = parseStagePath(value.stage, `${label}.stage`);
+  const expectedStage = `.gameyard/stage/games/${id}`;
+  if (stage !== expectedStage) {
+    throw new Error(`${label}.stage must be ${expectedStage}.`);
+  }
   const manifestSource = parseRepositoryRelativePath(
     value.manifestSource,
     `${label}.manifestSource`,
@@ -300,6 +305,23 @@ export async function loadProductionRegistry(projectRoot) {
     if (packageJson.version !== manifest.version) {
       throw new Error(`Package and manifest versions for game ${game.id} must match.`);
     }
+    if (
+      packageJson.scripts === null ||
+      typeof packageJson.scripts !== "object" ||
+      Array.isArray(packageJson.scripts)
+    ) {
+      throw new Error(
+        `${registryFilename} game ${game.id} package ${game.packageName} must declare scripts.`,
+      );
+    }
+    for (const task of REQUIRED_GAME_TASKS) {
+      const command = packageJson.scripts[task];
+      if (typeof command !== "string" || command.trim() === "") {
+        throw new Error(
+          `${registryFilename} game ${game.id} package ${game.packageName} is missing required task ${task}.`,
+        );
+      }
+    }
 
     requireProductionCoverage(game.manifestSource, game.productionInputs, game.manifestSource);
     requireProductionCoverage(
@@ -347,6 +369,8 @@ export async function loadProductionRegistry(projectRoot) {
       stagePath: resolve(root, game.stage),
       manifestSourcePath,
       presentationSourcePath,
+      packagePath,
+      packageScripts: packageJson.scripts,
       manifest,
       presentation,
       covers,

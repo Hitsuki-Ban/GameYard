@@ -41,6 +41,11 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     "The PWA lifecycle is viewport-independent.",
   );
   test.setTimeout(180_000);
+  const savedGame = REGISTERED_GAMES[0];
+  const unavailableGame = REGISTERED_GAMES[1];
+  if (!savedGame || !unavailableGame) {
+    throw new Error("The PWA lifecycle requires at least two artifact catalog games");
+  }
 
   await page.goto("./");
   await page.evaluate(() => window.localStorage.setItem("gameyard.pwa-test-save", "preserve"));
@@ -59,7 +64,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     await caches.open(`gameyard-${scopeKey}-game-${buildId}-retired-game`);
   });
   await page.reload();
-  await page.locator('.catalog-card__link[href="?game=pulse-link-overdrive"]').click();
+  await page.locator(`.catalog-card__link[href="?game=${savedGame.id}"]`).click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
 
   const playTools = await openSettingsDrawer(page);
@@ -67,18 +72,43 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
   const drawer = page.locator(".pwa-panel");
   await expect(drawer).toBeVisible();
   await expect(drawer.getByRole("listitem")).toHaveCount(REGISTERED_GAMES.length);
-  await expect(drawer).toContainText("Removed unavailable saved entries: retired-game.");
-  const pulseRow = drawer.getByRole("listitem").filter({ hasText: "PULSE LINK // OVERDRIVE" });
-  const saveButton = pulseRow.getByRole("button", { name: "Save offline" });
+  await expect(drawer).toContainText(
+    "Unavailable saved entries were found: retired-game. Remove all offline games to clear them.",
+  );
+  const unknownRemoval = await page.evaluate(async () => {
+    const worker = navigator.serviceWorker.controller;
+    if (!worker) throw new Error("The PWA test requires an active Service Worker controller");
+    const response = await fetch("./build-info.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Build info request failed with ${response.status}`);
+    const { buildId } = (await response.json()) as { buildId: string };
+    return await new Promise<{ readonly ok: boolean; readonly error?: string }>((resolve) => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => resolve(event.data);
+      worker.postMessage(
+        {
+          type: "gameyard:pwa-remove-game",
+          buildId,
+          gameId: "retired-game",
+        },
+        [channel.port2],
+      );
+    });
+  });
+  expect(unknownRemoval).toEqual({
+    ok: false,
+    error: "Offline game id is not in the current artifact catalog: retired-game",
+  });
+  const savedGameRow = drawer.getByRole("listitem").filter({ hasText: savedGame.title });
+  const saveButton = savedGameRow.getByRole("button", { name: "Save offline" });
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
   await saveButton.click();
-  const removeButton = pulseRow.getByRole("button", { name: "Remove copy" });
+  const removeButton = savedGameRow.getByRole("button", { name: "Remove copy" });
   await expect(removeButton).toBeEnabled({ timeout: 15_000 });
   await removeButton.click();
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
   await saveButton.click();
   await expect(removeButton).toBeEnabled({ timeout: 15_000 });
-  await expect(pulseRow).toContainText("Available offline");
+  await expect(savedGameRow).toContainText("Available offline");
 
   const registrations = await page.evaluate(async () =>
     (await navigator.serviceWorker.getRegistrations()).map((registration) => ({
@@ -97,7 +127,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     timeout: 20_000,
   });
   await page.locator(".runtime-toolbar__back").click();
-  await page.locator('.catalog-card__link[href="?game=tumbledrum"]').click();
+  await page.locator(`.catalog-card__link[href="?game=${unavailableGame.id}"]`).click();
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--failed/, {
     timeout: 20_000,
   });
@@ -107,7 +137,7 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
 
   const offlineProbe = await context.newPage();
   const offlineResponse = await offlineProbe.goto(
-    new URL("games/tumbledrum/index.html", page.url()).href,
+    new URL(`games/${unavailableGame.id}/${unavailableGame.entry}`, page.url()).href,
   );
   expect(offlineResponse?.status()).toBe(503);
   await expect(offlineProbe.locator("html")).toHaveAttribute("lang", "en");

@@ -59,7 +59,7 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [savedGames, setSavedGames] = useState<readonly string[]>([]);
   const [activeGame, setActiveGame] = useState<GameId | null>(null);
-  const [removedStaleGames, setRemovedStaleGames] = useState<readonly string[]>([]);
+  const [staleGames, setStaleGames] = useState<readonly string[]>([]);
   const [waitingRelease, setWaitingRelease] = useState<WaitingRelease | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
   const [storageEstimate, setStorageEstimate] = useState<StorageEstimateState>({ kind: "loading" });
@@ -91,19 +91,18 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
               if (!cancelled) setWaitingRelease(null);
             });
         });
-        let status = await queryPwaStatus(nextRegistration);
+        const status = await queryPwaStatus(nextRegistration);
         const knownIds = new Set<string>(games.map((game) => game.id));
-        const staleIds = status.savedGames.filter((gameId) => !knownIds.has(gameId));
-        for (const staleId of staleIds) {
-          status = await removeGameOffline(nextRegistration, staleId);
+        if (status.savedGames.some((gameId) => !knownIds.has(gameId))) {
+          throw new Error("The Service Worker returned a saved game outside the current catalog");
         }
         if (cancelled) return;
-        setRemovedStaleGames(staleIds);
+        setStaleGames(status.staleGames);
         setSavedGames(status.savedGames);
         setPhase("ready");
         onEvent("pwa.ready", { buildId: status.buildId });
-        if (staleIds.length > 0) {
-          onEvent("pwa.stale-entries-removed", { gameIds: staleIds.join(",") });
+        if (status.staleGames.length > 0) {
+          onEvent("pwa.stale-entries-found", { gameIds: status.staleGames.join(",") });
         }
       })
       .catch((reason: unknown) => {
@@ -203,6 +202,7 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
     void run("clearing", null, async () => {
       const status = await clearOfflineGames(registration);
       setSavedGames(status.savedGames);
+      setStaleGames(status.staleGames);
       onEvent("pwa.games-cleared", { buildId: status.buildId });
     });
   };
@@ -241,9 +241,9 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
           </button>
         </section>
       ) : null}
-      {removedStaleGames.length > 0 ? (
-        <p className="pwa-panel__notice" role="status">
-          {t("pwa.staleRemoved", { games: removedStaleGames.join(", ") })}
+      {staleGames.length > 0 ? (
+        <p className="pwa-panel__notice" role="alert">
+          {t("pwa.staleFound", { games: staleGames.join(", ") })}
         </p>
       ) : null}
       <section>
@@ -292,7 +292,7 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
         </p>
         <button
           type="button"
-          disabled={!registration || savedGames.length === 0 || busy}
+          disabled={!registration || (savedGames.length === 0 && staleGames.length === 0) || busy}
           onClick={clearGames}
         >
           {phase === "clearing" ? t("pwa.clearing") : t("pwa.clear")}

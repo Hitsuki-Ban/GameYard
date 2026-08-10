@@ -71,6 +71,9 @@ importers:
       '@axe-core/playwright':
         specifier: 'catalog:'
         version: 4.12.1(playwright-core@1.62.1)
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:packages/game-contract
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1

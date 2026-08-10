@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const hubPort = 4187;
+const hubPort = 5187;
 const hubUrl = `http://127.0.0.1:${hubPort}`;
 
 export default defineConfig({
