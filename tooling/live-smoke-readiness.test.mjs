@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { waitForPublishedRelease } from "../deployment/live-smoke.mjs";
+import { classifyHubShellObservation, waitForPublishedRelease } from "../deployment/live-smoke.mjs";
 
 const targetBuildId = "gameyard@target";
 const baseUrl = new URL("https://gameyard.hitsuki.space/GameYard/");
@@ -65,5 +65,46 @@ void test("fails immediately when the target catalog violates its contract", asy
       intervalMs: 1,
     }),
     /games\/catalog\.json has no deployed runtime games/u,
+  );
+});
+
+void test("requires the target Hub shell and only retries explicit release propagation", () => {
+  assert.deepEqual(
+    classifyHubShellObservation(
+      { shellBuildId: "gameyard@previous", artifactKind: null, receivedBuildId: null },
+      targetBuildId,
+    ),
+    { kind: "retry", diagnostic: "the Hub shell still serves gameyard@previous" },
+  );
+  assert.deepEqual(
+    classifyHubShellObservation(
+      {
+        shellBuildId: targetBuildId,
+        artifactKind: "mismatch",
+        receivedBuildId: "gameyard@previous",
+      },
+      targetBuildId,
+    ),
+    {
+      kind: "retry",
+      diagnostic: `the ${targetBuildId} Hub shell still receives gameyard@previous`,
+    },
+  );
+  assert.deepEqual(
+    classifyHubShellObservation(
+      { shellBuildId: targetBuildId, artifactKind: null, receivedBuildId: null },
+      targetBuildId,
+    ),
+    { kind: "ready" },
+  );
+  assert.deepEqual(
+    classifyHubShellObservation(
+      { shellBuildId: targetBuildId, artifactKind: "unavailable", receivedBuildId: null },
+      targetBuildId,
+    ),
+    {
+      kind: "failure",
+      diagnostic: `the ${targetBuildId} Hub shell entered artifact stop unavailable`,
+    },
   );
 });

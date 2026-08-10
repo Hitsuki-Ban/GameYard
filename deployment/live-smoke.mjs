@@ -6,6 +6,9 @@ import { fileURLToPath } from "node:url";
 const runtimeStartupTimeoutMs = 45_000;
 const releaseReadinessTimeoutMs = 60_000;
 const releaseReadinessIntervalMs = 2_000;
+const hubShellReadinessTimeoutMs = 60_000;
+const hubShellReadinessIntervalMs = 2_000;
+const hubShellMarkerTimeoutMs = 5_000;
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--evidence" || !argv[1]) {
@@ -126,7 +129,130 @@ export async function waitForPublishedRelease(
   }
 }
 
-async function assertGame(browser, baseUrl, game) {
+export function classifyHubShellObservation(observation, buildId) {
+  if (observation.shellBuildId !== buildId) {
+    return {
+      kind: "retry",
+      diagnostic:
+        observation.shellBuildId === null
+          ? "the Hub shell did not expose its build identity"
+          : `the Hub shell still serves ${observation.shellBuildId}`,
+    };
+  }
+  if (observation.artifactKind === null) return { kind: "ready" };
+  if (
+    observation.artifactKind === "mismatch" &&
+    observation.receivedBuildId !== null &&
+    observation.receivedBuildId !== buildId
+  ) {
+    return {
+      kind: "retry",
+      diagnostic: `the ${buildId} Hub shell still receives ${observation.receivedBuildId}`,
+    };
+  }
+  return {
+    kind: "failure",
+    diagnostic: `the ${buildId} Hub shell entered artifact stop ${observation.artifactKind}`,
+  };
+}
+
+async function readHubShellObservation(page) {
+  const shell = page.locator("html[data-gameyard-build]");
+  const shellBuildId =
+    (await shell.count()) === 0 ? null : await shell.getAttribute("data-gameyard-build");
+  const artifactStop = page.locator(".artifact-stop");
+  if ((await artifactStop.count()) === 0) {
+    return { shellBuildId, artifactKind: null, receivedBuildId: null };
+  }
+  return {
+    shellBuildId,
+    artifactKind: await artifactStop.getAttribute("data-artifact-kind"),
+    receivedBuildId: await artifactStop.getAttribute("data-received-build-id"),
+  };
+}
+
+async function pageDiagnostic(page) {
+  const title = await page.title().catch(() => "unavailable");
+  const body = await page
+    .locator("body")
+    .textContent({ timeout: 1_000 })
+    .then((value) => value?.replace(/\s+/gu, " ").trim().slice(0, 500) || "empty")
+    .catch(() => "unavailable");
+  return `title=${JSON.stringify(title)}; body=${JSON.stringify(body)}`;
+}
+
+async function waitForTargetHubShell(page, pageUrl, buildId, resetFailures) {
+  const deadline = Date.now() + hubShellReadinessTimeoutMs;
+  let attempts = 0;
+  let diagnostic = "no Hub document received";
+  while (true) {
+    attempts += 1;
+    resetFailures();
+    const response =
+      attempts === 1
+        ? await page.goto(pageUrl, { waitUntil: "domcontentloaded" })
+        : await page.reload({ waitUntil: "domcontentloaded" });
+    if (response === null || !response.ok()) {
+      throw new Error(`${pageUrl} did not return a successful document`);
+    }
+
+    const remainingForMarker = deadline - Date.now();
+    if (remainingForMarker > 0) {
+      await page
+        .locator("html[data-gameyard-build]")
+        .waitFor({
+          state: "attached",
+          timeout: Math.min(hubShellMarkerTimeoutMs, remainingForMarker),
+        })
+        .catch(() => undefined);
+    }
+    let observation = await readHubShellObservation(page);
+    if (observation.shellBuildId === buildId) {
+      const remainingForRuntime = deadline - Date.now();
+      if (remainingForRuntime <= 0) {
+        diagnostic = `the ${buildId} Hub shell did not render before the readiness deadline`;
+      } else {
+        try {
+          await page
+            .locator(".runtime-state--active, .runtime-state--failed, .artifact-stop")
+            .waitFor({
+              state: "visible",
+              timeout: Math.min(runtimeStartupTimeoutMs, remainingForRuntime),
+            });
+        } catch (cause) {
+          throw new Error(
+            `${pageUrl} loaded ${buildId} but did not render a runtime or artifact stop after ${runtimeStartupTimeoutMs}ms; ${await pageDiagnostic(page)}`,
+            { cause },
+          );
+        }
+        observation = await readHubShellObservation(page);
+      }
+    }
+
+    const readiness = classifyHubShellObservation(observation, buildId);
+    if (readiness.kind === "ready") {
+      if (attempts > 1) {
+        console.log(`${pageUrl} loaded the ${buildId} Hub shell after ${attempts} attempts.`);
+      }
+      return;
+    }
+    if (readiness.kind === "failure") {
+      throw new Error(`${pageUrl} ${readiness.diagnostic}; ${await pageDiagnostic(page)}`);
+    }
+    diagnostic = readiness.diagnostic;
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw new Error(
+        `${pageUrl} did not load deployed Hub shell ${buildId} within ${hubShellReadinessTimeoutMs}ms; last observation: ${diagnostic}; ${await pageDiagnostic(page)}`,
+      );
+    }
+    await new Promise((resolveDelay) =>
+      setTimeout(resolveDelay, Math.min(hubShellReadinessIntervalMs, remainingMs)),
+    );
+  }
+}
+
+async function assertGame(browser, baseUrl, game, buildId) {
   const { id: gameId, entry } = game;
   const context = await browser.newContext();
   try {
@@ -144,24 +270,10 @@ async function assertGame(browser, baseUrl, game) {
     });
 
     const pageUrl = new URL(`?game=${gameId}`, baseUrl).href;
-    const response = await page.goto(pageUrl, { waitUntil: "domcontentloaded" });
-    if (response === null || !response.ok()) {
-      throw new Error(`${pageUrl} did not return a successful document`);
-    }
+    await waitForTargetHubShell(page, pageUrl, buildId, () => {
+      failures.length = 0;
+    });
     const runtimeState = page.locator(".runtime-state");
-    try {
-      await page.locator(".runtime-state--active, .runtime-state--failed").waitFor({
-        state: "visible",
-        timeout: runtimeStartupTimeoutMs,
-      });
-    } catch (cause) {
-      const label = (await runtimeState.textContent())?.trim() ?? "missing";
-      throw new Error(
-        `${pageUrl} remained in runtime state "${label}" after ${runtimeStartupTimeoutMs}ms` +
-          (failures.length > 0 ? `:\n- ${failures.join("\n- ")}` : ""),
-        { cause },
-      );
-    }
     if (
       await runtimeState.evaluate((element) => element.classList.contains("runtime-state--failed"))
     ) {
@@ -233,7 +345,7 @@ async function main() {
     catalogGameCount = expectedIds.length;
     for (const { baseUrl, games } of publishedCatalogs) {
       for (const game of games) {
-        await assertGame(browser, baseUrl, game);
+        await assertGame(browser, baseUrl, game, evidence.buildId);
         launchCount += 1;
       }
     }
