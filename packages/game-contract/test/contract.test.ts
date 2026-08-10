@@ -298,6 +298,7 @@ describe("v1 contract", () => {
       locales: { source: "en", supported: ["en", "ja"] },
       capabilities: ["audio", "keyboard"],
       provenance: {
+        kind: "repository",
         repository: "https://github.com/example/gameyard-game",
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",
@@ -311,6 +312,15 @@ describe("v1 contract", () => {
 
     expect(GameManifestSourceSchema.parse(source)).toEqual(source);
     expect(GameManifestSchema.parse(manifest)).toEqual(manifest);
+    const snapshotSource = {
+      ...source,
+      provenance: {
+        kind: "owner-provided-source-snapshot",
+        record: "provenance/example/source-snapshot.json",
+        archiveSha256: "a".repeat(64),
+      },
+    } as const;
+    expect(GameManifestSourceSchema.parse(snapshotSource)).toEqual(snapshotSource);
     expect(
       GameCatalogSchema.parse({
         schemaVersion: 1,
@@ -381,6 +391,7 @@ describe("v1 contract", () => {
       locales: { source: "en", supported: ["en"] },
       capabilities: [],
       provenance: {
+        kind: "repository",
         repository: "https://example.test/game.git",
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",
@@ -400,7 +411,26 @@ describe("v1 contract", () => {
     expect(
       GameManifestSchema.safeParse({
         ...baseManifest,
+        provenance: {
+          kind: "owner-provided-source-snapshot",
+          record: "games/example/source-snapshot.json",
+          archiveSha256: "a".repeat(64),
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      GameManifestSchema.safeParse({
+        ...baseManifest,
         provenance: { ...baseManifest.provenance, revision: "A".repeat(40) },
+      }).success,
+    ).toBe(false);
+    expect(
+      GameManifestSchema.safeParse({
+        ...baseManifest,
+        provenance: {
+          record: "provenance/example/source-snapshot.json",
+          archiveSha256: "a".repeat(64),
+        },
       }).success,
     ).toBe(false);
     expect(

@@ -219,7 +219,8 @@ export const GameCapabilitySchema = z.enum([
 ]);
 export type GameCapability = z.infer<typeof GameCapabilitySchema>;
 
-export const GameProvenanceSchema = z.strictObject({
+export const RepositoryGameProvenanceSchema = z.strictObject({
+  kind: z.literal("repository"),
   repository: z.string().superRefine((repository, context) => {
     let url: URL;
     try {
@@ -240,6 +241,26 @@ export const GameProvenanceSchema = z.strictObject({
       message: "License must be an explicit non-empty string",
     }),
 });
+export type RepositoryGameProvenance = z.infer<typeof RepositoryGameProvenanceSchema>;
+
+const ProvenanceRecordPathSchema = PosixRelativeFilePathSchema.refine(
+  (record) => record.startsWith("provenance/"),
+  "Expected a record inside provenance/",
+);
+
+export const OwnerProvidedSourceSnapshotProvenanceSchema = z.strictObject({
+  kind: z.literal("owner-provided-source-snapshot"),
+  record: ProvenanceRecordPathSchema,
+  archiveSha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
+export type OwnerProvidedSourceSnapshotProvenance = z.infer<
+  typeof OwnerProvidedSourceSnapshotProvenanceSchema
+>;
+
+export const GameProvenanceSchema = z.discriminatedUnion("kind", [
+  RepositoryGameProvenanceSchema,
+  OwnerProvidedSourceSnapshotProvenanceSchema,
+]);
 export type GameProvenance = z.infer<typeof GameProvenanceSchema>;
 
 const gameManifestSourceShape = {

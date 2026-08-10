@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { loadProductionRegistry, parseProductionRegistry } from "./production-registry.mjs";
 import { createGameCiMatrix, writeGameCiMatrix } from "./production-registry-ci.mjs";
@@ -10,6 +11,7 @@ import { createProductionRegistryVitePlugin } from "./production-registry-vite.m
 import { createProductionRegistryTaskCommands } from "./run-production-registry-task.mjs";
 
 const temporaryRoots = [];
+const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 
 afterEach(async () => {
   await Promise.all(
@@ -71,6 +73,7 @@ async function createFixture() {
         locales: { source: "en", supported: ["en", "ja", "zh-Hans"] },
         capabilities: ["keyboard"],
         provenance: {
+          kind: "repository",
           repository: `https://example.test/${game.id}`,
           revision: "0123456789abcdef0123456789abcdef01234567",
           license: "MIT",
@@ -133,6 +136,30 @@ await test("loads an ordered six-game registry and emits only browser-safe virtu
     createProductionRegistryTaskCommands(registry, "browser:install").length,
     registry.games.length,
   );
+});
+
+await test("registers Kamifuda fourth with the strict production-only input set", async () => {
+  const registry = await loadProductionRegistry(projectRoot);
+  const kamifuda = registry.games[3];
+  assert.equal(registry.games.length, 4);
+  assert.equal(kamifuda.id, "kamifuda-runner");
+  assert.equal(kamifuda.devPort, 5_177);
+  assert.deepEqual(kamifuda.productionInputs, [
+    "games/kamifuda-runner/assets/catalog-cover.svg",
+    "games/kamifuda-runner/assets/catalog-cover-small.svg",
+    "games/kamifuda-runner/game.manifest.source.json",
+    "games/kamifuda-runner/game.presentation.source.json",
+    "games/kamifuda-runner/guest",
+    "games/kamifuda-runner/package.json",
+    "games/kamifuda-runner/tsconfig.json",
+    "games/kamifuda-runner/vite.config.ts",
+  ]);
+  for (const excluded of ["candidate", "standalone", "build.py", "/tools", "/tests", ".zip"]) {
+    assert.ok(
+      kamifuda.productionInputs.every((input) => !input.includes(excluded)),
+      `productionInputs must exclude ${excluded}`,
+    );
+  }
 });
 
 await test("emits the GitHub game matrix from registry order and package identity", async () => {

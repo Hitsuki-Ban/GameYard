@@ -11,8 +11,13 @@
   },
   "include": [
     "playwright.baseline.config.ts",
+    "guest/src/**/*.ts",
     "tests/**/*.ts",
     "vite.config.ts",
     "vite.testkit.config.ts"
+  ],
+  "references": [
+    { "path": "../../packages/game-contract" },
+    { "path": "../../packages/manifest-tools" }
   ]
 }

@@ -10,6 +10,7 @@
   },
   "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch", "gamepad"],
   "provenance": {
+    "kind": "repository",
     "repository": "https://github.com/Hitsuki-Ban/PulseLinkOverdrive",
     "revision": "1e42e4130145922f22315e420daaabf44b42b325",
     "license": "MIT"

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">紙札疾走録・百鬼祭陣</title>
+  <desc id="description">A paper runner dashes through a storm of enchanted cards beneath a golden moon.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#171127"/>
+      <stop offset=".46" stop-color="#52233c"/>
+      <stop offset="1" stop-color="#d55242"/>
+    </linearGradient>
+    <radialGradient id="moon">
+      <stop stop-color="#fff3c4"/>
+      <stop offset="1" stop-color="#efb66e"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="13" flood-color="#100a1d" flood-opacity=".62"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1320" cy="178" r="126" fill="url(#moon)"/>
+  <g fill="none" stroke="#efb06d" opacity=".25">
+    <path d="M-40 188C227 67 376 246 617 121s468-67 690-8" stroke-width="10"/>
+    <path d="M119 317c303-151 514 30 765-113s486-84 742-15" stroke-width="5"/>
+  </g>
+  <path d="M0 671c246-117 449 54 695-72 276-141 490-37 905-202v503H0Z" fill="#171225"/>
+  <path d="M0 741c267-102 470 67 727-43 284-121 520-64 873-218" fill="none" stroke="#efb06d" stroke-width="14" opacity=".74"/>
+  <g fill="#fff5d6" stroke="#772738" stroke-width="9" filter="url(#shadow)">
+    <path d="m1070 229 157 39-34 222-160-38z"/>
+    <path d="m1313 386 135-17 34 193-137 20z"/>
+    <path d="m813 131 123 25-27 174-123-26z"/>
+    <path d="m1467 111 92 28-29 139-93-29z" opacity=".85"/>
+    <path d="m951 492 105 12-11 154-107-13z" opacity=".9"/>
+  </g>
+  <g fill="none" stroke="#cf493d" stroke-width="10">
+    <path d="m1088 285 102 25m-111 52 105 25m-113 51 105 25"/>
+    <circle cx="861" cy="232" r="39"/>
+    <path d="m1357 435 81 78m-70 11 60-87"/>
+    <path d="m969 532 63 86m-70-17 76-55"/>
+  </g>
+  <g transform="translate(493 458) rotate(-8)" filter="url(#shadow)">
+    <path d="m0 174 72-110 104 24 60 90-54 44-74-44-56 74z" fill="#f5e6c3" stroke="#26162d" stroke-width="14"/>
+    <circle cx="122" cy="48" r="50" fill="#f5e6c3" stroke="#26162d" stroke-width="14"/>
+    <path d="m84 29 33-47 60 24 9 59" fill="#21142a"/>
+    <path d="m68 178-78 134m190-108 94 97" stroke="#f5e6c3" stroke-width="36" stroke-linecap="round"/>
+    <path d="m-14 307-77 10m363-18 81-11" stroke="#26162d" stroke-width="23" stroke-linecap="round"/>
+    <path d="m46 117-80-38m239 72 95-37" stroke="#f5e6c3" stroke-width="28" stroke-linecap="round"/>
+  </g>
+  <g font-family="system-ui, sans-serif" font-weight="900" fill="#fff7df" filter="url(#shadow)">
+    <text x="95" y="175" font-size="98" letter-spacing="4">紙札疾走録</text>
+    <text x="96" y="282" font-size="84" letter-spacing="10">・百鬼祭陣</text>
+  </g>
+  <path d="M100 329h455" stroke="#efb06d" stroke-width="12"/>
+  <text x="103" y="378" font-family="system-ui, sans-serif" font-size="28" font-weight="700" letter-spacing="8" fill="#f8d59b">READ THE WIND · CLAIM THE CARDS</text>
+</svg>

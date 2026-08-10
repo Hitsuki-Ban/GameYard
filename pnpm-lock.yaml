@@ -172,9 +172,15 @@ importers:
 
   games/kamifuda-runner:
     dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../../packages/game-contract
       '@gameyard/guest-bridge':
         specifier: workspace:*
         version: link:../../packages/guest-bridge
+      '@gameyard/manifest-tools':
+        specifier: workspace:*
+        version: link:../../packages/manifest-tools
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'

@@ -10,6 +10,7 @@
   },
   "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch", "gamepad"],
   "provenance": {
+    "kind": "repository",
     "repository": "https://github.com/Hitsuki-Ban/TUMBLEDRUM",
     "revision": "ba6fc680626ac59db793175122600369d48f9834",
     "license": "LicenseRef-GameYard-TUMBLEDRUM-Distribution"

@@ -1,11 +1,13 @@
 import { connectGuest } from "@gameyard/guest-bridge";
 
 import { createRuntimeOwner } from "./runtime-owner.js";
+import { createKamifudaI18n } from "./i18n.ts";
 import { createProfileStorage, KamifudaProfileError } from "./storage.js";
 
 const GAME_ID = "kamifuda-runner";
 
 function showBootFailure(error) {
+  const i18n = createKamifudaI18n(document.documentElement.lang);
   let profileError = null;
   let current = error;
   while (current instanceof Error) {
@@ -18,16 +20,16 @@ function showBootFailure(error) {
   const card = document.createElement("section");
   card.className = "boot-failure";
   const heading = document.createElement("h1");
-  heading.textContent = "紙札疾走録を開始できません";
+  heading.textContent = i18n.t("boot.title");
   const detail = document.createElement("p");
-  detail.textContent =
-    profileError?.message ||
-    (error instanceof Error ? error.message : "Unknown initialization failure.");
+  detail.textContent = profileError
+    ? i18n.t(profileError.code === "json" ? "boot.profileJson" : "boot.profileSchema")
+    : i18n.t("boot.unknown");
   card.append(heading, detail);
   if (profileError) {
     const reset = document.createElement("button");
     reset.type = "button";
-    reset.textContent = "保存データを明示的に初期化";
+    reset.textContent = i18n.t("boot.reset");
     reset.addEventListener(
       "click",
       () => {

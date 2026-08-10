@@ -63,6 +63,7 @@ async function createFixture() {
       locales: { source: "en", supported: ["en", "ja", "zh-Hans"] },
       capabilities: ["keyboard"],
       provenance: {
+        kind: "repository",
         repository: "https://example.test/demo",
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",
@@ -209,6 +210,7 @@ async function createFixture() {
       locales: { source: "en", supported: ["en"] },
       capabilities: ["keyboard"],
       provenance: {
+        kind: "repository",
         repository: "https://example.test/demo",
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",

@@ -40,7 +40,7 @@
     "licenseScope": "GameYard-project-only"
   },
   "productionBoundary": {
-    "status": "source-evidence-only",
+    "status": "production-admitted",
     "runtimeAdmissionIssue": 55,
     "excludedFromProductionInputs": [
       "games/kamifuda-runner-v4.zip",

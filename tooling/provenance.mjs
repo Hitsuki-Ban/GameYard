@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { parseRepositoryRelativePath } from "./production-registry.mjs";
@@ -371,12 +371,257 @@ export function parseDistributionRecord(value, label = "Distribution record") {
   };
 }
 
+function parsePositiveSafeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive safe integer.`);
+  }
+  return value;
+}
+
+function parseNonnegativeSafeInteger(value, label) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a nonnegative safe integer.`);
+  }
+  return value;
+}
+
+function parseArchiveEntryPath(value, label, directory) {
+  const text = requireString(value, label);
+  const logicalPath = directory && text.endsWith("/") ? text.slice(0, -1) : text;
+  parseRepositoryRelativePath(logicalPath, label);
+  if (directory !== text.endsWith("/")) {
+    throw new Error(`${label} directory marker does not match its entry kind.`);
+  }
+  return text;
+}
+
+function parseArchiveEvidence(value, label) {
+  assertExactKeys(value, ["path", "sha256", "entryCount", "uncompressedBytes"], label);
+  return {
+    path: parseRepositoryRelativePath(value.path, `${label}.path`),
+    sha256: requirePattern(value.sha256, sha256Pattern, `${label}.sha256`),
+    entryCount: parsePositiveSafeInteger(value.entryCount, `${label}.entryCount`),
+    uncompressedBytes: parsePositiveSafeInteger(
+      value.uncompressedBytes,
+      `${label}.uncompressedBytes`,
+    ),
+  };
+}
+
+export function parseSourceSnapshotRecord(value, label = "Source snapshot record") {
+  assertExactKeys(
+    value,
+    [
+      "schemaVersion",
+      "recordId",
+      "gameId",
+      "authorization",
+      "sourceSnapshot",
+      "permissions",
+      "productionBoundary",
+    ],
+    label,
+  );
+  if (value.schemaVersion !== 1) throw new Error(`${label}.schemaVersion must be 1.`);
+  const gameId = requirePattern(value.gameId, gameIdPattern, `${label}.gameId`);
+  const recordId = requireString(value.recordId, `${label}.recordId`);
+
+  assertExactKeys(
+    value.authorization,
+    ["source", "recordedAt", "taskId", "grantText", "grantTextSha256"],
+    `${label}.authorization`,
+  );
+  if (value.authorization.source !== "owner-project-direction") {
+    throw new Error(`${label}.authorization.source must be owner-project-direction.`);
+  }
+  const authorization = {
+    source: value.authorization.source,
+    recordedAt: requireDateTime(
+      value.authorization.recordedAt,
+      `${label}.authorization.recordedAt`,
+    ),
+    taskId: requireString(value.authorization.taskId, `${label}.authorization.taskId`),
+    grantText: parseRepositoryRelativePath(
+      value.authorization.grantText,
+      `${label}.authorization.grantText`,
+    ),
+    grantTextSha256: requirePattern(
+      value.authorization.grantTextSha256,
+      sha256Pattern,
+      `${label}.authorization.grantTextSha256`,
+    ),
+  };
+
+  assertExactKeys(
+    value.sourceSnapshot,
+    ["kind", "archive", "inventory", "importedRoot", "repository", "revision", "license"],
+    `${label}.sourceSnapshot`,
+  );
+  if (value.sourceSnapshot.kind !== "owner-provided-archive") {
+    throw new Error(`${label}.sourceSnapshot.kind must be owner-provided-archive.`);
+  }
+  for (const field of ["repository", "revision", "license"]) {
+    if (value.sourceSnapshot[field] !== null) {
+      throw new Error(`${label}.sourceSnapshot.${field} must be null.`);
+    }
+  }
+  const sourceSnapshot = {
+    kind: value.sourceSnapshot.kind,
+    archive: parseArchiveEvidence(value.sourceSnapshot.archive, `${label}.sourceSnapshot.archive`),
+    inventory: parseEvidence(value.sourceSnapshot.inventory, `${label}.sourceSnapshot.inventory`),
+    importedRoot: parseRepositoryRelativePath(
+      value.sourceSnapshot.importedRoot,
+      `${label}.sourceSnapshot.importedRoot`,
+    ),
+    repository: null,
+    revision: null,
+    license: null,
+  };
+
+  assertExactKeys(value.permissions, ["actions", "venues", "licenseScope"], `${label}.permissions`);
+  if (value.permissions.licenseScope !== "GameYard-project-only") {
+    throw new Error(`${label}.permissions.licenseScope must be GameYard-project-only.`);
+  }
+  const permissions = {
+    actions: requireExactArray(
+      value.permissions.actions,
+      requiredActions,
+      `${label}.permissions.actions`,
+    ),
+    venues: requireExactArray(
+      value.permissions.venues,
+      requiredVenues,
+      `${label}.permissions.venues`,
+    ),
+    licenseScope: value.permissions.licenseScope,
+  };
+
+  assertExactKeys(
+    value.productionBoundary,
+    ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
+    `${label}.productionBoundary`,
+  );
+  if (value.productionBoundary.status !== "production-admitted") {
+    throw new Error(`${label}.productionBoundary.status must be production-admitted.`);
+  }
+  const productionBoundary = {
+    status: value.productionBoundary.status,
+    runtimeAdmissionIssue: value.productionBoundary.runtimeAdmissionIssue,
+    excludedFromProductionInputs: requireUniqueStringArray(
+      value.productionBoundary.excludedFromProductionInputs,
+      `${label}.productionBoundary.excludedFromProductionInputs`,
+      { paths: true },
+    ),
+  };
+  if (productionBoundary.runtimeAdmissionIssue !== 55) {
+    throw new Error(`${label}.productionBoundary.runtimeAdmissionIssue must be 55.`);
+  }
+  if (!productionBoundary.excludedFromProductionInputs.includes(sourceSnapshot.archive.path)) {
+    throw new Error(`${label} must exclude its source archive from production inputs.`);
+  }
+
+  return {
+    schemaVersion: 1,
+    recordId,
+    gameId,
+    authorization,
+    sourceSnapshot,
+    permissions,
+    productionBoundary,
+  };
+}
+
+async function requireMatchingFileHash(root, evidence, label) {
+  const content = await readFile(resolve(root, evidence.path));
+  const actual = createHash("sha256").update(content).digest("hex");
+  if (actual !== evidence.sha256) {
+    throw new Error(`${label} hash mismatch: expected ${evidence.sha256}, received ${actual}.`);
+  }
+  return content;
+}
+
+async function verifySourceInventory(root, record, label) {
+  const inventoryContent = await requireMatchingFileHash(
+    root,
+    record.sourceSnapshot.inventory,
+    `${label} inventory`,
+  );
+  let inventory;
+  try {
+    inventory = JSON.parse(inventoryContent.toString("utf8"));
+  } catch (error) {
+    throw new Error(`${label} inventory is not valid JSON: ${error.message}`);
+  }
+  assertExactKeys(inventory, ["schemaVersion", "archive", "entries"], `${label} inventory`);
+  if (inventory.schemaVersion !== 1) throw new Error(`${label} inventory schemaVersion must be 1.`);
+  const archive = parseArchiveEvidence(inventory.archive, `${label} inventory.archive`);
+  if (JSON.stringify(archive) !== JSON.stringify(record.sourceSnapshot.archive)) {
+    throw new Error(`${label} inventory archive evidence does not match its record.`);
+  }
+  if (!Array.isArray(inventory.entries) || inventory.entries.length !== archive.entryCount) {
+    throw new Error(`${label} inventory must contain exactly ${archive.entryCount} entries.`);
+  }
+
+  const archivePaths = new Set();
+  let uncompressedBytes = 0;
+  for (const [index, entry] of inventory.entries.entries()) {
+    const entryLabel = `${label} inventory.entries[${index}]`;
+    assertExactKeys(
+      entry,
+      ["archivePath", "kind", "uncompressedBytes", "importedPath", "sha256"],
+      entryLabel,
+    );
+    if (entry.kind !== "directory" && entry.kind !== "file") {
+      throw new Error(`${entryLabel}.kind must be file or directory.`);
+    }
+    const archivePath = parseArchiveEntryPath(
+      entry.archivePath,
+      `${entryLabel}.archivePath`,
+      entry.kind === "directory",
+    );
+    if (archivePaths.has(archivePath)) throw new Error(`${entryLabel}.archivePath is duplicated.`);
+    archivePaths.add(archivePath);
+    const entryBytes = parseNonnegativeSafeInteger(
+      entry.uncompressedBytes,
+      `${entryLabel}.uncompressedBytes`,
+    );
+    uncompressedBytes += entryBytes;
+    if (entry.kind === "directory") {
+      if (entry.importedPath !== null || entry.sha256 !== null) {
+        throw new Error(`${entryLabel} directory evidence must use null importedPath and sha256.`);
+      }
+      continue;
+    }
+    if (entryBytes === 0) throw new Error(`${entryLabel} file must not be empty.`);
+    const importedPath = parseRepositoryRelativePath(
+      entry.importedPath,
+      `${entryLabel}.importedPath`,
+    );
+    if (!importedPath.startsWith(`${record.sourceSnapshot.importedRoot}/`)) {
+      throw new Error(`${entryLabel}.importedPath must stay inside the imported root.`);
+    }
+    const sha256 = requirePattern(entry.sha256, sha256Pattern, `${entryLabel}.sha256`);
+    const importedStat = await stat(resolve(root, importedPath));
+    if (!importedStat.isFile() || importedStat.size !== entryBytes) {
+      throw new Error(`${entryLabel} imported file size does not match the inventory.`);
+    }
+    await requireMatchingFileHash(
+      root,
+      { path: importedPath, sha256 },
+      `${entryLabel} imported file`,
+    );
+  }
+  if (uncompressedBytes !== archive.uncompressedBytes) {
+    throw new Error(`${label} inventory byte total does not match its archive evidence.`);
+  }
+}
+
 export async function loadProvenanceIndex(projectRoot) {
   const root = resolve(projectRoot);
   return parseProvenanceIndex(await readJson(root, provenanceIndexPath, provenanceIndexPath));
 }
 
-export async function requireGameDistributionRights(projectRoot, provenance, gameId) {
+async function requireRepositoryDistributionRights(projectRoot, provenance, gameId) {
   const root = resolve(projectRoot);
   const repository = provenance.byId.get(gameId);
   if (!repository) throw new Error(`No provenance repository is registered for game ${gameId}.`);
@@ -406,4 +651,44 @@ export async function requireGameDistributionRights(projectRoot, provenance, gam
     );
   }
   return repository;
+}
+
+export async function requireGameDistributionProvenance(
+  projectRoot,
+  provenance,
+  gameId,
+  manifestProvenance,
+) {
+  const root = resolve(projectRoot);
+  if (manifestProvenance.kind === "repository") {
+    const repository = await requireRepositoryDistributionRights(root, provenance, gameId);
+    if (
+      repository.url !== manifestProvenance.repository ||
+      repository.revision !== manifestProvenance.revision ||
+      repository.license !== manifestProvenance.license
+    ) {
+      throw new Error(`Provenance index does not match manifest provenance for game ${gameId}.`);
+    }
+    return { kind: "repository", repository };
+  }
+  if (manifestProvenance.kind !== "owner-provided-source-snapshot") {
+    throw new Error(`Unsupported manifest provenance kind for game ${gameId}.`);
+  }
+  const label = `Source snapshot record ${manifestProvenance.record}`;
+  const record = parseSourceSnapshotRecord(
+    await readJson(root, manifestProvenance.record, label),
+    label,
+  );
+  if (record.gameId !== gameId) throw new Error(`${label} does not belong to game ${gameId}.`);
+  if (record.sourceSnapshot.archive.sha256 !== manifestProvenance.archiveSha256) {
+    throw new Error(`${label} archive hash does not match manifest provenance for game ${gameId}.`);
+  }
+  await requireMatchingFileHash(
+    root,
+    { path: record.authorization.grantText, sha256: record.authorization.grantTextSha256 },
+    `${label} authorization grant`,
+  );
+  await requireMatchingFileHash(root, record.sourceSnapshot.archive, `${label} source archive`);
+  await verifySourceInventory(root, record, label);
+  return { kind: "owner-provided-source-snapshot", recordPath: manifestProvenance.record, record };
 }

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-labelledby="title description">
+  <title id="title">紙札疾走録・百鬼祭陣</title>
+  <desc id="description">A paper runner races across vermilion clouds toward floating cards.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#191329"/>
+      <stop offset="0.55" stop-color="#5b2940"/>
+      <stop offset="1" stop-color="#ce493d"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#130d20" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <circle cx="650" cy="92" r="58" fill="#f8dda2" opacity=".92"/>
+  <path d="M0 332C126 274 235 362 352 306s251-23 448-92v236H0Z" fill="#171225"/>
+  <path d="M0 367c137-45 238 39 362-18 129-60 275-33 438-93" fill="none" stroke="#f0b26b" stroke-width="8" opacity=".72"/>
+  <g fill="#fff5d6" stroke="#7d2935" stroke-width="5" filter="url(#shadow)">
+    <path d="m536 124 79 19-16 111-81-18z"/>
+    <path d="m660 199 67-8 16 96-68 10z"/>
+    <path d="m414 77 61 12-13 86-61-13z"/>
+  </g>
+  <g fill="none" stroke="#cf493d" stroke-width="5">
+    <path d="m546 152 52 13M541 178l53 13M538 204l52 12"/>
+    <circle cx="438" cy="126" r="19"/>
+    <path d="m682 223 40 39m-35 5 30-43"/>
+  </g>
+  <g transform="translate(245 231) rotate(-8)" filter="url(#shadow)">
+    <path d="m0 91 36-56 52 12 30 45-27 22-37-22-28 37z" fill="#f5e6c3" stroke="#27172e" stroke-width="7"/>
+    <circle cx="61" cy="25" r="25" fill="#f5e6c3" stroke="#27172e" stroke-width="7"/>
+    <path d="m42 15 16-23 30 12 5 29" fill="#23152c"/>
+    <path d="m34 94-39 67m95-54 47 48" stroke="#f5e6c3" stroke-width="18" stroke-linecap="round"/>
+    <path d="m-7 158-38 5m181-9 40-5" stroke="#27172e" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <g font-family="system-ui, sans-serif" font-weight="900" fill="#fff7df" filter="url(#shadow)">
+    <text x="48" y="89" font-size="49" letter-spacing="2">紙札疾走録</text>
+    <text x="48" y="142" font-size="42" letter-spacing="4">・百鬼祭陣</text>
+  </g>
+  <path d="M50 164h227" stroke="#f0b26b" stroke-width="6"/>
+</svg>

@@ -78,7 +78,7 @@
       "additionalProperties": false,
       "required": ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
       "properties": {
-        "status": { "const": "source-evidence-only" },
+        "status": { "const": "production-admitted" },
         "runtimeAdmissionIssue": { "const": 55 },
         "excludedFromProductionInputs": {
           "type": "array",

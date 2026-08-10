@@ -1,7 +1,10 @@
+import { GameManifestSourceSchema } from "@gameyard/game-contract";
+import { createGameManifestPlugin } from "@gameyard/manifest-tools";
 import { defineConfig } from "vite-plus";
 
-import sourceJson from "./candidate.manifest.source.json";
-import { createCandidateBuildId, createCandidateManifestPlugin } from "./tools/candidate-build.mjs";
+import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
+import { getRegisteredGame, loadProductionRegistry } from "../../tooling/production-registry.mjs";
+import manifestSourceJson from "./game.manifest.source.json";
 
 const archiveOwnedFiles = [
   "ACCEPTANCE_RESULTS.json",
@@ -16,20 +19,39 @@ const archiveOwnedFiles = [
   "kamifuda-runner-v4-standalone.html",
   "style.css",
 ];
+const buildId = await createArtifactBuildId();
+const manifestSource = GameManifestSourceSchema.parse(manifestSourceJson);
+const registry = await loadProductionRegistry(new URL("../../", import.meta.url));
+const registeredGame = getRegisteredGame(registry, manifestSource.id);
+const devBase = `/games/${manifestSource.id}/`;
+const devFiles = [
+  "game.manifest.json",
+  "index.html",
+  "src/audio.js",
+  "src/haptics.js",
+  "src/input.js",
+  "src/i18n.ts",
+  "src/main.js",
+  "src/managed-runtime.js",
+  "src/renderer.js",
+  "src/runtime-owner.js",
+  "src/simulation.js",
+  "src/storage.js",
+  "src/ui-projection.js",
+  "styles.css",
+];
 
-const buildId = await createCandidateBuildId(import.meta.dirname);
-
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: "guest",
-  base: "./",
+  base: command === "serve" ? devBase : "./",
   publicDir: false,
   define: {
     __GAMEYARD_BUILD__: JSON.stringify(buildId),
     __GAMEYARD_TESTKIT__: "false",
   },
-  plugins: [createCandidateManifestPlugin({ source: sourceJson, buildId })],
+  plugins: [createGameManifestPlugin({ source: manifestSource, buildId, devFiles })],
   build: {
-    outDir: "../../../.gameyard/candidates/kamifuda-runner",
+    outDir: registeredGame.stagePath,
     emptyOutDir: true,
   },
   fmt: {
@@ -42,8 +64,8 @@ export default defineConfig({
   },
   server: {
     host: "127.0.0.1",
-    port: 5191,
+    port: registeredGame.devPort,
     strictPort: true,
     hmr: false,
   },
-});
+}));

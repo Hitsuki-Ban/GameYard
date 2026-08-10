@@ -2,6 +2,7 @@ export const PROFILE_STORAGE_KEY = "gameyard.game.kamifuda-runner.profile.v1";
 
 const modeRecordKeys = ["best", "clears", "runs", "bestGrade", "bestAct", "bestTime"];
 const profileKeys = ["version", "records", "settings", "unlocks", "tutorial"];
+const gradeIds = ["none", "wood", "vermilion", "silver", "gold"];
 
 function exactKeys(value, expected) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -23,9 +24,7 @@ function validModeRecord(value) {
     value.clears >= 0 &&
     Number.isSafeInteger(value.runs) &&
     value.runs >= 0 &&
-    typeof value.bestGrade === "string" &&
-    value.bestGrade.length > 0 &&
-    value.bestGrade.length <= 8 &&
+    gradeIds.includes(value.bestGrade) &&
     Number.isSafeInteger(value.bestAct) &&
     value.bestAct >= 0 &&
     finiteNonnegative(value.bestTime)
@@ -37,7 +36,7 @@ function parseProfile(raw) {
   try {
     value = JSON.parse(raw);
   } catch (cause) {
-    throw new KamifudaProfileError("Kamifuda profile is not valid JSON.", cause);
+    throw new KamifudaProfileError("json", cause);
   }
   const valid =
     exactKeys(value, profileKeys) &&
@@ -47,10 +46,8 @@ function parseProfile(raw) {
     validModeRecord(value.records.hard) &&
     Number.isSafeInteger(value.records.totalSeals) &&
     value.records.totalSeals >= 0 &&
-    exactKeys(value.settings, ["sound", "haptic", "reducedMotion", "quality", "skin"]) &&
-    typeof value.settings.sound === "boolean" &&
+    exactKeys(value.settings, ["haptic", "quality", "skin"]) &&
     typeof value.settings.haptic === "boolean" &&
-    typeof value.settings.reducedMotion === "boolean" &&
     ["auto", "high", "low"].includes(value.settings.quality) &&
     typeof value.settings.skin === "string" &&
     value.settings.skin.length > 0 &&
@@ -65,14 +62,15 @@ function parseProfile(raw) {
     typeof value.unlocks.hard === "boolean" &&
     exactKeys(value.tutorial, ["seen"]) &&
     typeof value.tutorial.seen === "boolean";
-  if (!valid) throw new KamifudaProfileError("Kamifuda profile violates schema version 1.");
+  if (!valid) throw new KamifudaProfileError("schema");
   return value;
 }
 
 export class KamifudaProfileError extends Error {
-  constructor(message, cause) {
-    super(message, { cause });
+  constructor(code, cause) {
+    super(`Kamifuda profile error: ${code}`, { cause });
     this.name = "KamifudaProfileError";
+    this.code = code;
   }
 }
 
