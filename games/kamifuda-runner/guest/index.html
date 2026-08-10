@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#e9dfc8" />
     <meta name="color-scheme" content="light" />
+    <meta
+      name="description"
+      content="紙の門を育て、敵波を読み、百鬼を退ける木版アクション・ラン。"
+    />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2710%27 fill=%27%23eadfc7%27/%3E%3Ccircle cx=%2732%27 cy=%2732%27 r=%2723%27 fill=%27%23b33a2f%27/%3E%3Cpath d=%27M22 18h20v5H35v7h7v5h-7v11h-6V35h-7v-5h7v-7h-7z%27 fill=%27%23fff8e8%27/%3E%3C/svg%3E"
@@ -13,19 +17,42 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main id="app" aria-label="紙札疾走録・百鬼祭陣">
-      <canvas id="gameCanvas" aria-label="左右に動き、紙札の門を選び、百鬼を退けるゲーム"></canvas>
+    <main id="app" data-i18n-aria-label="page.appLabel" aria-label="紙札疾走録・百鬼祭陣">
+      <canvas
+        id="gameCanvas"
+        tabindex="0"
+        data-i18n-aria-label="page.canvasLabel"
+        aria-describedby="canvasInstructions canvasStatus"
+        aria-label="左右に動き、紙札の門を選び、百鬼を退けるゲーム"
+      ></canvas>
+      <p id="canvasInstructions" class="sr-only" data-i18n="page.canvasInputSummary">
+        操作: 矢印キーまたは A・D、ドラッグで移動。Space または Enter、祭印ボタンで祭印。Escape
+        または P で一時停止。
+      </p>
+      <p id="canvasStatus" class="sr-only" role="status" aria-live="polite"></p>
 
-      <div id="hudControls" class="hud-controls" aria-label="ゲーム操作">
+      <div
+        id="hudControls"
+        class="hud-controls"
+        data-i18n-aria-label="hud.controls"
+        aria-label="ゲーム操作"
+      >
         <button
           id="pauseButton"
           class="round-control pause-control"
           type="button"
+          data-i18n-aria-label="hud.pause"
           aria-label="一時停止"
         >
           <span aria-hidden="true">Ⅱ</span>
         </button>
-        <button id="stampButton" class="stamp-control" type="button" aria-label="祭印を使う">
+        <button
+          id="stampButton"
+          class="stamp-control"
+          type="button"
+          data-i18n-aria-label="hud.stamp"
+          aria-label="祭印を使う"
+        >
           <span class="stamp-ring" aria-hidden="true"></span>
           <span class="stamp-face" aria-hidden="true">祭</span>
         </button>
@@ -34,16 +61,24 @@
       <section id="titleOverlay" class="overlay is-active" aria-labelledby="gameTitle">
         <div class="title-stage">
           <div class="title-kamon" aria-hidden="true"><span>走</span></div>
-          <p class="eyebrow">木版アクション・ラン</p>
+          <p class="eyebrow" data-i18n="title.eyebrow">木版アクション・ラン</p>
           <h1 id="gameTitle">
-            <span>紙札疾走録</span><small>百鬼祭陣 <em>演</em></small>
+            <span data-i18n="title.name">紙札疾走録</span
+            ><small
+              ><span data-i18n="title.subtitle">百鬼祭陣</span>
+              <em aria-hidden="true">演</em></small
+            >
           </h1>
-          <p class="title-lead">門を育て、敵波を読み、百鬼を駆け抜けろ。</p>
-          <div class="mode-starts" aria-label="遊び方を選ぶ">
+          <p class="title-lead" data-i18n="title.lead">門を育て、敵波を読み、百鬼を駆け抜けろ。</p>
+          <div class="mode-starts" data-i18n-aria-label="title.modeGroup" aria-label="遊び方を選ぶ">
             <button id="startButton" class="start-button mode-start-button" type="button">
               <span class="start-icon" aria-hidden="true">▶</span>
               <span class="mode-copy"
-                ><b>道中へ</b><small>百鬼祭陣 <em>演</em></small></span
+                ><b data-i18n="title.start">道中へ</b
+                ><small
+                  ><span data-i18n="title.subtitle">百鬼祭陣</span>
+                  <em aria-hidden="true">演</em></small
+                ></span
               >
             </button>
             <button
@@ -53,37 +88,74 @@
               aria-describedby="hardModeHint"
             >
               <span class="hard-seal" aria-hidden="true">烈</span>
-              <span class="mode-copy"><b>烈祭</b><small id="hardModeHint">踏破で開く</small></span>
+              <span class="mode-copy"
+                ><b data-i18n="title.hard">烈祭</b
+                ><small id="hardModeHint" data-i18n="title.hardLocked">踏破で開く</small></span
+              >
             </button>
           </div>
           <div class="title-actions">
-            <button id="recordsButton" class="paper-button" type="button">記録</button>
-            <button id="settingsButton" class="paper-button" type="button">設定</button>
+            <button id="recordsButton" class="paper-button" type="button" data-i18n="title.records">
+              記録
+            </button>
+            <button
+              id="settingsButton"
+              class="paper-button"
+              type="button"
+              data-i18n="title.settings"
+            >
+              設定
+            </button>
           </div>
           <div class="control-hint" aria-hidden="true">
             <span class="hint-track"><i></i></span>
-            <span>ドラッグ / ← →</span>
+            <span data-i18n="title.controls">ドラッグ / ← →</span>
           </div>
         </div>
       </section>
 
-      <section id="pauseOverlay" class="overlay" aria-labelledby="pauseTitle">
+      <section
+        id="pauseOverlay"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pauseTitle"
+        tabindex="-1"
+      >
         <div class="paper-card compact-card">
           <div class="card-seal" aria-hidden="true">休</div>
-          <h2 id="pauseTitle">ひと休み</h2>
-          <button id="resumeButton" class="primary-button" type="button">戻る</button>
-          <button id="pauseSettingsButton" class="paper-button" type="button">設定</button>
-          <button id="quitButton" class="text-button" type="button">道中を終える</button>
+          <h2 id="pauseTitle" data-i18n="pause.title">ひと休み</h2>
+          <button id="resumeButton" class="primary-button" type="button" data-i18n="pause.resume">
+            戻る
+          </button>
+          <button
+            id="pauseSettingsButton"
+            class="paper-button"
+            type="button"
+            data-i18n="pause.settings"
+          >
+            設定
+          </button>
+          <button id="quitButton" class="text-button" type="button" data-i18n="pause.quit">
+            道中を終える
+          </button>
         </div>
       </section>
 
-      <section id="choiceOverlay" class="overlay" aria-labelledby="choiceTitle">
+      <section
+        id="choiceOverlay"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="choiceTitle"
+        tabindex="-1"
+      >
         <div class="choice-shell">
           <div class="choice-heading">
             <span class="choice-knot" aria-hidden="true"></span>
             <div>
               <p id="choiceActLabel" class="eyebrow">一ノ幕　結</p>
-              <h2 id="choiceTitle">ひとつ、結ぶ</h2>
+              <h2 id="choiceTitle" data-i18n="choice.title">ひとつ、結ぶ</h2>
             </div>
             <span class="choice-knot mirror" aria-hidden="true"></span>
           </div>
@@ -91,82 +163,170 @@
         </div>
       </section>
 
-      <section id="resultOverlay" class="overlay" aria-labelledby="resultTitle">
+      <section
+        id="resultOverlay"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="resultTitle"
+        tabindex="-1"
+      >
         <div class="result-card paper-card">
           <div id="resultSeal" class="result-seal" aria-hidden="true">了</div>
-          <p id="resultKicker" class="eyebrow">道中記録</p>
-          <div id="resultMode" class="result-mode">百鬼祭陣</div>
-          <h2 id="resultTitle">祭は続く</h2>
-          <div id="resultGrade" class="result-grade" aria-label="評価">木</div>
+          <p id="resultKicker" class="eyebrow" data-i18n="result.kicker">道中記録</p>
+          <div id="resultMode" class="result-mode" data-i18n="mode.normal">百鬼祭陣</div>
+          <h2 id="resultTitle" data-i18n="result.titleIdle">祭は続く</h2>
+          <div
+            id="resultGrade"
+            class="result-grade"
+            data-i18n-aria-label="result.gradeLabel"
+            aria-label="評価"
+          >
+            木
+          </div>
           <div id="resultStats" class="result-stats"></div>
           <div id="resultCause" class="result-cause"></div>
-          <button id="retryButton" class="primary-button" type="button">もう一度</button>
-          <button id="resultTitleButton" class="paper-button" type="button">表紙へ</button>
+          <button id="retryButton" class="primary-button" type="button" data-i18n="result.retry">
+            もう一度
+          </button>
+          <button
+            id="resultTitleButton"
+            class="paper-button"
+            type="button"
+            data-i18n="result.toTitle"
+          >
+            表紙へ
+          </button>
         </div>
       </section>
 
-      <section id="settingsOverlay" class="overlay" aria-labelledby="settingsTitle">
-        <div class="paper-card settings-card">
+      <section
+        id="settingsOverlay"
+        class="overlay drawer-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settingsTitle"
+        aria-describedby="settingsStatus"
+        tabindex="-1"
+      >
+        <div class="paper-card settings-card drawer-card">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">仕立て</p>
-              <h2 id="settingsTitle">設定</h2>
+              <p class="eyebrow" data-i18n="settings.eyebrow">仕立て</p>
+              <h2 id="settingsTitle" data-i18n="settings.title">設定</h2>
             </div>
-            <button class="close-button" data-close="settings" type="button" aria-label="閉じる">
+            <button
+              class="close-button"
+              data-close="settings"
+              type="button"
+              data-i18n-aria-label="settings.close"
+              aria-label="設定を閉じる"
+            >
               ×
             </button>
           </div>
-          <label class="setting-row">
-            <span>音</span>
-            <input id="soundToggle" type="checkbox" />
-            <span class="switch" aria-hidden="true"></span>
+
+          <h3 id="settingsRevision" class="setting-group-title">会場設定 · v0</h3>
+          <label class="setting-row range-row">
+            <span data-i18n="settings.master">全体音量</span>
+            <span class="range-control">
+              <input id="masterVolume" type="range" min="0" max="1" step="0.01" />
+              <output id="masterVolumeValue" for="masterVolume"></output>
+            </span>
+          </label>
+          <label class="setting-row range-row">
+            <span data-i18n="settings.music">音楽音量</span>
+            <span class="range-control">
+              <input id="musicVolume" type="range" min="0" max="1" step="0.01" />
+              <output id="musicVolumeValue" for="musicVolume"></output>
+            </span>
+          </label>
+          <label class="setting-row range-row">
+            <span data-i18n="settings.sfx">効果音音量</span>
+            <span class="range-control">
+              <input id="sfxVolume" type="range" min="0" max="1" step="0.01" />
+              <output id="sfxVolumeValue" for="sfxVolume"></output>
+            </span>
           </label>
           <label class="setting-row">
-            <span>振動</span>
-            <input id="hapticToggle" type="checkbox" />
-            <span class="switch" aria-hidden="true"></span>
-          </label>
-          <label class="setting-row">
-            <span>動きを控える</span>
+            <span data-i18n="settings.reducedMotion">動きを控える</span>
             <input id="motionToggle" type="checkbox" />
             <span class="switch" aria-hidden="true"></span>
           </label>
+          <label class="setting-row">
+            <span data-i18n="settings.screenShake">画面の揺れ</span>
+            <input id="screenShakeToggle" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <p id="settingsStatus" class="settings-status" role="status" aria-live="polite"></p>
+
+          <h3 class="setting-group-title" data-i18n="settings.gameGroup">この遊びの設定</h3>
+          <label class="setting-row">
+            <span data-i18n="settings.haptic">振動</span>
+            <input id="hapticToggle" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
           <label class="setting-row select-row">
-            <span>画質</span>
+            <span data-i18n="settings.quality">画質</span>
             <select id="qualitySelect">
-              <option value="auto">自動</option>
-              <option value="high">高</option>
-              <option value="low">軽</option>
+              <option value="auto" data-i18n="settings.qualityAuto">自動</option>
+              <option value="high" data-i18n="settings.qualityHigh">高</option>
+              <option value="low" data-i18n="settings.qualityLow">軽</option>
             </select>
           </label>
           <label class="setting-row select-row">
-            <span>紙色</span>
+            <span data-i18n="settings.skin">紙色</span>
             <select id="skinSelect"></select>
           </label>
-          <button id="fullscreenButton" class="paper-button wide-button" type="button">
+          <button
+            id="fullscreenButton"
+            class="paper-button wide-button"
+            type="button"
+            data-i18n="settings.fullscreen"
+          >
             全画面
           </button>
-          <button id="resetButton" class="text-button danger-text" type="button">
+          <button
+            id="resetButton"
+            class="text-button danger-text"
+            type="button"
+            data-i18n="settings.reset"
+          >
             記録を初期化
           </button>
         </div>
       </section>
 
-      <section id="recordsOverlay" class="overlay" aria-labelledby="recordsTitle">
-        <div class="paper-card records-card">
+      <section
+        id="recordsOverlay"
+        class="overlay drawer-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recordsTitle"
+        tabindex="-1"
+      >
+        <div class="paper-card records-card drawer-card">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">道中帳</p>
-              <h2 id="recordsTitle">記録</h2>
+              <p class="eyebrow" data-i18n="records.eyebrow">道中帳</p>
+              <h2 id="recordsTitle" data-i18n="records.title">記録</h2>
             </div>
-            <button class="close-button" data-close="records" type="button" aria-label="閉じる">
+            <button
+              class="close-button"
+              data-close="records"
+              type="button"
+              data-i18n-aria-label="records.close"
+              aria-label="記録を閉じる"
+            >
               ×
             </button>
           </div>
           <div id="recordSummary" class="record-summary"></div>
-          <h3>紙色</h3>
+          <h3 data-i18n="records.skin">紙色</h3>
           <div id="skinGallery" class="skin-gallery"></div>
-          <p class="records-note">印は見た目だけを開く。道中の強さは毎回まっさら。</p>
+          <p class="records-note" data-i18n="records.note">
+            印は見た目だけを開く。道中の強さは毎回まっさら。
+          </p>
         </div>
       </section>
 

@@ -56,8 +56,8 @@ function parserArguments(fixture) {
   ];
 }
 
-void test("binds Cloudflare deployment evidence to release metadata schema 3", async () => {
-  const fixture = await createFixture(3);
+void test("binds Cloudflare deployment evidence to release metadata schema 4", async () => {
+  const fixture = await createFixture(4);
   const result = await execFileAsync(process.execPath, parserArguments(fixture));
   assert.match(result.stdout, /Cloudflare deployment verified/u);
   assert.deepEqual(JSON.parse(await readFile(fixture.evidenceFile, "utf8")), {
@@ -76,7 +76,7 @@ void test("binds Cloudflare deployment evidence to release metadata schema 3", a
 });
 
 void test("rejects obsolete release metadata instead of accepting a compatibility schema", async () => {
-  const fixture = await createFixture(2);
+  const fixture = await createFixture(3);
   await assert.rejects(
     execFileAsync(process.execPath, parserArguments(fixture)),
     /Release metadata cannot provide deployment identity/u,

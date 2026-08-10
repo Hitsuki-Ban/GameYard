@@ -5,11 +5,10 @@ import { GameCatalogSchema, GameManifestSchema } from "../packages/game-contract
 import { createArtifactBuildId } from "./artifact-build-id.mjs";
 import { inspectArtifactFiles, listArtifactFiles } from "./artifact-inspector.mjs";
 import { loadProductionRegistry, parseRepositoryRelativePath } from "./production-registry.mjs";
-import { loadProvenanceIndex, requireGameDistributionRights } from "./provenance.mjs";
+import { loadProvenanceIndex, requireGameDistributionProvenance } from "./provenance.mjs";
 
 const manifestFilename = "game.manifest.json";
 const hubManifestFilename = "hub.manifest.json";
-const provenanceIndexFilename = "provenance/upstreams.json";
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -124,15 +123,6 @@ export async function createAssemblyPlan(projectRoot) {
   const root = resolve(projectRoot);
   const config = await loadProductionRegistry(root);
   const provenance = await loadProvenanceIndex(root);
-  const distributions = new Map();
-  for (const repository of provenance.repositories) {
-    if (repository.rightsRecord) {
-      distributions.set(
-        repository.id,
-        await requireGameDistributionRights(root, provenance, repository.id),
-      );
-    }
-  }
   const gameStages = [];
   const gameIds = new Set();
   for (const gameConfig of config.games) {
@@ -156,13 +146,25 @@ export async function createAssemblyPlan(projectRoot) {
     const foldedId = manifest.id.toLowerCase();
     if (gameIds.has(foldedId)) throw new Error(`Game ID collision: ${manifest.id}`);
     gameIds.add(foldedId);
-    if (!distributions.has(manifest.id)) {
-      distributions.set(
-        manifest.id,
-        await requireGameDistributionRights(root, provenance, manifest.id),
-      );
+    const distribution = await requireGameDistributionProvenance(
+      root,
+      provenance,
+      manifest.id,
+      manifest.provenance,
+    );
+    if (distribution.kind === "owner-provided-source-snapshot") {
+      for (const excluded of distribution.record.productionBoundary.excludedFromProductionInputs) {
+        const covered = gameConfig.productionInputs.some(
+          (input) => excluded === input || excluded.startsWith(`${input}/`),
+        );
+        if (covered) {
+          throw new Error(
+            `Game ${manifest.id} production input covers excluded source evidence: ${excluded}.`,
+          );
+        }
+      }
     }
-    gameStages.push({ gameConfig, stage, manifest, distribution: distributions.get(manifest.id) });
+    gameStages.push({ gameConfig, stage, manifest });
   }
   const buildId = await createArtifactBuildId(root);
   const hubStage = config.hub.stagePath;
@@ -203,16 +205,7 @@ export async function createAssemblyPlan(projectRoot) {
     }));
   const games = [];
 
-  for (const { gameConfig, stage, manifest, distribution } of gameStages) {
-    if (
-      manifest.provenance.repository !== distribution.url ||
-      manifest.provenance.revision !== distribution.revision ||
-      manifest.provenance.license !== distribution.license
-    ) {
-      throw new Error(
-        `${gameConfig.stage}/${manifestFilename} provenance does not match ${provenanceIndexFilename} for game ${manifest.id}.`,
-      );
-    }
+  for (const { gameConfig, stage, manifest } of gameStages) {
     if (manifest.buildId !== buildId) {
       throw new Error(
         `${gameConfig.stage}/${manifestFilename} buildId mismatch: expected ${buildId}, received ${manifest.buildId}.`,

@@ -6,6 +6,7 @@ const host = {
   activating: false,
   sequence: 0,
   pending: new Map(),
+  autoApplySettings: true,
 };
 globalThis.__KAMIFUDA_HOST__ = host;
 
@@ -104,6 +105,18 @@ function handlePortMessage(event) {
       return;
     }
     void send(`lifecycle.${message.action}`).catch((error) => fail(error.message));
+    return;
+  }
+  if (message?.type === "settings.changeRequest") {
+    if (!exactKeys(message, ["type", "change"]) || !host.autoApplySettings) return;
+    const change = message.change;
+    const next = {
+      revision: context.settings.revision + 1,
+      audio: { ...context.settings.audio, ...change.audio },
+      motion: { ...context.settings.motion, ...change.motion },
+    };
+    context.settings = next;
+    void send("settings.apply", { settings: next }).catch((error) => fail(error.message));
   }
 }
 
@@ -136,6 +149,14 @@ function handleWindowMessage(event) {
 }
 
 host.resourceBaseline = globalThis.__GAMEYARD_RESOURCE_PROBE__?.snapshot() || null;
+host.applySettings = async (settings) => {
+  context.settings = settings;
+  await send("settings.apply", { settings });
+};
+host.applyLocale = async (resolved) => {
+  context.locale = { preference: resolved, resolved };
+  await send("locale.apply", { locale: context.locale });
+};
 host.dispose = async () => {
   await send("lifecycle.dispose");
   host.port.removeEventListener("message", handlePortMessage);

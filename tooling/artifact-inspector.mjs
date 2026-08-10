@@ -20,7 +20,14 @@ const serviceWorkerFilenames = new Set([
   "serviceworker.js",
   "sw.js",
 ]);
-const forbiddenLabMarkers = ["open lab", "session lab", "tweakpane", "lab-overlay", "lab-accent"];
+const forbiddenLabMarkers = [
+  "open lab",
+  "session lab",
+  "tweakpane",
+  "lab-overlay",
+  "lab-accent",
+  "testkit",
+];
 const serviceWorkerMarkers = ["navigator.serviceworker", "serviceworker.register", "sw.js"];
 
 function isRootAbsoluteUrl(value) {

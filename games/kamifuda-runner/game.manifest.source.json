@@ -6,10 +6,11 @@
   "entry": "index.html",
   "locales": {
     "source": "ja",
-    "supported": ["ja"]
+    "supported": ["en", "ja", "zh-Hans"]
   },
   "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch"],
-  "sourceSnapshot": {
+  "provenance": {
+    "kind": "owner-provided-source-snapshot",
     "record": "provenance/kamifuda-runner/source-snapshot.json",
     "archiveSha256": "5f2d6469b12ec50674b80aaa45a2519cad67fbf4938921e61814a458241f7752"
   }

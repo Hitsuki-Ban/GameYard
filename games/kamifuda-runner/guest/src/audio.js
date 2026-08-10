@@ -19,7 +19,6 @@ export function createAudioEngine(targetWindow) {
   let sfxGain = null;
   let noise = null;
   let voices = 0;
-  let gameEnabled = true;
   let disposed = false;
   let host = { master: 1, music: 1, sfx: 1 };
   const last = new Map();
@@ -27,13 +26,18 @@ export function createAudioEngine(targetWindow) {
   function applyGains() {
     if (!context || !masterGain || !musicGain || !sfxGain) return;
     const now = context.currentTime;
-    masterGain.gain.setTargetAtTime(gameEnabled ? host.master * 0.34 : 0.0001, now, 0.02);
-    musicGain.gain.setTargetAtTime(host.music, now, 0.02);
-    sfxGain.gain.setTargetAtTime(host.sfx, now, 0.02);
+    const applyGain = (gain, value) => {
+      gain.cancelScheduledValues(now);
+      if (value === 0) gain.setValueAtTime(0, now);
+      else gain.setTargetAtTime(value, now, 0.02);
+    };
+    applyGain(masterGain.gain, host.master * 0.34);
+    applyGain(musicGain.gain, host.music);
+    applyGain(sfxGain.gain, host.sfx);
   }
 
   function ensureContext() {
-    if (disposed || context || !gameEnabled || host.master === 0) return;
+    if (disposed || context || host.master === 0) return;
     const AudioContext = targetWindow.AudioContext || targetWindow.webkitAudioContext;
     if (!AudioContext) return;
     context = new AudioContext();
@@ -58,7 +62,7 @@ export function createAudioEngine(targetWindow) {
   }
 
   function play(name, volume = 1, pitch = 1, bus = "sfx") {
-    if (disposed || !gameEnabled) return;
+    if (disposed) return;
     ensureContext();
     if (!context || !noise || !musicGain || !sfxGain || voices >= 22) return;
     const busValue = bus === "music" ? host.music : host.sfx;
@@ -127,16 +131,12 @@ export function createAudioEngine(targetWindow) {
       host = { ...settings };
       applyGains();
     },
-    setGameEnabled(enabled) {
-      gameEnabled = enabled === true;
-      applyGains();
-    },
     play,
     async pause() {
       if (context?.state === "running") await context.suspend();
     },
     async resume() {
-      if (context?.state === "suspended" && gameEnabled && host.master > 0) await context.resume();
+      if (context?.state === "suspended" && host.master > 0) await context.resume();
     },
     async dispose() {
       if (disposed) return;

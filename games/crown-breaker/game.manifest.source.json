@@ -10,6 +10,7 @@
   },
   "capabilities": ["audio", "keyboard", "pointer", "touch"],
   "provenance": {
+    "kind": "repository",
     "repository": "https://github.com/Hitsuki-Ban/CrownBreaker",
     "revision": "1f7b911926c786043ba793e16c4f25cd5f523b21",
     "license": "MIT"

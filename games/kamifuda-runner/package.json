@@ -7,13 +7,15 @@
     "browser:install": "vp exec playwright install chromium",
     "dev": "vp dev",
     "dev:testkit": "vp dev --config vite.testkit.config.ts",
-    "build": "vp build && vp exec node tools/verify-candidate.mjs",
+    "build": "vp build",
     "build:testkit": "vp build --config vite.testkit.config.ts",
     "check": "vp check && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
     "test": "vp run check && vp exec playwright test --config playwright.baseline.config.ts"
   },
   "dependencies": {
-    "@gameyard/guest-bridge": "workspace:*"
+    "@gameyard/game-contract": "workspace:*",
+    "@gameyard/guest-bridge": "workspace:*",
+    "@gameyard/manifest-tools": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

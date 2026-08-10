@@ -11,6 +11,7 @@ export function createKamifudaSimulation({
   haptics,
   host,
   context,
+  i18n,
 }) {
   const window = targetWindow;
   const navigator = targetWindow.navigator;
@@ -19,7 +20,11 @@ export function createKamifudaSimulation({
   const ctx = renderer.context;
   const UI = uiProjection.elements;
   let hostSettings = context.settings;
+  let pendingHostSetting = null;
+  let settingsStatusKey = null;
+  let canvasStatus = { kind: "title", data: {} };
   let disposed = false;
+  const t = (key, params) => i18n.t(key, params);
 
   const TAU = Math.PI * 2;
   const FIXED_DT = 1 / 60;
@@ -29,8 +34,7 @@ export function createKamifudaSimulation({
   const sqr = (v) => v * v;
   const wrap = (v, m) => ((v % m) + m) % m;
   const dist2 = (ax, ay, bx, by) => sqr(ax - bx) + sqr(ay - by);
-  const pretty = (n) => Math.floor(n || 0).toLocaleString("ja-JP");
-  const actKanji = ["一", "二", "三"];
+  const pretty = (n) => i18n.number(Math.floor(n || 0));
   const mix32 = (value) => {
     let x = value >>> 0;
     x ^= x >>> 16;
@@ -117,7 +121,7 @@ export function createKamifudaSimulation({
   const SKINS = [
     {
       id: "washi",
-      name: "生成り",
+      nameKey: "skin.washi",
       cost: 0,
       paper: "#e9dfc8",
       paperHi: "#f8f0dc",
@@ -126,7 +130,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "indigo",
-      name: "藍摺",
+      nameKey: "skin.indigo",
       cost: 3,
       paper: "#dbe1db",
       paperHi: "#f1f3e9",
@@ -135,7 +139,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "sakura",
-      name: "薄桜",
+      nameKey: "skin.sakura",
       cost: 8,
       paper: "#ead9d4",
       paperHi: "#f8ece5",
@@ -144,7 +148,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "night",
-      name: "夜祭",
+      nameKey: "skin.night",
       cost: 15,
       paper: "#c9bea4",
       paperHi: "#eee0bd",
@@ -153,7 +157,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "moss",
-      name: "苔庭",
+      nameKey: "skin.moss",
       cost: 24,
       paper: "#d9ddc9",
       paperHi: "#f0f1df",
@@ -162,7 +166,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "gold",
-      name: "金砂",
+      nameKey: "skin.gold",
       cost: 36,
       paper: "#e6d4a7",
       paperHi: "#fff0c6",
@@ -171,7 +175,7 @@ export function createKamifudaSimulation({
     },
     {
       id: "ember",
-      name: "焦朱",
+      nameKey: "skin.ember",
       cost: 0,
       hardOnly: true,
       paper: "#d8c9ad",
@@ -184,8 +188,7 @@ export function createKamifudaSimulation({
   const MODE_RULES = {
     normal: {
       id: "normal",
-      label: "百鬼祭陣",
-      short: "道",
+      labelKey: "mode.normal",
       startCount: 18,
       startShield: 2,
       maxShield: 6,
@@ -207,8 +210,7 @@ export function createKamifudaSimulation({
     },
     hard: {
       id: "hard",
-      label: "烈祭",
-      short: "烈",
+      labelKey: "mode.hard",
       startCount: 16,
       startShield: 1,
       maxShield: 4,
@@ -237,10 +239,9 @@ export function createKamifudaSimulation({
   const FORM = {
     fan: {
       id: "fan",
-      icon: "扇",
-      name: "扇陣",
+      icon: "扇", // i18n-allow-ornament: formation crest
+      nameKey: "form.fan",
       color: "#b66d3d",
-      summary: "広く払う",
       role: "swarm",
       cadence: 0.27,
       countScale: 0.42,
@@ -254,10 +255,9 @@ export function createKamifudaSimulation({
     },
     spear: {
       id: "spear",
-      icon: "槍",
-      name: "槍陣",
+      icon: "槍", // i18n-allow-ornament: formation crest
+      nameKey: "form.spear",
       color: "#96392d",
-      summary: "鎧を貫く",
       role: "armor",
       cadence: 0.31,
       countScale: 0.23,
@@ -271,10 +271,9 @@ export function createKamifudaSimulation({
     },
     spiral: {
       id: "spiral",
-      icon: "環",
-      name: "環陣",
+      icon: "環", // i18n-allow-ornament: formation crest
+      nameKey: "form.spiral",
       color: "#526a51",
-      summary: "飛び道具を截つ",
       role: "projectile",
       cadence: 0.29,
       countScale: 0.31,
@@ -288,10 +287,9 @@ export function createKamifudaSimulation({
     },
     drum: {
       id: "drum",
-      icon: "鼓",
-      name: "鼓陣",
+      icon: "鼓", // i18n-allow-ornament: formation crest
+      nameKey: "form.drum",
       color: "#bd8430",
-      summary: "震えて散らす",
       role: "shield",
       cadence: 0.43,
       countScale: 0.3,
@@ -307,13 +305,13 @@ export function createKamifudaSimulation({
   };
 
   const GATE_STYLE = {
-    count: { icon: "札", name: "群", color: COLORS.indigo, dark: COLORS.indigo2 },
-    power: { icon: "筆", name: "力", color: COLORS.red, dark: COLORS.redDark },
-    tempo: { icon: "拍", name: "速", color: COLORS.ochre, dark: COLORS.ochreDark },
-    shield: { icon: "結", name: "守", color: COLORS.green, dark: COLORS.greenDark },
-    form: { icon: "折", name: "陣", color: COLORS.violet, dark: COLORS.violetDark },
-    recovery: { icon: "継", name: "戻", color: "#6b837d", dark: "#344943" },
-    risk: { icon: "賭", name: "倍", color: "#31231f", dark: "#140f0d" },
+    count: { color: COLORS.indigo, dark: COLORS.indigo2 },
+    power: { color: COLORS.red, dark: COLORS.redDark },
+    tempo: { color: COLORS.ochre, dark: COLORS.ochreDark },
+    shield: { color: COLORS.green, dark: COLORS.greenDark },
+    form: { color: COLORS.violet, dark: COLORS.violetDark },
+    recovery: { color: "#6b837d", dark: "#344943" },
+    risk: { color: "#31231f", dark: "#140f0d" },
   };
 
   const ENEMY_STYLE = {
@@ -332,7 +330,7 @@ export function createKamifudaSimulation({
     best: 0,
     clears: 0,
     runs: 0,
-    bestGrade: "-",
+    bestGrade: "none",
     bestAct: 0,
     bestTime: 0,
   });
@@ -340,9 +338,7 @@ export function createKamifudaSimulation({
     version: 1,
     records: { normal: emptyModeRecord(), hard: emptyModeRecord(), totalSeals: 0 },
     settings: {
-      sound: true,
       haptic: true,
-      reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || false,
       quality: "auto",
       skin: "washi",
     },
@@ -464,7 +460,7 @@ export function createKamifudaSimulation({
   };
 
   function reducedMotion() {
-    return hostSettings.motion.reduced || state.profile.settings.reducedMotion;
+    return hostSettings.motion.reduced;
   }
 
   function resetInput() {
@@ -584,23 +580,12 @@ export function createKamifudaSimulation({
     haptics.play(pattern);
   }
 
-  function initAudio() {
-    audioEngine.setGameEnabled(state.profile.settings.sound);
-  }
-
-  function setSoundEnabled(enabled) {
-    state.profile.settings.sound = !!enabled;
-    audioEngine.setGameEnabled(state.profile.settings.sound);
-    saveProfile();
-  }
-
   function sfx(name, volume = 1, pitch = 1) {
-    if (!state.profile.settings.sound) return;
     audioEngine.play(name, volume, pitch, "sfx");
   }
 
   function musicTick(dt) {
-    if (!["playing", "boss"].includes(state.mode) || !state.profile.settings.sound) return;
+    if (!["playing", "boss"].includes(state.mode)) return;
     state.musicTimer -= dt;
     const interval = state.mode === "boss" ? 0.42 : state.phase === "combat" ? 0.52 : 0.66;
     if (state.musicTimer > 0) return;
@@ -613,8 +598,8 @@ export function createKamifudaSimulation({
 
   const ACT_DATA = {
     1: {
-      name: "宿場",
-      subtitle: "一ノ幕",
+      nameKey: "act.1.name",
+      subtitleKey: "act.1.subtitle",
       boss: "cart",
       sky: "#c8b77f",
       road: "#eadcb8",
@@ -624,8 +609,8 @@ export function createKamifudaSimulation({
           {
             id: "paper_tide",
             kind: "swarm",
-            name: "紙波",
-            stage: "起",
+            nameKey: "encounter.paper_tide",
+            stageKey: "stage.opening",
             strength: 1.0,
             variants: 2,
             gates: ["form:fan", "count"],
@@ -640,8 +625,8 @@ export function createKamifudaSimulation({
           {
             id: "cross_rush",
             kind: "rush",
-            name: "駆違",
-            stage: "承",
+            nameKey: "encounter.cross_rush",
+            stageKey: "stage.middle",
             strength: 1.04,
             variants: 2,
             gates: ["tempo", "shield"],
@@ -654,8 +639,8 @@ export function createKamifudaSimulation({
           {
             id: "iron_escort",
             kind: "armor",
-            name: "鎧渡",
-            stage: "転",
+            nameKey: "encounter.iron_escort",
+            stageKey: "stage.turn",
             strength: 1.08,
             variants: 2,
             gates: ["form:spear", "power"],
@@ -671,8 +656,8 @@ export function createKamifudaSimulation({
           {
             id: "riven_tide",
             kind: "swarm",
-            name: "裂紙波",
-            stage: "烈一",
+            nameKey: "encounter.riven_tide",
+            stageKey: "stage.hard1",
             strength: 1.08,
             variants: 2,
             gates: ["form:fan", "power"],
@@ -687,8 +672,8 @@ export function createKamifudaSimulation({
           {
             id: "cross_rush_rekka",
             kind: "rush",
-            name: "十字駆",
-            stage: "烈二",
+            nameKey: "encounter.cross_rush_rekka",
+            stageKey: "stage.hard2",
             strength: 1.12,
             variants: 2,
             gates: ["tempo", "shield"],
@@ -702,8 +687,8 @@ export function createKamifudaSimulation({
           {
             id: "iron_drum",
             kind: "armor",
-            name: "鎧鼓",
-            stage: "烈三",
+            nameKey: "encounter.iron_drum",
+            stageKey: "stage.hard3",
             strength: 1.17,
             variants: 2,
             gates: ["form:spear", "power"],
@@ -717,7 +702,7 @@ export function createKamifudaSimulation({
       },
       bossPrep: {
         normal: {
-          name: "鬼車支度",
+          nameKey: "encounter.boss_prep_1_normal",
           gates: ["form:spear", "shield"],
           preview: [
             { kind: "boss_cart", nx: 0.5 },
@@ -726,7 +711,7 @@ export function createKamifudaSimulation({
           ],
         },
         hard: {
-          name: "烈・鬼車支度",
+          nameKey: "encounter.boss_prep_1_hard",
           gates: ["form:spear", "tempo"],
           preview: [
             { kind: "boss_cart", nx: 0.5 },
@@ -737,8 +722,8 @@ export function createKamifudaSimulation({
       },
     },
     2: {
-      name: "山社",
-      subtitle: "二ノ幕",
+      nameKey: "act.2.name",
+      subtitleKey: "act.2.subtitle",
       boss: "mask",
       sky: "#9eaa91",
       road: "#ded7b6",
@@ -748,8 +733,8 @@ export function createKamifudaSimulation({
           {
             id: "side_shields",
             kind: "shield",
-            name: "片盾",
-            stage: "起",
+            nameKey: "encounter.side_shields",
+            stageKey: "stage.opening",
             strength: 1.12,
             variants: 2,
             gates: ["form:spear", "shield"],
@@ -762,8 +747,8 @@ export function createKamifudaSimulation({
           {
             id: "crossfire",
             kind: "bombard",
-            name: "紙火",
-            stage: "承",
+            nameKey: "encounter.crossfire",
+            stageKey: "stage.middle",
             strength: 1.16,
             variants: 2,
             gates: ["form:spiral", "tempo"],
@@ -777,8 +762,8 @@ export function createKamifudaSimulation({
           {
             id: "split_ritual",
             kind: "split",
-            name: "裂陣",
-            stage: "転",
+            nameKey: "encounter.split_ritual",
+            stageKey: "stage.turn",
             strength: 1.2,
             variants: 2,
             gates: ["form:fan", "form:drum"],
@@ -793,8 +778,8 @@ export function createKamifudaSimulation({
           {
             id: "shield_wheel",
             kind: "shield",
-            name: "盾廻",
-            stage: "烈一",
+            nameKey: "encounter.shield_wheel",
+            stageKey: "stage.hard1",
             strength: 1.2,
             variants: 2,
             gates: ["form:spear", "shield"],
@@ -808,8 +793,8 @@ export function createKamifudaSimulation({
           {
             id: "crossfire_rekka",
             kind: "bombard",
-            name: "火挟",
-            stage: "烈二",
+            nameKey: "encounter.crossfire_rekka",
+            stageKey: "stage.hard2",
             strength: 1.25,
             variants: 2,
             gates: ["form:spiral", "tempo"],
@@ -822,8 +807,8 @@ export function createKamifudaSimulation({
           {
             id: "split_cascade",
             kind: "split",
-            name: "裂連",
-            stage: "烈三",
+            nameKey: "encounter.split_cascade",
+            stageKey: "stage.hard3",
             strength: 1.3,
             variants: 2,
             gates: ["form:fan", "form:drum"],
@@ -838,7 +823,7 @@ export function createKamifudaSimulation({
       },
       bossPrep: {
         normal: {
-          name: "屏風面支度",
+          nameKey: "encounter.boss_prep_2_normal",
           gates: ["form:spear", "form:spiral"],
           preview: [
             { kind: "boss_mask", nx: 0.5 },
@@ -847,7 +832,7 @@ export function createKamifudaSimulation({
           ],
         },
         hard: {
-          name: "烈・屏風面支度",
+          nameKey: "encounter.boss_prep_2_hard",
           gates: ["power", "form:spiral"],
           preview: [
             { kind: "boss_mask", nx: 0.5 },
@@ -858,8 +843,8 @@ export function createKamifudaSimulation({
       },
     },
     3: {
-      name: "宵祭",
-      subtitle: "三ノ幕",
+      nameKey: "act.3.name",
+      subtitleKey: "act.3.subtitle",
       boss: "dragon",
       sky: "#46516a",
       road: "#c9b783",
@@ -869,8 +854,8 @@ export function createKamifudaSimulation({
           {
             id: "procession",
             kind: "mixed",
-            name: "祭列",
-            stage: "起",
+            nameKey: "encounter.procession",
+            stageKey: "stage.opening",
             strength: 1.26,
             variants: 2,
             gates: ["form:drum", "power"],
@@ -884,8 +869,8 @@ export function createKamifudaSimulation({
           {
             id: "ink_corridor",
             kind: "gauntlet",
-            name: "墨路",
-            stage: "承",
+            nameKey: "encounter.ink_corridor",
+            stageKey: "stage.middle",
             strength: 1.31,
             variants: 2,
             gates: ["form:spiral", "shield"],
@@ -898,8 +883,8 @@ export function createKamifudaSimulation({
           {
             id: "three_claps",
             kind: "elite",
-            name: "三拍",
-            stage: "結",
+            nameKey: "encounter.three_claps",
+            stageKey: "stage.close",
             strength: 1.36,
             variants: 2,
             gates: ["count", "power"],
@@ -916,8 +901,8 @@ export function createKamifudaSimulation({
           {
             id: "procession_rekka",
             kind: "mixed",
-            name: "烈祭列",
-            stage: "烈一",
+            nameKey: "encounter.procession_rekka",
+            stageKey: "stage.hard1",
             strength: 1.35,
             variants: 2,
             gates: ["form:drum", "power"],
@@ -932,8 +917,8 @@ export function createKamifudaSimulation({
           {
             id: "ink_maze",
             kind: "gauntlet",
-            name: "墨迷路",
-            stage: "烈二",
+            nameKey: "encounter.ink_maze",
+            stageKey: "stage.hard2",
             strength: 1.42,
             variants: 2,
             gates: ["form:spiral", "shield"],
@@ -947,8 +932,8 @@ export function createKamifudaSimulation({
           {
             id: "final_rekka",
             kind: "elite",
-            name: "烈三拍",
-            stage: "大結",
+            nameKey: "encounter.final_rekka",
+            stageKey: "stage.hardClose",
             strength: 1.5,
             variants: 2,
             gates: ["count", "power"],
@@ -964,7 +949,7 @@ export function createKamifudaSimulation({
       },
       bossPrep: {
         normal: {
-          name: "紙龍支度",
+          nameKey: "encounter.boss_prep_3_normal",
           gates: ["form:drum", "form:spiral"],
           preview: [
             { kind: "boss_dragon", nx: 0.5 },
@@ -973,7 +958,7 @@ export function createKamifudaSimulation({
           ],
         },
         hard: {
-          name: "烈・紙龍支度",
+          nameKey: "encounter.boss_prep_3_hard",
           gates: ["power", "shield"],
           preview: [
             { kind: "boss_dragon", nx: 0.5 },
@@ -999,19 +984,24 @@ export function createKamifudaSimulation({
   };
 
   const CHARM_POOL = {
-    knot: { icon: "結", name: "早結び", desc: "門の三つ目が少し近くなる。", tag: "gate" },
-    bell: { icon: "鈴", name: "無傷の鈴", desc: "無傷の波ごとに結界を一枚。", tag: "defense" },
-    fox: { icon: "狐", name: "狐面", desc: "すれ違いと破壊で祭気が増える。", tag: "stamp" },
+    knot: { icon: "結", nameKey: "charm.knot.name", descKey: "charm.knot.desc", tag: "gate" }, // i18n-allow-ornament: charm crest
+    bell: { icon: "鈴", nameKey: "charm.bell.name", descKey: "charm.bell.desc", tag: "defense" }, // i18n-allow-ornament: charm crest
+    fox: { icon: "狐", nameKey: "charm.fox.name", descKey: "charm.fox.desc", tag: "stamp" }, // i18n-allow-ornament: charm crest
     rice: {
-      icon: "米",
-      name: "振舞い飯",
-      desc: "幕替わりで紙衆がまとまって戻る。",
+      icon: "米", // i18n-allow-ornament: charm crest
+      nameKey: "charm.rice.name",
+      descKey: "charm.rice.desc",
       tag: "recovery",
     },
-    ink: { icon: "墨", name: "濃墨", desc: "満門への余剰射撃を祭気へ。", tag: "gate" },
-    crane: { icon: "鶴", name: "折鶴", desc: "一度だけ壊滅を耐える。", tag: "defense" },
-    echo: { icon: "響", name: "残響", desc: "祭印のあと短く連射が続く。", tag: "stamp" },
-    banner: { icon: "旗", name: "大幟", desc: "強敵を倒すと紙衆が戻る。", tag: "recovery" },
+    ink: { icon: "墨", nameKey: "charm.ink.name", descKey: "charm.ink.desc", tag: "gate" }, // i18n-allow-ornament: charm crest
+    crane: { icon: "鶴", nameKey: "charm.crane.name", descKey: "charm.crane.desc", tag: "defense" }, // i18n-allow-ornament: charm crest
+    echo: { icon: "響", nameKey: "charm.echo.name", descKey: "charm.echo.desc", tag: "stamp" }, // i18n-allow-ornament: charm crest
+    banner: {
+      icon: "旗", // i18n-allow-ornament: charm crest
+      nameKey: "charm.banner.name",
+      descKey: "charm.banner.desc",
+      tag: "recovery",
+    },
   };
 
   const GATE_THRESHOLDS = [34, 78, 126];
@@ -1020,10 +1010,58 @@ export function createKamifudaSimulation({
   const TEMPO_GAIN = [0.1, 0.2, 0.32, 0.46];
   const SHIELD_GAIN = [1, 2, 3, 4];
   const RECOVER_GAIN = [2, 4, 7, 11];
-  const GRADE_ORDER = ["木", "朱", "銀", "金"];
+  const GRADE_ORDER = ["wood", "vermilion", "silver", "gold"];
 
   function actData() {
     return ACT_DATA[state.act] || ACT_DATA[3];
+  }
+  function actName(act = state.act) {
+    return t(`act.${Math.min(3, act)}.name`);
+  }
+  function actSubtitle(act = state.act) {
+    return t(`act.${Math.min(3, act)}.subtitle`);
+  }
+  function encounterName(encounter) {
+    return encounter?.nameKey ? t(encounter.nameKey) : "";
+  }
+  function encounterStage(encounter) {
+    return encounter?.stageKey ? t(encounter.stageKey) : "";
+  }
+  function hardPrefix() {
+    return state.difficulty === "hard" ? t("canvas.hardPrefix") : "";
+  }
+  function renderCanvasStatus() {
+    const { kind, data } = canvasStatus;
+    if (kind === "title") UI.canvasStatus.textContent = t("status.title");
+    else if (kind === "act") {
+      UI.canvasStatus.textContent = t("status.act", {
+        act: actSubtitle(data.act),
+        name: actName(data.act),
+      });
+    } else if (kind === "phase") {
+      UI.canvasStatus.textContent = t("status.phase", {
+        stage: encounterStage(data.encounter),
+        name: encounterName(data.encounter),
+      });
+    } else if (kind === "boss") {
+      UI.canvasStatus.textContent = t("status.boss", { name: t(`boss.${data.type}`) });
+    } else if (kind === "upgrade") UI.canvasStatus.textContent = t("status.upgrade");
+    else if (kind === "damage") UI.canvasStatus.textContent = t("status.damage", data);
+    else if (kind === "ward") UI.canvasStatus.textContent = t("status.ward", data);
+    else if (kind === "paused") UI.canvasStatus.textContent = t("status.paused");
+    else if (kind === "resumed") UI.canvasStatus.textContent = t("status.resumed");
+    else if (kind === "result") {
+      UI.canvasStatus.textContent = data.clear
+        ? t("status.resultClear", { score: pretty(data.score) })
+        : t("status.resultFail", {
+            score: pretty(data.score),
+            cause: deathCauseText(data.cause),
+          });
+    } else throw new RangeError(`Unknown Kamifuda canvas status: ${String(kind)}`);
+  }
+  function announceCanvas(kind, data = {}) {
+    canvasStatus = { kind, data };
+    renderCanvasStatus();
   }
   function currentRecord() {
     return state.profile.records[state.difficulty] || state.profile.records.normal;
@@ -1049,8 +1087,8 @@ export function createKamifudaSimulation({
       id: `boss_prep_${state.act}_${state.difficulty}`,
       kind: "bossPrep",
       bossPrep: true,
-      name: source?.name || "大鬼支度",
-      stage: "支度",
+      nameKey: source.nameKey,
+      stageKey: "stage.prepare",
       strength: 1,
       gates: (source?.gates || ["power", "shield"]).slice(),
       preview: (source?.preview || []).map((item) => ({ ...item })),
@@ -1141,7 +1179,6 @@ export function createKamifudaSimulation({
   }
 
   function startRun(seed = null, difficulty = "normal") {
-    initAudio();
     resetInput();
     state.generation++;
     const chosenMode = difficulty === "hard" ? "hard" : "normal";
@@ -1177,11 +1214,13 @@ export function createKamifudaSimulation({
     document.documentElement.classList.toggle("hard-run", chosenMode === "hard");
     state.mode = "playing";
     showOverlay(null);
+    canvas.focus({ preventScroll: true });
+    announceCanvas("act", { act: 1 });
     setPhase("actIntro", chosenMode === "hard" ? 1.34 : 1.48);
     addText(
       0.5,
       state.viewH * 0.43,
-      chosenMode === "hard" ? `烈・${ACT_DATA[1].subtitle}` : ACT_DATA[1].subtitle,
+      `${chosenMode === "hard" ? `${t("mode.hard")} · ` : ""}${actSubtitle(1)}`,
       COLORS.redDark,
       1.35,
       38,
@@ -1200,14 +1239,18 @@ export function createKamifudaSimulation({
     document.documentElement.classList.remove("hard-run");
     refreshModeButtons();
     showOverlay("title");
+    announceCanvas("title");
+    UI.start.focus({ preventScroll: true });
     updateControls();
   }
 
   function pauseGame() {
     if (!["playing", "boss", "transition"].includes(state.mode)) return;
+    uiProjection.rememberFocus();
     state.resumeMode = state.mode;
     state.mode = "paused";
     showOverlay("pause");
+    announceCanvas("paused");
     updateControls();
   }
 
@@ -1215,6 +1258,8 @@ export function createKamifudaSimulation({
     if (state.mode !== "paused") return;
     state.mode = state.resumeMode || "playing";
     showOverlay(null);
+    announceCanvas("resumed");
+    uiProjection.restoreFocus(canvas);
     state.lastTime = performance.now();
     state.accumulator = 0;
     updateControls();
@@ -1326,12 +1371,13 @@ export function createKamifudaSimulation({
       addText(
         0.5,
         state.layout.hudH + 124,
-        encounter.name || "",
+        encounterName(encounter),
         COLORS.redDark,
         0.92,
         25,
         "center",
       );
+    announceCanvas("phase", { encounter });
     sfx("gate", encounter.bossPrep ? 1 : 0.8, encounter.bossPrep ? 0.82 : 1);
     updateControls();
   }
@@ -1367,12 +1413,13 @@ export function createKamifudaSimulation({
     addText(
       0.5,
       state.layout.hudH + 94,
-      `${encounter.stage || ""}・${encounter.name || ""}`,
+      `${encounterStage(encounter)}・${encounterName(encounter)}`,
       state.act === 3 ? COLORS.paperHi : COLORS.ink2,
       0.85,
       21,
       "center",
     );
+    announceCanvas("phase", { encounter });
   }
 
   function finishWave() {
@@ -1380,7 +1427,7 @@ export function createKamifudaSimulation({
     if (!state.currentEncounter.damaged) {
       state.stats.wavesNoHit++;
       addMomentum(state.difficulty === "hard" ? 9 : 12, "perfect");
-      addScore(250 + state.act * 100, 0.5, state.viewH * 0.28, "無傷");
+      addScore(250 + state.act * 100, 0.5, state.viewH * 0.28, t("canvas.noHit"));
       if (state.player.charms.includes("bell")) {
         state.player.shield = Math.min(state.player.maxShield, state.player.shield + 1);
         sfx("shield", 0.7);
@@ -1402,6 +1449,7 @@ export function createKamifudaSimulation({
     state.enemyShots.length = 0;
     state.hazards.length = 0;
     state.currentEncounter = null;
+    announceCanvas("boss", { type: actData().boss });
     sfx("boss", 1.1);
     haptic([40, 35, 70]);
     updateControls();
@@ -1418,7 +1466,7 @@ export function createKamifudaSimulation({
       p.readyTime = 0;
       sfx("ready", 1);
       haptic(25);
-      toast("祭印が満ちた");
+      toast(t("toast.stampReady"));
     }
     updateControls();
   }
@@ -1490,8 +1538,14 @@ export function createKamifudaSimulation({
   }
 
   function gateName(option) {
-    if (option.kind === "form") return FORM[option.form].name;
-    return { count: "紙衆", power: "筆勢", tempo: "拍子", shield: "結界" }[option.kind] || "";
+    if (option.kind === "form") return t(FORM[option.form].nameKey);
+    const key = {
+      count: "gate.count",
+      power: "gate.power",
+      tempo: "gate.tempo",
+      shield: "gate.shield",
+    }[option.kind];
+    return key ? t(key) : "";
   }
 
   function applyGate(gate) {
@@ -1510,7 +1564,15 @@ export function createKamifudaSimulation({
       const before = p.power;
       p.power = Math.min(14, p.power + POWER_GAIN[rank]);
       overflow = Math.max(0, before + POWER_GAIN[rank] - 14) * 5;
-      addText(p.nx, p.y - 88, `筆 +${p.power - before}`, option.style.color, 1.05, 30, "world");
+      addText(
+        p.nx,
+        p.y - 88,
+        t("canvas.float.power", { value: p.power - before }),
+        option.style.color,
+        1.05,
+        30,
+        "world",
+      );
     } else if (option.kind === "tempo") {
       const before = p.tempo;
       p.tempo = Math.min(2.8, p.tempo + TEMPO_GAIN[rank]);
@@ -1518,7 +1580,7 @@ export function createKamifudaSimulation({
       addText(
         p.nx,
         p.y - 88,
-        `拍 +${Math.round((p.tempo - before) * 100)}%`,
+        t("canvas.float.tempo", { value: Math.round((p.tempo - before) * 100) }),
         option.style.color,
         1.05,
         28,
@@ -1533,7 +1595,11 @@ export function createKamifudaSimulation({
       addText(
         p.nx,
         p.y - 88,
-        `結 +${p.shield - beforeShield}${p.count > beforeCount ? `　衆+${p.count - beforeCount}` : ""}`,
+        t("canvas.float.shield", {
+          shield: p.shield - beforeShield,
+          crowd:
+            p.count > beforeCount ? t("canvas.float.crowd", { value: p.count - beforeCount }) : "",
+        }),
         option.style.color,
         1.08,
         27,
@@ -1556,7 +1622,7 @@ export function createKamifudaSimulation({
       addText(
         p.nx,
         p.y - 88,
-        `${FORM[form].icon} ${"ⅠⅡⅢ"[p.mastery[form] - 1] || ""}${p.count > beforeCount ? `　衆+${p.count - beforeCount}` : ""}`,
+        `${FORM[form].icon} ${"ⅠⅡⅢ"[p.mastery[form] - 1] || ""}${p.count > beforeCount ? t("canvas.float.crowd", { value: p.count - beforeCount }) : ""}`,
         FORM[form].color,
         1.08,
         31,
@@ -1565,7 +1631,7 @@ export function createKamifudaSimulation({
     }
     if (overflow > 0) {
       addMomentum(Math.min(24, overflow), "overflow");
-      addScore(overflow * 12, p.nx, p.y - 122, "余");
+      addScore(overflow * 12, p.nx, p.y - 122, t("canvas.float.overflow"));
     }
     state.stats.gateHistory.push({
       act: state.act,
@@ -1595,7 +1661,7 @@ export function createKamifudaSimulation({
     const chosen = state.gates.find((g) => g.lane === lane);
     if (centralMiss || !chosen) {
       state.stats.missedGates++;
-      addText(0.5, state.layout.playerY - 88, "空振り", COLORS.ink2, 0.9, 25, "world");
+      addText(0.5, state.layout.playerY - 88, t("canvas.miss"), COLORS.ink2, 0.9, 25, "world");
       sfx("fail", 0.5);
     } else {
       applyGate(chosen);
@@ -2022,7 +2088,7 @@ export function createKamifudaSimulation({
         phase: i,
       });
     }
-    addText(source.nx, source.y + 34, "鼓", COLORS.ochre, 0.55, 20, "world");
+    addText(source.nx, source.y + 34, t("canvas.float.drum"), COLORS.ochre, 0.55, 20, "world");
     addParticle(source.nx, source.y, COLORS.ochre, 10, 0.65);
     sfx("drum", 0.45, 0.88);
   }
@@ -2158,7 +2224,7 @@ export function createKamifudaSimulation({
     if (Math.abs(d - orbit) < shot.radius + 13 + mastery * 2) {
       shot.dead = true;
       addMomentum(3.5, "destroy");
-      addScore(35, shot.nx, shot.y, "截");
+      addScore(35, shot.nx, shot.y, t("canvas.float.cut"));
       addParticle(shot.nx, shot.y, COLORS.green, 9, 0.8);
       sfx("shield", 0.45, 1.3);
       return true;
@@ -2186,7 +2252,7 @@ export function createKamifudaSimulation({
     for (const shot of state.enemyShots) {
       if (!shot.dead) {
         shot.dead = true;
-        addScore(20, shot.nx, shot.y, "祓");
+        addScore(20, shot.nx, shot.y, t("canvas.float.purify"));
       }
     }
     for (const hazard of state.hazards) if (hazard.kind !== "target") hazard.dead = true;
@@ -2200,7 +2266,7 @@ export function createKamifudaSimulation({
       enemy.y -= 28;
     }
     addParticle(p.nx, p.y - 45, COLORS.red, 56, 1.65, "paper");
-    addText(p.nx, p.y - 110, "祭", COLORS.red, 1.0, 56, "world");
+    addText(p.nx, p.y - 110, t("canvas.float.stamp"), COLORS.red, 1.0, 56, "world");
     updateControls();
     return true;
   }
@@ -2211,10 +2277,11 @@ export function createKamifudaSimulation({
     if (p.shield > 0) {
       p.shield--;
       p.invuln = 0.18;
-      addText(p.nx, p.y - 72, "結", COLORS.green, 0.6, 27, "world");
+      addText(p.nx, p.y - 72, t("canvas.float.ward"), COLORS.green, 0.6, 27, "world");
       addParticle(p.nx, p.y - 20, COLORS.green, 13, 0.8);
       sfx("shield", 0.8);
       haptic(18);
+      announceCanvas("ward", { remaining: p.shield });
       return;
     }
     const before = p.count;
@@ -2232,13 +2299,14 @@ export function createKamifudaSimulation({
     burstFollowers(p.nx, p.y - 10, Math.max(6, lost));
     sfx("hurt", 0.9);
     haptic([35, 25, 35]);
+    announceCanvas("damage", { lost, remaining: p.count });
 
     if (p.count <= 0 && p.charms.includes("crane") && !p.craneUsed) {
       p.craneUsed = true;
       p.count = 1;
       p.shield = Math.min(p.maxShield, 3);
       p.invuln = 1.5;
-      addText(p.nx, p.y - 110, "鶴", COLORS.white, 1.2, 44, "world");
+      addText(p.nx, p.y - 110, t("canvas.float.crane"), COLORS.white, 1.2, 44, "world");
       addParticle(p.nx, p.y - 25, COLORS.white, 32, 1.2);
       return;
     }
@@ -2288,7 +2356,7 @@ export function createKamifudaSimulation({
         addText(
           enemy.nx,
           enemy.y + 20,
-          `旗+${state.player.count - before}`,
+          t("canvas.float.banner", { value: state.player.count - before }),
           COLORS.indigo,
           0.55,
           18,
@@ -2379,7 +2447,7 @@ export function createKamifudaSimulation({
     addText(
       0.5,
       state.viewH * 0.31,
-      `${state.difficulty === "hard" ? "烈・" : ""}${type === "cart" ? "鬼車" : type === "mask" ? "屏風面" : "紙龍"}`,
+      `${state.difficulty === "hard" ? t("canvas.hardPrefix") : ""}${t(`boss.${type}`)}`,
       COLORS.redDark,
       1.15,
       43,
@@ -2584,13 +2652,29 @@ export function createKamifudaSimulation({
 
     if (boss.rage >= 0.52 && boss.pressureStage < 1) {
       boss.pressureStage = 1;
-      addText(boss.nx, boss.y + boss.radius + 48, "迫", COLORS.redDark, 0.95, 34, "world");
+      addText(
+        boss.nx,
+        boss.y + boss.radius + 48,
+        t("canvas.float.pressure"),
+        COLORS.redDark,
+        0.95,
+        34,
+        "world",
+      );
       sfx("boss", 0.7, 0.72);
     }
     if (boss.fightTime >= boss.deadline && boss.pressureStage < 2) {
       boss.pressureStage = 2;
       boss.attackTimer = Math.min(boss.attackTimer, 0.22);
-      addText(boss.nx, boss.y + boss.radius + 54, "鬼迫", COLORS.redDark, 1.15, 42, "world");
+      addText(
+        boss.nx,
+        boss.y + boss.radius + 54,
+        t("canvas.float.oniPressure"),
+        COLORS.redDark,
+        1.15,
+        42,
+        "world",
+      );
       state.shake = Math.max(state.shake, 10);
       sfx("boom", 0.8, 0.7);
       haptic([45, 25, 55]);
@@ -2629,7 +2713,15 @@ export function createKamifudaSimulation({
       boss.attackTimer = 0.04;
       state.shake = reducedMotion() ? 2 : 11;
       state.flash = 0.32;
-      addText(boss.nx, boss.y + 64, `折 ${boss.phaseStage + 1}`, COLORS.ochre, 0.9, 28, "world");
+      addText(
+        boss.nx,
+        boss.y + 64,
+        t("canvas.float.fold", { value: boss.phaseStage + 1 }),
+        COLORS.ochre,
+        0.9,
+        28,
+        "world",
+      );
       sfx("tier", 0.75, 0.8 + boss.phaseStage * 0.12);
     }
 
@@ -2681,7 +2773,7 @@ export function createKamifudaSimulation({
         addText(
           0.5,
           state.viewH * 0.52,
-          `米 +${state.player.count - before}`,
+          t("canvas.float.rice", { value: state.player.count - before }),
           COLORS.green,
           0.9,
           27,
@@ -2695,9 +2787,7 @@ export function createKamifudaSimulation({
     addText(
       0.5,
       state.viewH * 0.43,
-      state.difficulty === "hard"
-        ? `烈・${ACT_DATA[state.act].subtitle}`
-        : ACT_DATA[state.act].subtitle,
+      `${hardPrefix()}${actSubtitle()}`,
       COLORS.redDark,
       1.3,
       38,
@@ -2748,7 +2838,11 @@ export function createKamifudaSimulation({
     state.boss = null;
     state.mode = "choice";
     showOverlay("choice");
-    UI.choiceActLabel.textContent = `${state.difficulty === "hard" ? "烈・" : ""}${actKanji[state.act - 1]}ノ幕　結`;
+    announceCanvas("upgrade");
+    UI.choiceActLabel.textContent = t("choice.act", {
+      hard: state.difficulty === "hard" ? t("canvas.hardPrefix") : "",
+      act: t(`act.number.${state.act}`),
+    });
     UI.choiceList.innerHTML = "";
     const options = makeCharmOptions();
     options.forEach((id) => {
@@ -2757,34 +2851,37 @@ export function createKamifudaSimulation({
       button.type = "button";
       button.className = "charm-card";
       button.dataset.charm = id;
-      button.innerHTML = `${charmVisualMarkup(id, charm)}<h3>${charm.name}</h3><p>${charm.desc}</p><span class="charm-pips" aria-hidden="true"><i></i><i></i><i></i></span>`;
+      button.innerHTML = `${charmVisualMarkup(id, charm)}<h3>${t(charm.nameKey)}</h3><p>${t(charm.descKey)}</p><span class="charm-pips" aria-hidden="true"><i></i><i></i><i></i></span>`;
       UI.choiceList.appendChild(button);
     });
+    uiProjection.focusOverlay("choice", UI.choiceList.querySelector("button"));
     updateControls();
   }
 
   function deathCauseText(cause) {
-    const map = {
-      chaff: "群れに呑まれた",
-      fast: "駆け鬼に抜かれた",
-      armor: "鎧鬼を止め切れなかった",
-      shield: "盾鬼に道を割られた",
-      thrower: "投げ札を受けた",
-      splitter: "裂け鬼に囲まれた",
-      charger: "突進の印を避け損ねた",
-      drummer: "鼓鬼の増援に押された",
-      mite: "小鬼を逃した",
-      paperBomb: "紙火を受けた",
-      bossFire: "大技を受けた",
-      sweep: "予兆の外へ逃げ遅れた",
-      boss: "大鬼に押し切られた",
-      press: "大鬼の迫りを止め切れなかった",
-    };
-    return map[cause] || "紙衆が尽きた";
+    if (cause === null || cause === undefined) return t("death.unknown");
+    const key = {
+      chaff: "death.chaff",
+      fast: "death.fast",
+      armor: "death.armor",
+      shield: "death.shield",
+      thrower: "death.thrower",
+      splitter: "death.splitter",
+      charger: "death.charger",
+      drummer: "death.drummer",
+      mite: "death.mite",
+      paperBomb: "death.paperBomb",
+      bossFire: "death.bossFire",
+      sweep: "death.sweep",
+      boss: "death.boss",
+      press: "death.press",
+    }[cause];
+    if (!key) throw new RangeError(`Unknown Kamifuda defeat cause: ${String(cause)}`);
+    return t(key);
   }
 
   function gradeResult(clear) {
-    if (!clear) return state.stats.actReached >= 3 ? "朱" : "木";
+    if (!clear) return state.stats.actReached >= 3 ? "vermilion" : "wood";
     const perfectRatio = state.stats.waves ? state.stats.wavesNoHit / state.stats.waves : 0;
     const gateRatio = state.stats.gateHistory.length
       ? state.stats.tier3Gates / state.stats.gateHistory.length
@@ -2800,7 +2897,7 @@ export function createKamifudaSimulation({
     const goldStamps = state.difficulty === "hard" ? 6 : 3;
     const goldGateRatio = state.difficulty === "hard" ? 0.72 : 0.66;
     const mastered = state.stats.manualStamps >= goldStamps && gateRatio >= goldGateRatio;
-    return measure >= gold && mastered ? "金" : measure >= silver ? "銀" : "朱";
+    return measure >= gold && mastered ? "gold" : measure >= silver ? "silver" : "vermilion";
   }
 
   function endRun(clear, cause = null) {
@@ -2841,9 +2938,47 @@ export function createKamifudaSimulation({
     UI.hardStart.classList.toggle("is-locked", !unlocked);
     UI.hardStart.setAttribute(
       "aria-label",
-      unlocked ? "烈祭を始める" : "百鬼祭陣を一度踏破すると烈祭が開く",
+      t(unlocked ? "title.hardStartLabel" : "title.hardLockedLabel"),
     );
-    UI.hardHint.textContent = unlocked ? "独立高難度" : "踏破で開く";
+    UI.hardHint.textContent = t(unlocked ? "title.hardUnlocked" : "title.hardLocked");
+  }
+
+  function renderResult(r) {
+    const openedHard = r.openedHard === true;
+    UI.resultSeal.textContent = t(
+      r.clear
+        ? state.difficulty === "hard"
+          ? "grade.vermilion"
+          : "result.sealComplete"
+        : "result.sealScattered",
+    );
+    UI.resultMode.textContent = t(modeRules().labelKey);
+    UI.resultMode.classList.toggle("is-hard", state.difficulty === "hard");
+    UI.resultKicker.textContent = r.clear
+      ? t("result.clearKicker", { mode: t(modeRules().labelKey) })
+      : t("result.failKicker", { act: actSubtitle(Math.min(3, state.stats.actReached)) });
+    UI.resultTitle.textContent = r.clear
+      ? t(
+          openedHard
+            ? "result.hardOpened"
+            : state.difficulty === "hard"
+              ? "result.hardClear"
+              : "result.clear",
+        )
+      : t("result.fail");
+    UI.resultGrade.textContent = t(`grade.${r.grade}`);
+    UI.resultStats.innerHTML = `
+      <div class="result-stat"><b>${pretty(r.score)}</b><span>${t("result.score")}</span></div>
+      <div class="result-stat"><b>${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, "0")}</b><span>${t("result.time")}</span></div>
+      <div class="result-stat"><b>${state.stats.wavesNoHit}/${state.stats.waves}</b><span>${t("result.noHit")}</span></div>
+      <div class="result-stat"><b>+${r.seals}</b><span>${t("result.seals")}</span></div>`;
+    UI.resultCause.textContent = r.clear
+      ? t("result.summary", {
+          unlock: openedHard ? t("result.unlockPrefix") : "",
+          gates: state.stats.tier3Gates,
+          stamps: state.stats.manualStamps,
+        })
+      : deathCauseText(r.cause);
   }
 
   function finalizeResult() {
@@ -2875,29 +3010,9 @@ export function createKamifudaSimulation({
     unlockSkins();
     saveProfile();
     refreshModeButtons();
-
-    UI.resultSeal.textContent = r.clear ? (state.difficulty === "hard" ? "烈" : "了") : "散";
-    UI.resultMode.textContent = modeRules().label;
-    UI.resultMode.classList.toggle("is-hard", state.difficulty === "hard");
-    UI.resultKicker.textContent = r.clear
-      ? `${modeRules().label}　踏破`
-      : `${ACT_DATA[Math.min(3, state.stats.actReached)].subtitle}　道半ば`;
-    UI.resultTitle.textContent = r.clear
-      ? openedHard
-        ? "烈の縄が、ほどけた"
-        : state.difficulty === "hard"
-          ? "烈祭を、鎮めた"
-          : "祭は、走り切った"
-      : "紙衆は尽きた";
-    UI.resultGrade.textContent = r.grade;
-    UI.resultStats.innerHTML = `
-      <div class="result-stat"><b>${pretty(r.score)}</b><span>得点</span></div>
-      <div class="result-stat"><b>${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, "0")}</b><span>道中</span></div>
-      <div class="result-stat"><b>${state.stats.wavesNoHit}/${state.stats.waves}</b><span>無傷の波</span></div>
-      <div class="result-stat"><b>+${gained}</b><span>印</span></div>`;
-    UI.resultCause.textContent = r.clear
-      ? `${openedHard ? "烈祭　解放　／　" : ""}門・参印 ${state.stats.tier3Gates}　祭印 ${state.stats.manualStamps}`
-      : deathCauseText(r.cause);
+    r.openedHard = openedHard;
+    renderResult(r);
+    announceCanvas("result", { clear: r.clear, score: r.score, cause: r.cause });
     state.mode = "result";
     showOverlay("result");
     updateControls();
@@ -3006,7 +3121,7 @@ export function createKamifudaSimulation({
     if (event.type === "beat") {
       state.currentEncounter.lastBeat = event.index;
       state.stats.beatsSeen++;
-      const mark = ["一", "二", "三", "結"][event.index] || "拍";
+      const mark = t(`canvas.beat.${event.index + 1}`);
       addText(
         0.5,
         state.layout.hudH + 122,
@@ -3186,7 +3301,7 @@ export function createKamifudaSimulation({
   function registerNearMiss(nx, y) {
     state.stats.nearMisses++;
     addMomentum(4.2, "near");
-    addScore(45, nx, y, "際");
+    addScore(45, nx, y, t("canvas.float.edge"));
     sfx("near", 0.34, 1.1);
   }
 
@@ -3239,7 +3354,15 @@ export function createKamifudaSimulation({
               maxLife: 0.76,
               dead: false,
             });
-            addText(enemy.lockedNx, p.y - 90, "矢", COLORS.redDark, 0.45, 22, "world");
+            addText(
+              enemy.lockedNx,
+              p.y - 90,
+              t("canvas.float.arrow"),
+              COLORS.redDark,
+              0.45,
+              22,
+              "world",
+            );
             sfx("near", 0.24, 0.72);
           }
           if (enemy.chargeTimer <= 0) {
@@ -3645,7 +3768,7 @@ export function createKamifudaSimulation({
     ctx.font = "900 15px serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("祭", 0, 2);
+    ctx.fillText("祭", 0, 2); // i18n-allow-ornament: festival stamp face
     ctx.restore();
   }
 
@@ -4035,7 +4158,7 @@ export function createKamifudaSimulation({
     const h = state.layout.gateH;
     const selected = gate.id === state.focusGateId && state.phase === "gate";
     const alpha = gate.dead ? 0.2 : selected ? 1 : 0.66;
-    const pulse = selected ? 1 + Math.sin(state.renderTime * 6) * 0.012 : 1;
+    const pulse = selected && !reducedMotion() ? 1 + Math.sin(state.renderTime * 6) * 0.012 : 1;
     ctx.save();
     ctx.translate(gate.x, gate.y);
     ctx.scale(pulse, pulse);
@@ -4237,7 +4360,7 @@ export function createKamifudaSimulation({
     for (const s of state.enemyShots) {
       ctx.save();
       ctx.translate(s.x, s.y);
-      ctx.rotate(state.renderTime * 3 + s.nx * 5);
+      ctx.rotate((reducedMotion() ? 0 : state.renderTime * 3) + s.nx * 5);
       ctx.fillStyle = s.kind === "bossFire" ? COLORS.red : COLORS.violet;
       drawPaperPolygon(
         [
@@ -4340,9 +4463,11 @@ export function createKamifudaSimulation({
     ctx.translate(enemy.x, enemy.y);
     ctx.scale(entry, entry);
     ctx.rotate(
-      enemy.kind === "fast"
-        ? Math.sin(state.renderTime * 8 + enemy.phase) * 0.25
-        : Math.sin(state.renderTime * 3 + enemy.phase) * 0.06,
+      reducedMotion()
+        ? 0
+        : enemy.kind === "fast"
+          ? Math.sin(state.renderTime * 8 + enemy.phase) * 0.25
+          : Math.sin(state.renderTime * 3 + enemy.phase) * 0.06,
     );
     ctx.shadowColor = "rgba(33,27,23,.22)";
     ctx.shadowBlur = state.quality.level === "low" ? 0 : 5;
@@ -4502,7 +4627,7 @@ export function createKamifudaSimulation({
       ctx.lineTo(r * 0.28, -r * 0.22);
       ctx.stroke();
       if (enemy.pulses > 0) {
-        ctx.globalAlpha = 0.24 + 0.12 * Math.sin(state.renderTime * 8);
+        ctx.globalAlpha = reducedMotion() ? 0.3 : 0.24 + 0.12 * Math.sin(state.renderTime * 8);
         ctx.strokeStyle = style.accent;
         ctx.lineWidth = 4;
         ctx.beginPath();
@@ -4533,7 +4658,8 @@ export function createKamifudaSimulation({
   function drawBoss(boss) {
     const r = boss.radius;
     const flash =
-      boss.flash > 0 || (boss.stageLock > 0 && Math.floor(state.renderTime * 14) % 2 === 0);
+      boss.flash > 0 ||
+      (!reducedMotion() && boss.stageLock > 0 && Math.floor(state.renderTime * 14) % 2 === 0);
     ctx.save();
     ctx.translate(boss.x, boss.y);
     ctx.shadowColor = "rgba(20,14,12,.38)";
@@ -4596,7 +4722,11 @@ export function createKamifudaSimulation({
       ctx.lineTo(r * 0.18, 0);
       ctx.fill();
       const panelAlpha =
-        boss.shieldShift > 0 ? 0.55 + Math.sin(state.renderTime * 18) * 0.25 : 0.88;
+        boss.shieldShift > 0
+          ? reducedMotion()
+            ? 0.72
+            : 0.55 + Math.sin(state.renderTime * 18) * 0.25
+          : 0.88;
       ctx.globalAlpha = panelAlpha;
       ctx.fillStyle = COLORS.green;
       roundedRectPath(-r * 1.36, -r * 0.92, r * 0.55, r * 1.84, 5);
@@ -4614,7 +4744,7 @@ export function createKamifudaSimulation({
     } else {
       const segs = 7;
       for (let i = segs - 1; i >= 0; i--) {
-        const a = state.renderTime * 1.5 - i * 0.52;
+        const a = (reducedMotion() ? 0 : state.renderTime * 1.5) - i * 0.52;
         const x = -i * 23 + Math.sin(a) * 18;
         const y = i * 8 + Math.cos(a * 0.8) * 10;
         ctx.fillStyle = flash ? COLORS.white : i % 2 ? COLORS.redDark : COLORS.red;
@@ -4792,7 +4922,7 @@ export function createKamifudaSimulation({
         ctx.fillStyle = COLORS.paperHi;
         ctx.font = "900 13px serif";
         ctx.textAlign = "center";
-        ctx.fillText("衆", x + 11, 27);
+        ctx.fillText("衆", x + 11, 27); // i18n-allow-ornament: crowd flag crest
       }
     }
 
@@ -4805,7 +4935,8 @@ export function createKamifudaSimulation({
     if (p.form === "spiral") {
       const orbitCount = 4 + mastery * 2;
       for (let i = 0; i < orbitCount; i++) {
-        const a = state.renderTime * (2.3 + mastery * 0.3) + (i / orbitCount) * TAU;
+        const a =
+          (reducedMotion() ? 0 : state.renderTime * (2.3 + mastery * 0.3)) + (i / orbitCount) * TAU;
         const r = 44 + mastery * 7;
         ctx.save();
         ctx.translate(Math.cos(a) * r, Math.sin(a) * r * 0.48 + 10);
@@ -4827,7 +4958,7 @@ export function createKamifudaSimulation({
     }
 
     if (p.stampTimer > 0) {
-      const pulse = 62 + Math.sin(state.renderTime * 12) * 7;
+      const pulse = reducedMotion() ? 62 : 62 + Math.sin(state.renderTime * 12) * 7;
       ctx.globalAlpha = 0.2 + p.stampTimer * 0.08;
       ctx.strokeStyle = COLORS.ochre;
       ctx.lineWidth = 6;
@@ -4985,7 +5116,7 @@ export function createKamifudaSimulation({
     const top = (state.layout.safe?.top || 0) + 8;
     const safeLeft = state.layout.safe?.left || 0;
     const safeRight = state.layout.safe?.right || 0;
-    const modePrefix = state.difficulty === "hard" ? "烈・" : "";
+    const modePrefix = hardPrefix();
     if (compact) {
       const reserve = 52,
         gap = 4,
@@ -4993,24 +5124,40 @@ export function createKamifudaSimulation({
       const totalW = w - safeLeft - safeRight - reserve - 12;
       const chipW = (totalW - gap * 3) / 4;
       const h = 35;
-      drawHudChip(x0, top, chipW, h, "札", `${p.count}`, COLORS.indigo);
-      drawHudChip(x0 + (chipW + gap), top, chipW, h, "筆", `${p.power}`, COLORS.red);
+      drawHudChip(x0, top, chipW, h, t("canvas.hud.count"), `${p.count}`, COLORS.indigo);
+      drawHudChip(
+        x0 + (chipW + gap),
+        top,
+        chipW,
+        h,
+        t("canvas.hud.power"),
+        `${p.power}`,
+        COLORS.red,
+      );
       drawHudChip(
         x0 + (chipW + gap) * 2,
         top,
         chipW,
         h,
-        "拍",
+        t("canvas.hud.tempo"),
         `${p.tempo.toFixed(1)}`,
         COLORS.ochre,
       );
-      drawHudChip(x0 + (chipW + gap) * 3, top, chipW, h, "結", `${p.shield}`, COLORS.green);
+      drawHudChip(
+        x0 + (chipW + gap) * 3,
+        top,
+        chipW,
+        h,
+        t("canvas.hud.shield"),
+        `${p.shield}`,
+        COLORS.green,
+      );
       ctx.fillStyle = state.difficulty === "hard" ? COLORS.redDark : COLORS.ink;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.font = "900 12px sans-serif";
       ctx.fillText(
-        `${modePrefix}${ACT_DATA[state.act].subtitle}・${ACT_DATA[state.act].name}`,
+        t("canvas.actCompact", { hard: modePrefix, act: actSubtitle(), name: actName() }),
         safeLeft + 8,
         top + 53,
       );
@@ -5027,23 +5174,39 @@ export function createKamifudaSimulation({
         chipW = 92,
         gap = 7,
         x0 = safeLeft + 14;
-      drawHudChip(x0, top, chipW, h, "札", `${p.count}`, COLORS.indigo);
-      drawHudChip(x0 + (chipW + gap), top, chipW, h, "筆", `${p.power}`, COLORS.red);
+      drawHudChip(x0, top, chipW, h, t("canvas.hud.count"), `${p.count}`, COLORS.indigo);
+      drawHudChip(
+        x0 + (chipW + gap),
+        top,
+        chipW,
+        h,
+        t("canvas.hud.power"),
+        `${p.power}`,
+        COLORS.red,
+      );
       drawHudChip(
         x0 + (chipW + gap) * 2,
         top,
         chipW,
         h,
-        "拍",
+        t("canvas.hud.tempo"),
         `${p.tempo.toFixed(1)}`,
         COLORS.ochre,
       );
-      drawHudChip(x0 + (chipW + gap) * 3, top, chipW, h, "結", `${p.shield}`, COLORS.green);
+      drawHudChip(
+        x0 + (chipW + gap) * 3,
+        top,
+        chipW,
+        h,
+        t("canvas.hud.shield"),
+        `${p.shield}`,
+        COLORS.green,
+      );
       ctx.fillStyle = state.difficulty === "hard" ? COLORS.redDark : COLORS.ink;
       ctx.textAlign = "center";
       ctx.font = "900 13px sans-serif";
       ctx.fillText(
-        `${modePrefix}${ACT_DATA[state.act].subtitle}　${ACT_DATA[state.act].name}`,
+        t("canvas.actWide", { hard: modePrefix, act: actSubtitle(), name: actName() }),
         state.layout.track.center,
         top + 12,
       );
@@ -5069,7 +5232,7 @@ export function createKamifudaSimulation({
     ctx.fillStyle = COLORS.ink;
     ctx.font = "800 11px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(`祭気 ${Math.floor(p.momentum)}`, meterX, meterY - 5);
+    ctx.fillText(t("canvas.momentum", { value: Math.floor(p.momentum) }), meterX, meterY - 5);
     ctx.textAlign = "right";
     ctx.fillStyle = FORM[p.form].color;
     ctx.fillText(
@@ -5154,7 +5317,7 @@ export function createKamifudaSimulation({
     ctx.font = "900 22px serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("走", tr.center, y - 21);
+    ctx.fillText("走", tr.center, y - 21); // i18n-allow-ornament: runner crest
     ctx.restore();
   }
 
@@ -5306,25 +5469,27 @@ export function createKamifudaSimulation({
     let title = "",
       sub = "";
     if (state.phase === "gate") {
-      title = state.currentEncounter?.bossPrep ? "支度" : "選札";
-      sub = state.currentEncounter?.name || "";
+      title = state.currentEncounter?.bossPrep ? t("canvas.phase.prepare") : t("canvas.phase.gate");
+      sub = encounterName(state.currentEncounter);
     } else if (state.phase === "combat") {
-      title = state.currentEncounter?.stage || "進";
-      sub = state.currentEncounter?.name || "";
+      title = encounterStage(state.currentEncounter) || t("canvas.phase.advance");
+      sub = encounterName(state.currentEncounter);
     } else if (state.phase === "bossIntro") {
-      title = "大鬼来";
-      sub = { cart: "鬼車", mask: "屏風面", dragon: "紙龍" }[ACT_DATA[state.act].boss] || "";
+      title = t("canvas.phase.boss");
+      sub = t(`boss.${ACT_DATA[state.act].boss}`);
     } else if (state.phase === "bossDefeat") {
-      title = "鎮";
-      sub = "一幕、結び";
+      title = t("canvas.phase.settle");
+      sub = t("canvas.phase.bound");
     } else if (state.phase === "waveClear") {
-      title = "破";
-      sub = "道、ひらく";
+      title = t("canvas.phase.break");
+      sub = t("canvas.phase.open");
     }
     if (!title) return;
-    const t = 1 - pulse;
-    const a = Math.sin(Math.min(1, t) * Math.PI) * clamp(pulse * 2.2, 0, 1);
-    const y = state.layout.track.top + 64 + (1 - a) * -16;
+    const progress = 1 - pulse;
+    const a = reducedMotion()
+      ? clamp(pulse * 2.2, 0, 1)
+      : Math.sin(Math.min(1, progress) * Math.PI) * clamp(pulse * 2.2, 0, 1);
+    const y = state.layout.track.top + 64 + (reducedMotion() ? 0 : (1 - a) * -16);
     ctx.save();
     ctx.globalAlpha = a;
     const w = Math.min(250, state.layout.track.width * 0.62),
@@ -5434,9 +5599,36 @@ export function createKamifudaSimulation({
   }
 
   function populateSettings() {
-    UI.soundToggle.checked = !!state.profile.settings.sound;
+    const hostControls = [
+      UI.masterVolume,
+      UI.musicVolume,
+      UI.sfxVolume,
+      UI.motionToggle,
+      UI.screenShakeToggle,
+    ];
+    UI.masterVolume.value = String(hostSettings.audio.master);
+    UI.musicVolume.value = String(hostSettings.audio.music);
+    UI.sfxVolume.value = String(hostSettings.audio.sfx);
+    UI.masterVolumeValue.value = `${Math.round(hostSettings.audio.master * 100)}%`;
+    UI.musicVolumeValue.value = `${Math.round(hostSettings.audio.music * 100)}%`;
+    UI.sfxVolumeValue.value = `${Math.round(hostSettings.audio.sfx * 100)}%`;
+    UI.motionToggle.checked = hostSettings.motion.reduced;
+    UI.screenShakeToggle.checked = hostSettings.motion.screenShake;
+    UI.settingsRevision.textContent = t("settings.revision", {
+      revision: hostSettings.revision,
+    });
+    for (const control of hostControls) control.disabled = pendingHostSetting !== null;
+    if (pendingHostSetting !== null) {
+      UI.settingsStatus.dataset.state = "pending";
+      UI.settingsStatus.textContent = t("settings.pending");
+    } else if (settingsStatusKey !== null) {
+      UI.settingsStatus.dataset.state = "error";
+      UI.settingsStatus.textContent = t(settingsStatusKey);
+    } else {
+      UI.settingsStatus.dataset.state = "";
+      UI.settingsStatus.textContent = "";
+    }
     UI.hapticToggle.checked = !!state.profile.settings.haptic;
-    UI.motionToggle.checked = !!state.profile.settings.reducedMotion;
     UI.qualitySelect.value = state.profile.settings.quality;
     UI.skinSelect.innerHTML = "";
     for (const skin of SKINS) {
@@ -5444,14 +5636,41 @@ export function createKamifudaSimulation({
       const option = document.createElement("option");
       option.value = skin.id;
       option.disabled = !unlocked;
+      const skinName = t(skin.nameKey);
       option.textContent = unlocked
-        ? skin.name
+        ? skinName
         : skin.hardOnly
-          ? `${skin.name}（烈祭踏破）`
-          : `${skin.name}（印 ${skin.cost}）`;
+          ? t("skin.lockedHard", { name: skinName })
+          : t("skin.lockedSeals", { name: skinName, count: skin.cost });
       UI.skinSelect.appendChild(option);
     }
     UI.skinSelect.value = state.profile.settings.skin;
+  }
+
+  function hostSettingValue(settings, key) {
+    if (["master", "music", "sfx"].includes(key)) return settings.audio[key];
+    if (["reduced", "screenShake"].includes(key)) return settings.motion[key];
+    throw new RangeError(`Unknown Host setting: ${key}`);
+  }
+
+  function requestHostSetting(key, value) {
+    if (pendingHostSetting !== null) {
+      populateSettings();
+      return;
+    }
+    const change = ["master", "music", "sfx"].includes(key)
+      ? { audio: { [key]: value } }
+      : { motion: { [key]: value } };
+    settingsStatusKey = null;
+    pendingHostSetting = { key, value, afterRevision: hostSettings.revision };
+    populateSettings();
+    try {
+      host.requestSettingsChange(change);
+    } catch {
+      pendingHostSetting = null;
+      settingsStatusKey = "settings.requestError";
+      populateSettings();
+    }
   }
 
   function renderRecords() {
@@ -5463,19 +5682,19 @@ export function createKamifudaSimulation({
         ? `${Math.floor(rec.bestTime / 60)}:${String(Math.floor(rec.bestTime % 60)).padStart(2, "0")}`
         : "—";
     UI.recordSummary.innerHTML = `
-      <div class="record-mode-heading">百鬼祭陣</div>
+      <div class="record-mode-heading">${t("mode.normal")}</div>
       <div class="record-summary mode-records">
-        <div class="record-cell"><b>${pretty(normal.best)}</b><span>最高点</span></div>
-        <div class="record-cell"><b>${normal.clears}</b><span>踏破</span></div>
-        <div class="record-cell"><b>${timeText(normal)}</b><span>最速</span></div>
+        <div class="record-cell"><b>${pretty(normal.best)}</b><span>${t("records.best")}</span></div>
+        <div class="record-cell"><b>${normal.clears}</b><span>${t("records.clears")}</span></div>
+        <div class="record-cell"><b>${timeText(normal)}</b><span>${t("records.fastest")}</span></div>
       </div>
-      <div class="record-mode-heading is-hard">烈祭</div>
+      <div class="record-mode-heading is-hard">${t("mode.hard")}</div>
       <div class="record-summary mode-records">
-        <div class="record-cell"><b>${state.profile.unlocks.hard ? pretty(hard.best) : "—"}</b><span>最高点</span></div>
-        <div class="record-cell"><b>${state.profile.unlocks.hard ? hard.clears : "—"}</b><span>踏破</span></div>
-        <div class="record-cell"><b>${state.profile.unlocks.hard ? timeText(hard) : "封"}</b><span>最速</span></div>
+        <div class="record-cell"><b>${state.profile.unlocks.hard ? pretty(hard.best) : "—"}</b><span>${t("records.best")}</span></div>
+        <div class="record-cell"><b>${state.profile.unlocks.hard ? hard.clears : "—"}</b><span>${t("records.clears")}</span></div>
+        <div class="record-cell"><b>${state.profile.unlocks.hard ? timeText(hard) : t("records.locked")}</b><span>${t("records.fastest")}</span></div>
       </div>
-      <div class="record-mode-heading">累印 ${state.profile.records.totalSeals}</div>`;
+      <div class="record-mode-heading">${t("records.totalSeals", { count: state.profile.records.totalSeals })}</div>`;
     UI.skinGallery.innerHTML = "";
     for (const skin of SKINS) {
       const unlocked = state.profile.unlocks.skins.includes(skin.id);
@@ -5484,10 +5703,15 @@ export function createKamifudaSimulation({
       button.dataset.skin = skin.id;
       button.className = `skin-swatch${unlocked ? "" : " is-locked"}${state.profile.settings.skin === skin.id ? " is-selected" : ""}`;
       button.style.background = `linear-gradient(135deg, ${skin.paper} 0 55%, ${skin.deep} 55% 72%, ${skin.accent} 72%)`;
-      const condition = skin.hardOnly ? "烈祭踏破で解放" : `印${skin.cost}で解放`;
+      const skinName = t(skin.nameKey);
+      const condition = skin.hardOnly
+        ? t("skin.unlockHard")
+        : t("skin.unlockSeals", { count: skin.cost });
       button.setAttribute(
         "aria-label",
-        unlocked ? `${skin.name}を選ぶ` : `${skin.name}、${condition}`,
+        unlocked
+          ? t("skin.choose", { name: skinName })
+          : t("skin.lockedLabel", { name: skinName, condition }),
       );
       button.disabled = !unlocked;
       UI.skinGallery.appendChild(button);
@@ -5495,6 +5719,7 @@ export function createKamifudaSimulation({
   }
 
   function openPanel(name, returnMode) {
+    uiProjection.rememberFocus();
     state.panelReturn = returnMode || state.mode || "title";
     state.mode = name;
     if (name === "settings") populateSettings();
@@ -5509,6 +5734,7 @@ export function createKamifudaSimulation({
     const target = state.panelReturn || "title";
     state.mode = target;
     showOverlay(target === "paused" ? "pause" : target === "title" ? "title" : null);
+    uiProjection.restoreFocus(target === "paused" ? UI.pauseSettings : UI.settingsButton);
     updateControls();
     sfx("click", 0.4);
   }
@@ -5536,6 +5762,7 @@ export function createKamifudaSimulation({
     document,
     canvas,
     ui: UI,
+    focusManager: uiProjection,
     commands: {
       gameplayActive: () => ["playing", "boss", "transition"].includes(state.mode),
       hasPlayer: () => state.player !== null,
@@ -5563,6 +5790,7 @@ export function createKamifudaSimulation({
         if (state.mode === "settings") closePanel("settings");
         else if (state.mode === "records") closePanel("records");
         else if (state.mode === "paused") host.requestLifecycleChange("resume");
+        else if (["choice", "result"].includes(state.mode)) returnToTitle();
         else if (["playing", "boss", "transition"].includes(state.mode))
           host.requestLifecycleChange("pause");
       },
@@ -5574,7 +5802,7 @@ export function createKamifudaSimulation({
       startNormal: () => startRun(null, "normal"),
       startHard: () => {
         if (!state.profile.unlocks.hard) {
-          toast("百鬼祭陣を一度踏破すると開く");
+          toast(t("toast.hardLocked"));
           sfx("fail", 0.4);
           return;
         }
@@ -5590,14 +5818,10 @@ export function createKamifudaSimulation({
       retry: () => startRun(null, state.difficulty),
       closeSettings: () => closePanel("settings"),
       closeRecords: () => closePanel("records"),
-      setSound: setSoundEnabled,
+      requestHostSetting,
       setHaptics: (enabled) => {
         state.profile.settings.haptic = enabled;
         haptics.setEnabled(enabled);
-        saveProfile();
-      },
-      setReducedMotion: (enabled) => {
-        state.profile.settings.reducedMotion = enabled;
         saveProfile();
       },
       setQuality: (quality) => {
@@ -5615,14 +5839,14 @@ export function createKamifudaSimulation({
       },
       requestFullscreen: () => host.requestHostAction("fullscreen.enter"),
       resetProfile: () => {
-        if (!window.confirm("記録と紙色を初期化しますか？")) return;
+        if (!window.confirm(t("confirm.reset"))) return;
         state.profile = cloneDefaultProfile();
         saveProfile();
         applySkin("washi");
         populateSettings();
         renderRecords();
         refreshModeButtons();
-        toast("記録を初期化しました");
+        toast(t("toast.reset"));
       },
       chooseCharm: (id) => {
         if (id) selectCharm(id);
@@ -5642,8 +5866,8 @@ export function createKamifudaSimulation({
         ? {
             id: state.currentEncounter.id,
             kind: state.currentEncounter.kind,
-            name: state.currentEncounter.name,
-            stage: state.currentEncounter.stage,
+            name: encounterName(state.currentEncounter),
+            stage: encounterStage(state.currentEncounter),
             strength: state.currentEncounter.strength,
             variant: state.currentEncounter.variant,
             bossPrep: !!state.currentEncounter.bossPrep,
@@ -5720,7 +5944,7 @@ export function createKamifudaSimulation({
     };
   }
 
-  const testkit = {
+  const createTestkit = () => ({
     start: (seed, difficulty = "normal") => startRun(seed, difficulty),
     step: (seconds) => {
       const steps = Math.max(1, Math.ceil(seconds / FIXED_DT));
@@ -5766,7 +5990,7 @@ export function createKamifudaSimulation({
     setInvulnerable: (enabled) => {
       if (state.player) state.player.invuln = enabled ? 1e9 : 0;
     },
-  };
+  });
 
   state.quality.level = chooseQuality();
   unlockSkins();
@@ -5776,22 +6000,53 @@ export function createKamifudaSimulation({
   renderRecords();
   refreshModeButtons();
   showOverlay("title");
+  announceCanvas("title");
   updateControls();
   audioEngine.applyHostSettings(hostSettings.audio);
-  audioEngine.setGameEnabled(state.profile.settings.sound);
+  document.documentElement.dataset.reducedMotion = String(hostSettings.motion.reduced);
   haptics.setEnabled(state.profile.settings.haptic);
   runtime.startFrameLoop(loop);
 
-  return {
+  const api = {
     applyHostSettings(settings) {
       if (disposed) throw new Error("Kamifuda simulation is disposed.");
+      if (settings.revision <= hostSettings.revision) {
+        throw new RangeError("Kamifuda Host settings revision must strictly increase.");
+      }
+      const pending = pendingHostSetting;
       hostSettings = settings;
       audioEngine.applyHostSettings(settings.audio);
+      document.documentElement.dataset.reducedMotion = String(settings.motion.reduced);
+      pendingHostSetting = null;
+      if (pending !== null && hostSettingValue(settings, pending.key) !== pending.value) {
+        settingsStatusKey = "settings.rejected";
+      } else {
+        settingsStatusKey = null;
+      }
+      populateSettings();
       render();
     },
     applyHostLocale(locale) {
       if (disposed) throw new Error("Kamifuda simulation is disposed.");
-      document.documentElement.lang = locale.resolved;
+      i18n.setLocale(locale.resolved);
+      i18n.applyDocument(document);
+      populateSettings();
+      renderRecords();
+      refreshModeButtons();
+      if (state.mode === "choice") {
+        UI.choiceActLabel.textContent = t("choice.act", {
+          hard: state.difficulty === "hard" ? t("canvas.hardPrefix") : "",
+          act: t(`act.number.${state.act}`),
+        });
+        for (const button of UI.choiceList.querySelectorAll("[data-charm]")) {
+          const charm = CHARM_POOL[button.dataset.charm];
+          button.querySelector("h3").textContent = t(charm.nameKey);
+          button.querySelector("p").textContent = t(charm.descKey);
+        }
+      }
+      if (state.result?.finalized) renderResult(state.result);
+      renderCanvasStatus();
+      render();
     },
     releaseAllInput: resetInput,
     hostPause() {
@@ -5803,7 +6058,6 @@ export function createKamifudaSimulation({
       state.accumulator = 0;
       resumeGame();
     },
-    testkit: () => testkit,
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -5818,4 +6072,6 @@ export function createKamifudaSimulation({
       UI.skinGallery.replaceChildren();
     },
   };
+  if (__GAMEYARD_TESTKIT__) api.testkit = createTestkit;
+  return api;
 }

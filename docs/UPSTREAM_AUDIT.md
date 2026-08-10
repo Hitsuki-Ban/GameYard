@@ -1,4 +1,4 @@
-# 三个上游游戏实现审计
+# 生产游戏来源审计
 
 审计日期：2026-08-01；Issue #11 runtime 结论更新于 2026-08-02。证据来自三个仓库 `main` 的浅克隆、GitHub API、源码逐文件检查与当前生产 artifact。GameYard 已导入三个项目的固定历史，三款游戏均通过各自 adapter 进入同一个 Hub runtime catalog。
 
@@ -61,4 +61,8 @@ CrownBreaker 仍以独立 iframe 保住单体玩法、run/save schema、资源�
 
 保留 game：规则/AI/RNG、Canvas/DOM renderer、游戏 action 和手势、程序化音色/节拍、save/run schema、翻译文本、素材与确定性模拟工具。
 
-“三者都有”并不自动代表应共享。只有语义、生命周期和变化方向同时一致的能力才进入公共层。
+“多个游戏都有”并不自动代表应共享。只有语义、生命周期和变化方向同时一致的能力才进入公共层。
+
+## Kamifuda Runner
+
+Kamifuda Runner 不是仓库导入。项目所有者提供的 `games/kamifuda-runner-v4.zip` 由 `provenance/kamifuda-runner/source-snapshot.json` 与完整 inventory 固定；该来源没有 repository、Git revision 或 public license，因此记录保持三个字段为 `null`，生产 manifest 使用 `owner-provided-source-snapshot` 判别项直接绑定 record 与 archive SHA-256。原 archive 明确标记为 `owner-workspace-only`，保留在 owner 工作区而不进入版本库、CI 或发布产物；可复现门禁严格校验 manifest、record、inventory、授权文本及每个导入文件的大小和摘要。Issue #55 的 production admission 只覆盖 GameYard modular Guest 与 catalog/pipeline 输入；standalone、Python packaging helper、candidate helper 和测试材料同样明确排除。Assembler 与 release metadata 会重新校验这条证据链和 admission 状态，缺失或被篡改时整站构建失败。

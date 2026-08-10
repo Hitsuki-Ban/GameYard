@@ -84,6 +84,7 @@ async function createArtifact(root, buildId, payloadBytes, includeHeaders = true
       locales: { source: "en", supported: ["en"] },
       capabilities: [],
       provenance: {
+        kind: "repository",
         repository: "https://example.test/demo",
         revision: "0123456789abcdef0123456789abcdef01234567",
         license: "MIT",

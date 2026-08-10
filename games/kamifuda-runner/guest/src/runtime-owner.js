@@ -2,6 +2,7 @@ import { createGuestDiagnosticLog } from "@gameyard/guest-bridge";
 
 import { createAudioEngine } from "./audio.js";
 import { createHaptics } from "./haptics.js";
+import { createKamifudaI18n } from "./i18n.ts";
 import { ManagedRuntime } from "./managed-runtime.js";
 import { createRenderer } from "./renderer.js";
 import { createKamifudaSimulation } from "./simulation.js";
@@ -10,6 +11,8 @@ import { createUiProjection } from "./ui-projection.js";
 
 export function createRuntimeOwner({ targetWindow, document, bridge }) {
   const runtime = new ManagedRuntime(targetWindow);
+  const i18n = createKamifudaI18n(bridge.context.locale.resolved);
+  i18n.applyDocument(document);
   const renderer = createRenderer(document);
   const uiProjection = createUiProjection(document, targetWindow);
   const audio = createAudioEngine(targetWindow);
@@ -33,8 +36,8 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
       haptics,
       host: bridge,
       context: bridge.context,
+      i18n,
     });
-    simulation.applyHostLocale(bridge.context.locale);
   } catch (error) {
     runtime.dispose();
     haptics.dispose();
@@ -64,9 +67,21 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     applyHostSettings(settings) {
       requireSimulation().applyHostSettings(settings);
       settingsRevision = settings.revision;
+      diagnostics.record({
+        timestampMs: Date.now(),
+        level: "info",
+        code: "settings.applied",
+        message: `Applied Host settings revision ${settings.revision}.`,
+      });
     },
     applyHostLocale(locale) {
       requireSimulation().applyHostLocale(locale);
+      diagnostics.record({
+        timestampMs: Date.now(),
+        level: "info",
+        code: "locale.applied",
+        message: `Applied Host locale ${locale.resolved}.`,
+      });
     },
     setInputEnabled(enabled) {
       runtime.setInputEnabled(enabled);

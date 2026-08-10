@@ -34,6 +34,7 @@
       "additionalProperties": false,
       "required": [
         "kind",
+        "archiveAvailability",
         "archive",
         "inventory",
         "importedRoot",
@@ -43,6 +44,7 @@
       ],
       "properties": {
         "kind": { "const": "owner-provided-archive" },
+        "archiveAvailability": { "const": "owner-workspace-only" },
         "archive": { "$ref": "#/$defs/archiveEvidence" },
         "inventory": { "$ref": "#/$defs/fileEvidence" },
         "importedRoot": { "type": "string", "minLength": 1 },
@@ -78,7 +80,7 @@
       "additionalProperties": false,
       "required": ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
       "properties": {
-        "status": { "const": "source-evidence-only" },
+        "status": { "const": "production-admitted" },
         "runtimeAdmissionIssue": { "const": 55 },
         "excludedFromProductionInputs": {
           "type": "array",

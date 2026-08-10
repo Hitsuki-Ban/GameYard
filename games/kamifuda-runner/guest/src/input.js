@@ -1,4 +1,4 @@
-export function bindInput({ runtime, targetWindow, document, canvas, ui, commands }) {
+export function bindInput({ runtime, targetWindow, document, canvas, ui, focusManager, commands }) {
   const enabled = () => runtime.inputEnabled;
   const gameplayEnabled = () => enabled() && commands.gameplayActive();
 
@@ -19,6 +19,7 @@ export function bindInput({ runtime, targetWindow, document, canvas, ui, command
 
   runtime.listen(targetWindow, "keydown", (event) => {
     if (!enabled()) return;
+    if (focusManager.trapFocus(event)) return;
     const key = event.key.toLowerCase();
     const editable =
       event.target instanceof targetWindow.HTMLInputElement ||
@@ -77,9 +78,20 @@ export function bindInput({ runtime, targetWindow, document, canvas, ui, command
     on(button, "click", commands.closeRecords);
   }
 
-  on(ui.soundToggle, "change", () => commands.setSound(ui.soundToggle.checked));
+  on(ui.masterVolume, "change", () =>
+    commands.requestHostSetting("master", Number(ui.masterVolume.value)),
+  );
+  on(ui.musicVolume, "change", () =>
+    commands.requestHostSetting("music", Number(ui.musicVolume.value)),
+  );
+  on(ui.sfxVolume, "change", () => commands.requestHostSetting("sfx", Number(ui.sfxVolume.value)));
+  on(ui.motionToggle, "change", () =>
+    commands.requestHostSetting("reduced", ui.motionToggle.checked),
+  );
+  on(ui.screenShakeToggle, "change", () =>
+    commands.requestHostSetting("screenShake", ui.screenShakeToggle.checked),
+  );
   on(ui.hapticToggle, "change", () => commands.setHaptics(ui.hapticToggle.checked));
-  on(ui.motionToggle, "change", () => commands.setReducedMotion(ui.motionToggle.checked));
   on(ui.qualitySelect, "change", () => commands.setQuality(ui.qualitySelect.value));
   on(ui.skinSelect, "change", () => commands.selectSkin(ui.skinSelect.value));
   on(ui.fullscreen, "click", commands.requestFullscreen);

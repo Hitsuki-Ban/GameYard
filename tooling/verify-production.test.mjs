@@ -23,6 +23,7 @@ const rejectedFixtures = [
   ["app.js", 'fetch("/api/catalog");', "JavaScript URL call"],
   ["app.js", 'import("/chunks/game.js");', "JavaScript URL call"],
   ["app.js", 'import runtime from "/runtime.js";', "JavaScript module URL"],
+  ["game.js", "const testkit = { setInvulnerable() {} };", 'forbidden marker "testkit"'],
 ];
 
 for (const [file, content, expected] of rejectedFixtures) {
@@ -102,6 +103,7 @@ await test("reports the invalid catalog entry instead of throwing an internal re
         locales: { source: "en", supported: ["en"] },
         capabilities: [],
         provenance: {
+          kind: "repository",
           repository: "https://example.test/demo",
           revision: "0123456789abcdef0123456789abcdef01234567",
           license: "MIT",

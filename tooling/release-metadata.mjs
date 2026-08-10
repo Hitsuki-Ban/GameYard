@@ -9,7 +9,7 @@ import {
   PROTOCOL_VERSION,
 } from "../packages/game-contract/src/index.ts";
 import { verifyArtifactReport } from "./artifact-report.mjs";
-import { loadProvenanceIndex, requireGameDistributionRights } from "./provenance.mjs";
+import { loadProvenanceIndex, requireGameDistributionProvenance } from "./provenance.mjs";
 import { loadProductionRegistry } from "./production-registry.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -108,49 +108,72 @@ export async function createReleaseMetadata(root, sourceSha) {
     if (manifest.id !== game.id || manifest.buildId !== buildInfo.buildId) {
       throw new Error(`dist/${manifestPath} does not belong to the release artifact`);
     }
-    const repository = await requireGameDistributionRights(root, provenanceIndex, manifest.id);
-    if (
-      repository.url !== manifest.provenance.repository ||
-      repository.revision !== manifest.provenance.revision ||
-      repository.license !== manifest.provenance.license
-    ) {
-      throw new Error(`Provenance index does not match dist/${manifestPath}`);
-    }
+    const distribution = await requireGameDistributionProvenance(
+      root,
+      provenanceIndex,
+      manifest.id,
+      manifest.provenance,
+    );
     const presentationSource = await readText(
       registeredGame.presentationSourcePath,
       registeredGame.presentationSource,
     );
+    const provenanceMetadata =
+      distribution.kind === "repository"
+        ? {
+            kind: distribution.kind,
+            repository: distribution.repository.url,
+            revision: distribution.repository.revision,
+            license: distribution.repository.license,
+            index: {
+              path: provenancePath,
+              entrySha256: sha256(
+                `${JSON.stringify({
+                  id: distribution.repository.id,
+                  url: distribution.repository.url,
+                  revision: distribution.repository.revision,
+                  tree: distribution.repository.tree,
+                  license: distribution.repository.license,
+                  rightsRecord: distribution.repository.rightsRecord,
+                  publicImportAllowed: distribution.repository.publicImportAllowed,
+                })}\n`,
+              ),
+            },
+            rights:
+              distribution.repository.rightsRecord === null
+                ? null
+                : {
+                    path: distribution.repository.rightsRecord,
+                    sha256: sha256(
+                      await readText(
+                        resolve(root, distribution.repository.rightsRecord),
+                        distribution.repository.rightsRecord,
+                      ),
+                    ),
+                  },
+          }
+        : {
+            kind: distribution.kind,
+            record: {
+              path: distribution.recordPath,
+              sha256: sha256(
+                await readText(resolve(root, distribution.recordPath), distribution.recordPath),
+              ),
+            },
+            archive: distribution.record.sourceSnapshot.archive,
+            inventory: distribution.record.sourceSnapshot.inventory,
+            authorization: {
+              path: distribution.record.authorization.grantText,
+              sha256: distribution.record.authorization.grantTextSha256,
+            },
+            licenseScope: distribution.record.permissions.licenseScope,
+          };
     manifests.push({
       gameId: manifest.id,
       version: manifest.version,
       path: manifestPath,
       sha256: sha256(manifestJson.content),
-      repository: manifest.provenance.repository,
-      revision: manifest.provenance.revision,
-      license: manifest.provenance.license,
-      provenanceRecord: {
-        indexPath: provenancePath,
-        entrySha256: sha256(
-          `${JSON.stringify({
-            id: repository.id,
-            url: repository.url,
-            revision: repository.revision,
-            tree: repository.tree,
-            license: repository.license,
-            rightsRecord: repository.rightsRecord,
-            publicImportAllowed: repository.publicImportAllowed,
-          })}\n`,
-        ),
-        rights:
-          repository.rightsRecord === null
-            ? null
-            : {
-                path: repository.rightsRecord,
-                sha256: sha256(
-                  await readText(resolve(root, repository.rightsRecord), repository.rightsRecord),
-                ),
-              },
-      },
+      provenance: provenanceMetadata,
       presentation: {
         path: registeredGame.presentationSource,
         sha256: sha256(presentationSource),
@@ -169,7 +192,7 @@ export async function createReleaseMetadata(root, sourceSha) {
     deploymentWorkerPath,
   );
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     sourceSha,
     buildId: buildInfo.buildId,
     protocol: PROTOCOL_VERSION,

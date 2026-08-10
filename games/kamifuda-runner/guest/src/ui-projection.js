@@ -28,11 +28,20 @@ const elementIds = {
   resultGrade: "resultGrade",
   resultStats: "resultStats",
   resultCause: "resultCause",
-  soundToggle: "soundToggle",
+  canvasStatus: "canvasStatus",
+  masterVolume: "masterVolume",
+  masterVolumeValue: "masterVolumeValue",
+  musicVolume: "musicVolume",
+  musicVolumeValue: "musicVolumeValue",
+  sfxVolume: "sfxVolume",
+  sfxVolumeValue: "sfxVolumeValue",
   hapticToggle: "hapticToggle",
   motionToggle: "motionToggle",
+  screenShakeToggle: "screenShakeToggle",
   qualitySelect: "qualitySelect",
   skinSelect: "skinSelect",
+  settingsStatus: "settingsStatus",
+  settingsRevision: "settingsRevision",
   fullscreen: "fullscreenButton",
   reset: "resetButton",
   recordSummary: "recordSummary",
@@ -64,20 +73,84 @@ export function createUiProjection(document, targetWindow) {
   });
   document.body.appendChild(safeProbe);
 
+  const overlays = {
+    title: elements.title,
+    pause: elements.pause,
+    choice: elements.choice,
+    result: elements.result,
+    settings: elements.settings,
+    records: elements.records,
+  };
+  let activeOverlay = "title";
+  let returnFocus = null;
+
+  function focusables(overlay) {
+    return [
+      ...overlay.querySelectorAll(
+        "button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
+      ),
+    ].filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
+  }
+
+  function focusOverlay(name, preferred) {
+    const overlay = overlays[name];
+    if (!overlay || overlay.getAttribute("role") !== "dialog") return;
+    const target = preferred || focusables(overlay)[0] || overlay;
+    target.focus({ preventScroll: true });
+  }
+
   return {
     elements,
-    showOverlay(name, gameplayVisible) {
-      const overlays = {
-        title: elements.title,
-        pause: elements.pause,
-        choice: elements.choice,
-        result: elements.result,
-        settings: elements.settings,
-        records: elements.records,
-      };
-      for (const overlay of Object.values(overlays)) overlay.classList.remove("is-active");
-      if (name && overlays[name]) overlays[name].classList.add("is-active");
+    showOverlay(name, gameplayVisible, preferredFocus = null) {
+      for (const [overlayName, overlay] of Object.entries(overlays)) {
+        const active = overlayName === name;
+        overlay.classList.toggle("is-active", active);
+        overlay.setAttribute("aria-hidden", String(!active));
+        overlay.inert = !active;
+      }
+      activeOverlay = name;
       elements.controls.style.display = gameplayVisible ? "" : "none";
+      if (name) focusOverlay(name, preferredFocus);
+    },
+    rememberFocus() {
+      returnFocus =
+        document.activeElement instanceof targetWindow.HTMLElement ? document.activeElement : null;
+    },
+    restoreFocus(fallback = elements.start) {
+      const target = returnFocus?.isConnected ? returnFocus : fallback;
+      returnFocus = null;
+      target?.focus({ preventScroll: true });
+    },
+    focusOverlay,
+    trapFocus(event) {
+      if (event.key !== "Tab" || !activeOverlay) return false;
+      const overlay = overlays[activeOverlay];
+      if (!overlay || overlay.getAttribute("role") !== "dialog") return false;
+      const candidates = focusables(overlay);
+      if (!candidates.length) {
+        event.preventDefault();
+        overlay.focus({ preventScroll: true });
+        return true;
+      }
+      const first = candidates[0];
+      const last = candidates[candidates.length - 1];
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || !overlay.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+        return true;
+      }
+      if (
+        !event.shiftKey &&
+        (document.activeElement === last || !overlay.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+        return true;
+      }
+      return false;
     },
     showToast(text) {
       elements.toast.textContent = text;
@@ -96,6 +169,7 @@ export function createUiProjection(document, targetWindow) {
       };
     },
     dispose() {
+      returnFocus = null;
       elements.toast.replaceChildren();
       safeProbe.remove();
     },

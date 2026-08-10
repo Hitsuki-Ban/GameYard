@@ -68,6 +68,24 @@
         "games/crown-breaker/tsconfig.json",
         "games/crown-breaker/vite.config.ts"
       ]
+    },
+    {
+      "id": "kamifuda-runner",
+      "packageName": "@gameyard/kamifuda-runner",
+      "stage": ".gameyard/stage/games/kamifuda-runner",
+      "manifestSource": "games/kamifuda-runner/game.manifest.source.json",
+      "presentationSource": "games/kamifuda-runner/game.presentation.source.json",
+      "devPort": 5177,
+      "productionInputs": [
+        "games/kamifuda-runner/assets/catalog-cover.svg",
+        "games/kamifuda-runner/assets/catalog-cover-small.svg",
+        "games/kamifuda-runner/game.manifest.source.json",
+        "games/kamifuda-runner/game.presentation.source.json",
+        "games/kamifuda-runner/guest",
+        "games/kamifuda-runner/package.json",
+        "games/kamifuda-runner/tsconfig.json",
+        "games/kamifuda-runner/vite.config.ts"
+      ]
     }
   ]
 }

@@ -22,6 +22,17 @@
 * {
   box-sizing: border-box;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 html,
 body {
   width: 100%;
@@ -800,7 +811,59 @@ h1 small {
   border-bottom: 1px solid rgba(33, 27, 23, 0.15);
   font-weight: 800;
 }
-.setting-row input {
+.setting-group-title {
+  margin: 18px 0 4px;
+  color: var(--red-dark);
+  font: 900 12px/1.3 serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.range-row {
+  align-items: flex-start;
+  gap: 14px;
+  padding-block: 10px;
+}
+.range-control {
+  width: min(230px, 58%);
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 3.6em;
+  align-items: center;
+  gap: 8px;
+}
+.range-control input {
+  position: static;
+  width: 100%;
+  min-height: 30px;
+  opacity: 1;
+  pointer-events: auto;
+  accent-color: var(--indigo);
+}
+.range-control output {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.settings-status {
+  min-height: 2.7em;
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.settings-status:empty {
+  min-height: 0;
+  padding: 0;
+}
+.settings-status[data-state="pending"] {
+  background: rgba(41, 77, 104, 0.09);
+}
+.settings-status[data-state="error"] {
+  background: rgba(179, 58, 47, 0.1);
+  color: var(--red-dark);
+}
+.setting-row input[type="checkbox"] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -823,10 +886,10 @@ h1 small {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s;
 }
-.setting-row input:checked + .switch {
+.setting-row input[type="checkbox"]:checked + .switch {
   background: var(--indigo);
 }
-.setting-row input:checked + .switch::after {
+.setting-row input[type="checkbox"]:checked + .switch::after {
   transform: translateX(22px);
 }
 .select-row select {
@@ -926,6 +989,54 @@ button[disabled] {
   cursor: default;
 }
 
+.drawer-overlay {
+  place-items: stretch end;
+  padding-left: max(calc(var(--safe-left) + 18px), 5vw);
+}
+.drawer-card {
+  width: min(520px, calc(100vw - var(--safe-left) - var(--safe-right) - 28px));
+  height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 36px);
+  max-height: none;
+  margin: auto 0;
+  padding: clamp(22px, 4vw, 38px);
+  border-radius: 5px 0 0 5px;
+  clip-path: polygon(1% 1%, 100% 0, 100% 100%, 2% 99%, 0 8%);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 430px) {
+  .overlay {
+    padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 10px)
+      calc(var(--safe-bottom) + 10px) calc(var(--safe-left) + 10px);
+  }
+  .drawer-overlay {
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  }
+  .drawer-card {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 20px 18px max(24px, var(--safe-bottom));
+    border-radius: 0;
+    clip-path: none;
+    box-shadow: none;
+  }
+  .range-row {
+    display: grid;
+  }
+  .range-control {
+    width: 100%;
+  }
+  .setting-row,
+  .close-button,
+  .paper-button,
+  .primary-button,
+  .text-button {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 680px) {
   .choice-list {
     grid-template-columns: 1fr;
@@ -1000,22 +1111,22 @@ button[disabled] {
     margin: 8px 0;
     line-height: 1.4;
   }
-  .start-button,
+  .mode-starts,
   .title-actions,
   .control-hint {
     grid-column: 3;
   }
-  .start-button {
-    grid-row: 1;
-    align-self: end;
+  .mode-starts {
+    grid-row: 1 / 3;
+    width: 190px;
+    align-self: center;
   }
   .title-actions {
-    grid-row: 2;
-    margin: 8px 0 0;
+    grid-row: 3;
+    margin: 5px 0 0;
   }
   .control-hint {
-    grid-row: 3;
-    margin-top: 5px;
+    display: none;
   }
   h1 > span {
     font-size: 42px;
@@ -1038,6 +1149,17 @@ button[disabled] {
   .paper-card {
     max-height: calc(100dvh - 18px);
     padding: 20px 28px;
+  }
+  .drawer-card {
+    width: min(560px, 72vw);
+    height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 12px);
+    padding: 14px 22px;
+  }
+  .drawer-card .setting-row {
+    min-height: 44px;
+  }
+  .drawer-card .setting-group-title {
+    margin-top: 10px;
   }
   .result-card {
     width: min(720px, 94vw);
@@ -1116,6 +1238,15 @@ button[disabled] {
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+html[data-reduced-motion="true"] *,
+html[data-reduced-motion="true"] *::before,
+html[data-reduced-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
 }
 
 /* Short landscape result layout: explicit rows prevent action buttons from

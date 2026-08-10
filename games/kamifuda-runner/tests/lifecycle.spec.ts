@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 type ResourceSnapshot = {
   listeners: number;
@@ -185,7 +186,7 @@ test("owns one complete create, input, pause, release, dispose, and recreate jou
     window.localStorage.setItem("gameyard.game.kamifuda-runner.profile.v1", "{");
   });
   await page.reload({ waitUntil: "load" });
-  await expect(page.locator(".boot-failure")).toContainText("not valid JSON");
+  await expect(page.locator(".boot-failure")).toContainText("JSON が壊れています");
   await page.getByRole("button", { name: "保存データを明示的に初期化" }).click();
   await page.waitForFunction(() => window.__KAMIFUDA_HOST__?.ready === true);
   expect(
@@ -193,6 +194,267 @@ test("owns one complete create, input, pause, release, dispose, and recreate jou
       window.localStorage.getItem("gameyard.game.kamifuda-runner.profile.v1"),
     ),
   ).not.toBe("{");
+});
+
+test("applies exact locales immediately without resetting the run", async ({ page }) => {
+  await page.goto("/", { waitUntil: "load" });
+  await page.waitForFunction(() => window.__KAMIFUDA_HOST__?.ready === true);
+  await expect(page).toHaveTitle("紙札疾走録・百鬼祭陣");
+  await page.locator("#settingsButton").click();
+  await page.evaluate(() => window.__KAMIFUDA_HOST__.applyLocale("en"));
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page).toHaveTitle("KAMIFUDA RUNNER · Night Parade");
+  await expect(page.locator("#settingsTitle")).toHaveText("SETTINGS");
+  await expect(page.locator('[data-close="settings"]')).toBeFocused();
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    /woodblock action run/u,
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#settingsButton")).toBeFocused();
+
+  await page.locator("#startButton").click();
+  await expect(page.locator("#gameCanvas")).toBeFocused();
+  const before = await page.evaluate(() => {
+    const snapshot = window.__KAMIFUDA_DEBUG__.snapshot();
+    return { seed: snapshot.seed, runTime: snapshot.runTime, count: snapshot.player.count };
+  });
+  await expect(page.locator("#gameCanvas")).toHaveAttribute(
+    "aria-label",
+    "Move left and right, choose paper gates, and repel the night parade",
+  );
+  const afterEnglish = await page.evaluate(() => {
+    const snapshot = window.__KAMIFUDA_DEBUG__.snapshot();
+    return { seed: snapshot.seed, runTime: snapshot.runTime, count: snapshot.player.count };
+  });
+  expect(afterEnglish.seed).toBe(before.seed);
+  expect(afterEnglish.count).toBe(before.count);
+  expect(afterEnglish.runTime).toBeGreaterThanOrEqual(before.runTime);
+  await expect(page.locator("#canvasStatus")).toContainText("Move left and right");
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pauseOverlay")).toHaveClass(/is-active/u);
+  await expect(page.locator("#resumeButton")).toBeFocused();
+  await page.evaluate(() => window.__KAMIFUDA_HOST__.applyLocale("zh-Hans"));
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  await expect(page).toHaveTitle("纸札疾走录・百鬼祭阵");
+  await expect(page.locator("#pauseTitle")).toHaveText("暂歇片刻");
+  await expect(page.locator("#resumeButton")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() => page.evaluate(() => window.__KAMIFUDA_DEBUG__.snapshot().mode))
+    .toBe("playing");
+  await page.evaluate(() => {
+    const debug = window.__KAMIFUDA_DEBUG__;
+    debug.endRun(false, "chaff");
+    debug.step(0.9);
+  });
+  await expect(page.locator("#resultTitle")).toHaveText("纸众已经耗尽");
+  await expect(page.locator("#retryButton")).toBeFocused();
+  await page.evaluate(() => window.__KAMIFUDA_HOST__.applyLocale("en"));
+  await expect(page.locator("#resultTitle")).toHaveText("THE PAPER CROWD IS GONE");
+  await expect(page.locator("#retryButton")).toBeFocused();
+  expect(await page.evaluate(() => window.__KAMIFUDA_DEBUG__.snapshot().seed)).toBe(before.seed);
+});
+
+test("requests five Host settings and converges only through a newer apply", async ({ page }) => {
+  await page.goto("/", { waitUntil: "load" });
+  await page.waitForFunction(() => window.__KAMIFUDA_HOST__?.ready === true);
+  await page.locator("#settingsButton").click();
+  await page.evaluate(() => {
+    window.__KAMIFUDA_HOST__.autoApplySettings = false;
+  });
+
+  const master = page.locator("#masterVolume");
+  await expect(master).toHaveCSS("pointer-events", "auto");
+  await expect(master).toHaveCSS("opacity", "1");
+  const masterBox = await master.boundingBox();
+  expect(masterBox).not.toBeNull();
+  await master.click({ position: { x: masterBox!.width * 0.78, y: masterBox!.height / 2 } });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.__KAMIFUDA_HOST__.events.findLast(
+          (event: { type?: string }) => event.type === "settings.changeRequest",
+        ),
+      ),
+    )
+    .not.toBeUndefined();
+  await expect(page.locator("#settingsStatus")).toContainText("変更を依頼中");
+  expect(await page.locator("#masterVolume").inputValue()).toBe("0.56");
+  const masterRequest = await page.evaluate(() =>
+    window.__KAMIFUDA_HOST__.events.findLast(
+      (event: { type?: string }) => event.type === "settings.changeRequest",
+    ),
+  );
+  expect(masterRequest.type).toBe("settings.changeRequest");
+  expect(masterRequest.change.audio.master).toBeGreaterThan(0.56);
+  const requestedMaster = masterRequest.change.audio.master;
+
+  await page.evaluate(
+    (masterValue) =>
+      window.__KAMIFUDA_HOST__.applySettings({
+        revision: 1,
+        audio: { master: masterValue, music: 1, sfx: 1 },
+        motion: { reduced: false, screenShake: true },
+      }),
+    requestedMaster,
+  );
+  await expect(page.locator("#masterVolume")).toHaveValue(String(requestedMaster));
+  await expect(page.locator("#settingsStatus")).toBeEmpty();
+  await expect(page.locator("#settingsRevision")).toHaveText("会場設定 · v1");
+
+  const cases = [
+    {
+      selector: "#musicVolume",
+      value: "0.4",
+      change: { audio: { music: 0.4 } },
+      settings: {
+        revision: 2,
+        audio: { master: requestedMaster, music: 0.4, sfx: 1 },
+        motion: { reduced: false, screenShake: true },
+      },
+    },
+    {
+      selector: "#sfxVolume",
+      value: "0.3",
+      change: { audio: { sfx: 0.3 } },
+      settings: {
+        revision: 3,
+        audio: { master: requestedMaster, music: 0.4, sfx: 0.3 },
+        motion: { reduced: false, screenShake: true },
+      },
+    },
+  ];
+  for (const item of cases) {
+    await page.locator(item.selector).fill(item.value);
+    await page.locator(item.selector).dispatchEvent("change");
+    expect(
+      await page.evaluate(() =>
+        window.__KAMIFUDA_HOST__.events.findLast(
+          (event: { type?: string }) => event.type === "settings.changeRequest",
+        ),
+      ),
+    ).toEqual({ type: "settings.changeRequest", change: item.change });
+    await page.evaluate(
+      (settings) => window.__KAMIFUDA_HOST__.applySettings(settings),
+      item.settings,
+    );
+    await expect(page.locator(item.selector)).toHaveValue(item.value);
+    await expect(page.locator(item.selector)).toBeEnabled();
+  }
+
+  await expect(page.locator("#motionToggle")).toBeEnabled();
+  await page.locator("#motionToggle").evaluate((input: HTMLInputElement) => input.click());
+  expect(
+    await page.evaluate(() =>
+      window.__KAMIFUDA_HOST__.events.findLast(
+        (event: { type?: string }) => event.type === "settings.changeRequest",
+      ),
+    ),
+  ).toEqual({ type: "settings.changeRequest", change: { motion: { reduced: true } } });
+  await page.evaluate(
+    (masterValue) =>
+      window.__KAMIFUDA_HOST__.applySettings({
+        revision: 4,
+        audio: { master: masterValue, music: 0.4, sfx: 0.3 },
+        motion: { reduced: true, screenShake: true },
+      }),
+    requestedMaster,
+  );
+
+  await expect(page.locator("#screenShakeToggle")).toBeEnabled();
+  await page.locator("#screenShakeToggle").evaluate((input: HTMLInputElement) => input.click());
+  expect(
+    await page.evaluate(() =>
+      window.__KAMIFUDA_HOST__.events.findLast(
+        (event: { type?: string }) => event.type === "settings.changeRequest",
+      ),
+    ),
+  ).toEqual({ type: "settings.changeRequest", change: { motion: { screenShake: false } } });
+  await page.evaluate(
+    (masterValue) =>
+      window.__KAMIFUDA_HOST__.applySettings({
+        revision: 5,
+        audio: { master: masterValue, music: 0.4, sfx: 0.3 },
+        motion: { reduced: true, screenShake: false },
+      }),
+    requestedMaster,
+  );
+
+  await expect(page.locator("#motionToggle")).toBeEnabled();
+  await page.locator("#motionToggle").evaluate((input: HTMLInputElement) => input.click());
+  await page.evaluate(
+    (masterValue) =>
+      window.__KAMIFUDA_HOST__.applySettings({
+        revision: 6,
+        audio: { master: masterValue, music: 0.4, sfx: 0.3 },
+        motion: { reduced: true, screenShake: false },
+      }),
+    requestedMaster,
+  );
+  await expect(page.locator("#settingsStatus")).toContainText("適用しませんでした");
+  await page.evaluate(() => window.__KAMIFUDA_HOST__.applyLocale("en"));
+  await expect(page.locator("#settingsStatus")).toContainText("did not apply");
+});
+
+test("traps and restores dialog focus and keeps drawers reachable at target sizes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/", { waitUntil: "load" });
+  await page.waitForFunction(() => window.__KAMIFUDA_HOST__?.ready === true);
+  await page.locator("#settingsButton").focus();
+  await page.locator("#settingsButton").click();
+  await expect(page.locator('[data-close="settings"]')).toBeFocused();
+  const portraitBox = await page.locator("#settingsOverlay .drawer-card").boundingBox();
+  expect(portraitBox).not.toBeNull();
+  expect(portraitBox!.x).toBeGreaterThanOrEqual(0);
+  expect(portraitBox!.y).toBeGreaterThanOrEqual(0);
+  expect(portraitBox!.x + portraitBox!.width).toBeLessThanOrEqual(390);
+  expect(portraitBox!.y + portraitBox!.height).toBeLessThanOrEqual(844);
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#resetButton")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator('[data-close="settings"]')).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#settingsButton")).toBeFocused();
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  const startBox = await page.locator("#startButton").boundingBox();
+  expect(startBox).not.toBeNull();
+  expect(startBox!.x).toBeGreaterThanOrEqual(0);
+  expect(startBox!.y).toBeGreaterThanOrEqual(0);
+  expect(startBox!.x + startBox!.width).toBeLessThanOrEqual(844);
+  expect(startBox!.y + startBox!.height).toBeLessThanOrEqual(390);
+  const landscapeExtent = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(landscapeExtent.scrollWidth).toBeLessThanOrEqual(landscapeExtent.viewportWidth);
+  await page.locator("#settingsButton").click();
+  const landscapeBox = await page.locator("#settingsOverlay .drawer-card").boundingBox();
+  expect(landscapeBox).not.toBeNull();
+  expect(landscapeBox!.x).toBeGreaterThanOrEqual(0);
+  expect(landscapeBox!.y).toBeGreaterThanOrEqual(0);
+  expect(landscapeBox!.x + landscapeBox!.width).toBeLessThanOrEqual(844);
+  expect(landscapeBox!.y + landscapeBox!.height).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+
+  await page.setViewportSize({ width: 195, height: 422 });
+  await page.locator("#settingsButton").click();
+  await page.locator("#resetButton").scrollIntoViewIfNeeded();
+  await expect(page.locator("#resetButton")).toBeVisible();
+});
+
+test("keeps non-catalog CJK literals on the explicit ornamental allowlist", async () => {
+  const source = await readFile(new URL("../guest/src/simulation.js", import.meta.url), "utf8");
+  const violations = source
+    .split(/\r?\n/u)
+    .map((line, index) => ({ line: index + 1, text: line.trim() }))
+    .filter(({ text }) => /[ぁ-んァ-ン一-龯]/u.test(text))
+    .filter(({ text }) => !text.includes("i18n-allow-ornament"));
+  expect(violations).toEqual([]);
 });
 
 declare global {

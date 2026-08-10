@@ -43,11 +43,13 @@ export async function bootCandidate(page: Page) {
   await page.addStyleTag({
     content: "*,*::before,*::after{animation:none!important;transition:none!important;}",
   });
-  await page.evaluate(() => {
-    const debug = window.__KAMIFUDA_DEBUG__;
-    debug.state.profile.settings.reducedMotion = true;
-    debug.state.profile.settings.sound = false;
-    debug.renderOnly();
+  await page.evaluate(async () => {
+    await window.__KAMIFUDA_HOST__.applySettings({
+      revision: 1,
+      audio: { master: 0, music: 1, sfx: 1 },
+      motion: { reduced: true, screenShake: false },
+    });
+    window.__KAMIFUDA_DEBUG__.renderOnly();
   });
 }
 
