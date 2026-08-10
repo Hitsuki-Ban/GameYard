@@ -14,7 +14,7 @@ Issue #48 preserves the player-facing v4 behavior before the disposable Guest re
 
 The baseline protects Normal and Hard starting facts, horizontal movement, manual stamp commands, damage/score outcomes, pause/resume, act upgrade choice, result/restart, independent mode records, the Normal-clear Hard unlock, and the Hard-clear ember unlock. It also protects the fixed 120 Hz simulation feel through deterministic externally observed checkpoints.
 
-It does not protect auto-boot, the IIFE, debug globals, internal functions, state-object shape, DOM nesting, RAF ownership, legacy storage keys/schema, v2/v3 migration, or the Python builder. `tests/baseline-driver.ts` is the only adapter allowed to know the temporary source debug surface; #51 will replace that adapter while keeping the journey assertions.
+It does not protect auto-boot, the IIFE, debug globals, internal functions, state-object shape, DOM nesting, RAF ownership, legacy storage keys/schema, v2/v3 migration, or the Python builder. The #51 candidate now runs these same journey assertions through an explicit testkit build; its production build contains no mutation/debug surface.
 
 Keyboard and pointer/touch controls share two logical commands:
 

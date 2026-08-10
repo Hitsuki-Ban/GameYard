@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "protocol": 1,
+  "id": "kamifuda-runner",
+  "version": "4.1.0",
+  "entry": "index.html",
+  "locales": {
+    "source": "ja",
+    "supported": ["ja"]
+  },
+  "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch"],
+  "sourceSnapshot": {
+    "record": "provenance/kamifuda-runner/source-snapshot.json",
+    "archiveSha256": "5f2d6469b12ec50674b80aaa45a2519cad67fbf4938921e61814a458241f7752"
+  }
+}

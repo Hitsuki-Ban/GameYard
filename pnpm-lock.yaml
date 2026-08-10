@@ -171,6 +171,10 @@ importers:
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2))(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)
 
   games/kamifuda-runner:
+    dependencies:
+      '@gameyard/guest-bridge':
+        specifier: workspace:*
+        version: link:../../packages/guest-bridge
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'
@@ -178,6 +182,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.2.7
+        version: '@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)'
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2))(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)

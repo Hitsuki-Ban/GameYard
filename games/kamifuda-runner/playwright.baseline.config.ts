@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "baseline.spec.ts",
+  testMatch: ["baseline.spec.ts", "lifecycle.spec.ts"],
   outputDir: "../../test-results/kamifuda-runner",
   fullyParallel: false,
   forbidOnly: true,
@@ -26,7 +26,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: "vp dev",
+    command: "vp run dev:testkit",
     url: "http://127.0.0.1:5191",
     reuseExistingServer: false,
     timeout: 30_000,
