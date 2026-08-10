@@ -21,6 +21,7 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("GameYard Hub root element is missing.");
 }
+document.documentElement.dataset.gameyardBuild = __GAMEYARD_BUILD__;
 
 const bootstrapLanguages = currentSystemLanguages();
 const bootstrapSettings = readSettings(
@@ -119,7 +120,12 @@ function ArtifactContractStop({
   };
 
   return (
-    <main className="artifact-stop" role="alert">
+    <main
+      className="artifact-stop"
+      role="alert"
+      data-artifact-kind={result.kind}
+      data-received-build-id={result.kind === "mismatch" ? result.received : undefined}
+    >
       <span>{t("artifact.eyebrow")}</span>
       <h1>{t("artifact.title")}</h1>
       <p>{t("artifact.body")}</p>
