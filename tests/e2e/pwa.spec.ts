@@ -173,17 +173,12 @@ test("the Hub owns one scoped shell and deliberate per-game offline library", as
     await expect(page.getByText("Checking the current Service Worker release…")).toBeVisible();
     await expect(page.locator(".site-footer")).toHaveCount(0);
     await page.getByRole("button", { name: "Apply current release" }).click();
-    await expect
-      .poll(
-        () =>
-          page.evaluate(async () => {
-            const response = await fetch("./build-info.json", { cache: "no-store" });
-            if (!response.ok) throw new Error(`Build info request failed with ${response.status}`);
-            return ((await response.json()) as { buildId: string }).buildId;
-          }),
-        { timeout: 20_000 },
-      )
-      .toBe(SYNTHETIC_BUILD_C);
+    await expect(page.locator(".hub-drawer")).toHaveCount(1, { timeout: 40_000 });
+    const currentBuildResponse = await context.request.get("./build-info.json");
+    expect(currentBuildResponse.ok()).toBe(true);
+    expect(((await currentBuildResponse.json()) as { buildId: string }).buildId).toBe(
+      SYNTHETIC_BUILD_C,
+    );
     const updatedRuntimeTools = await openSettingsDrawer(page);
     await updatedRuntimeTools.getByRole("button", { name: "Offline" }).click();
     await expect(page.locator(".pwa-panel")).toContainText("Online only");

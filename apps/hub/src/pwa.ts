@@ -8,6 +8,8 @@ import {
   type PwaRequest,
 } from "./pwa-protocol";
 
+const PWA_ACTIVATION_TIMEOUT_MS = 30_000;
+
 export type ArtifactCheck =
   | { readonly kind: "current"; readonly source: "network" | "service-worker" }
   | { readonly kind: "mismatch"; readonly received: string }
@@ -205,9 +207,35 @@ export async function activatePwaUpdate(
   worker: ServiceWorker,
   expectedBuildId: string,
 ): Promise<void> {
-  await sendRequest(
-    worker,
-    { type: "gameyard:pwa-activate", buildId: expectedBuildId },
-    expectedBuildId,
-  );
+  const activated =
+    worker.state === "activated"
+      ? Promise.resolve()
+      : new Promise<void>((resolveActivation, rejectActivation) => {
+          const timer = window.setTimeout(() => {
+            worker.removeEventListener("statechange", onStateChange);
+            rejectActivation(
+              new Error(`PWA activation timed out after ${PWA_ACTIVATION_TIMEOUT_MS}ms`),
+            );
+          }, PWA_ACTIVATION_TIMEOUT_MS);
+          const finish = (operation: () => void) => {
+            window.clearTimeout(timer);
+            worker.removeEventListener("statechange", onStateChange);
+            operation();
+          };
+          const onStateChange = () => {
+            if (worker.state === "activated") finish(resolveActivation);
+            else if (worker.state === "redundant") {
+              finish(() => rejectActivation(new Error("PWA update became redundant")));
+            }
+          };
+          worker.addEventListener("statechange", onStateChange);
+        });
+  await Promise.all([
+    sendRequest(
+      worker,
+      { type: "gameyard:pwa-activate", buildId: expectedBuildId },
+      expectedBuildId,
+    ),
+    activated,
+  ]);
 }

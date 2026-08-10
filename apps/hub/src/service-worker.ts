@@ -215,10 +215,14 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
     (async () => {
       try {
         assertCurrentRequest(request);
+        if (request.type === "gameyard:pwa-activate") {
+          port.postMessage(success(await offlineStatus()));
+          void self.skipWaiting();
+          return;
+        }
         if (request.type === "gameyard:pwa-save-game") await saveGame(request);
         else if (request.type === "gameyard:pwa-remove-game") await removeGameCache(request);
         else if (request.type === "gameyard:pwa-clear-games") await clearGameCaches();
-        else if (request.type === "gameyard:pwa-activate") await self.skipWaiting();
         port.postMessage(success(await offlineStatus()));
       } catch (error) {
         port.postMessage(failure(error));
@@ -242,7 +246,12 @@ async function cleanOldGameYardCaches(): Promise<void> {
 }
 
 self.addEventListener("activate", (event: ExtendableEvent) => {
-  event.waitUntil(cleanOldGameYardCaches());
+  event.waitUntil(
+    (async () => {
+      await cleanOldGameYardCaches();
+      await self.clients.claim();
+    })(),
+  );
 });
 
 function relativeScopePath(url: URL): string | null {

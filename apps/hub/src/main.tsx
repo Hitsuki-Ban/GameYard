@@ -64,8 +64,6 @@ function ArtifactContractStop({
     }
     let cancelled = false;
     let stopWatching: () => void = () => undefined;
-    const onControllerChange = () => window.location.reload();
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     void registerHubServiceWorker()
       .then(async (registration) => {
         if (cancelled) return;
@@ -95,7 +93,6 @@ function ArtifactContractStop({
     return () => {
       cancelled = true;
       stopWatching();
-      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, [result.kind]);
 
@@ -113,6 +110,7 @@ function ArtifactContractStop({
       }
       await assertPwaWorkerBuild(waitingRelease.worker, publishedBuildId);
       await activatePwaUpdate(waitingRelease.worker, publishedBuildId);
+      window.location.reload();
     })().catch((error: unknown) => {
       console.error("GameYard release activation failed", error);
       setUpdateState("failed");
