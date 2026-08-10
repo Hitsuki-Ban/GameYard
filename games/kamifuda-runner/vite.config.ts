@@ -1,5 +1,8 @@
 import { defineConfig } from "vite-plus";
 
+import sourceJson from "./candidate.manifest.source.json";
+import { createCandidateBuildId, createCandidateManifestPlugin } from "./tools/candidate-build.mjs";
+
 const archiveOwnedFiles = [
   "ACCEPTANCE_RESULTS.json",
   "DESIGN_NOTES.md",
@@ -14,7 +17,21 @@ const archiveOwnedFiles = [
   "style.css",
 ];
 
+const buildId = await createCandidateBuildId(import.meta.dirname);
+
 export default defineConfig({
+  root: "guest",
+  base: "./",
+  publicDir: false,
+  define: {
+    __GAMEYARD_BUILD__: JSON.stringify(buildId),
+    __GAMEYARD_TESTKIT__: "false",
+  },
+  plugins: [createCandidateManifestPlugin({ source: sourceJson, buildId })],
+  build: {
+    outDir: "../../../.gameyard/candidates/kamifuda-runner",
+    emptyOutDir: true,
+  },
   fmt: {
     ignorePatterns: archiveOwnedFiles,
     semi: true,

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   advance,
   applyDamage,
-  bootSource,
+  bootCandidate,
   chargeStamp,
   defeatOneEnemy,
   finishRun,
@@ -15,7 +15,7 @@ import {
 } from "./baseline-driver";
 
 test("preserves the primary player journey and canonical presentation", async ({ page }) => {
-  await bootSource(page);
+  await bootCandidate(page);
 
   await expect(page.locator("#titleOverlay")).toHaveClass(/is-active/u);
   await expect(page.locator("#hardModeButton")).toHaveClass(/is-locked/u);
@@ -82,7 +82,7 @@ test("preserves the primary player journey and canonical presentation", async ({
   await expect(page.locator("#pauseOverlay")).toHaveClass(/is-active/u);
   expect((await observe(page)).mode).toBe("paused");
   await page.locator("#resumeButton").click();
-  expect((await observe(page)).mode).toBe("playing");
+  await expect.poll(async () => (await observe(page)).mode).toBe("playing");
 
   await showUpgrade(page);
   expect((await observe(page)).mode).toBe("choice");
@@ -112,7 +112,7 @@ test("preserves the primary player journey and canonical presentation", async ({
 });
 
 test("locks the focused Hard-mode and independent profile outcome", async ({ page }) => {
-  await bootSource(page);
+  await bootCandidate(page);
   expect((await profileFacts(page)).hardUnlocked).toBe(false);
 
   await unlockHard(page);

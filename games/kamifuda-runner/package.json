@@ -1,17 +1,24 @@
 {
   "name": "@gameyard/kamifuda-runner",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "browser:install": "vp exec playwright install chromium",
     "dev": "vp dev",
-    "check": "vp check && vp exec node tools/verify-source-snapshot.mjs",
+    "dev:testkit": "vp dev --config vite.testkit.config.ts",
+    "build": "vp build && vp exec node tools/verify-candidate.mjs",
+    "build:testkit": "vp build --config vite.testkit.config.ts",
+    "check": "vp check && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
     "test": "vp run check && vp exec playwright test --config playwright.baseline.config.ts"
+  },
+  "dependencies": {
+    "@gameyard/guest-bridge": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "vite": "catalog:",
     "vite-plus": "catalog:"
   }
 }

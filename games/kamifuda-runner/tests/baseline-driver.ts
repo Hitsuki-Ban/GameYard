@@ -31,14 +31,14 @@ export type ProfileFacts = {
   hard: { runs: number; clears: number; best: number };
 };
 
-export async function bootSource(page: Page) {
+export async function bootCandidate(page: Page) {
   await page.addInitScript(() => {
-    Object.defineProperty(window, "__KAMIFUDA_TEST__", { value: true, configurable: false });
     window.requestAnimationFrame = () => 1;
     window.cancelAnimationFrame = () => undefined;
     window.localStorage.clear();
   });
   await page.goto("/", { waitUntil: "load" });
+  await page.waitForFunction(() => window.__KAMIFUDA_HOST__?.ready === true);
   await page.waitForFunction(() => typeof window.__KAMIFUDA_DEBUG__?.snapshot === "function");
   await page.addStyleTag({
     content: "*,*::before,*::after{animation:none!important;transition:none!important;}",
@@ -189,7 +189,7 @@ export async function profileFacts(page: Page): Promise<ProfileFacts> {
 
 declare global {
   interface Window {
-    __KAMIFUDA_TEST__: boolean;
     __KAMIFUDA_DEBUG__: any;
+    __KAMIFUDA_HOST__: any;
   }
 }

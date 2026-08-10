@@ -6,7 +6,13 @@
     "noEmit": true,
     "strict": true,
     "target": "ES2023",
-    "types": ["node"]
+    "types": ["node"],
+    "resolveJsonModule": true
   },
-  "include": ["playwright.baseline.config.ts", "tests/**/*.ts"]
+  "include": [
+    "playwright.baseline.config.ts",
+    "tests/**/*.ts",
+    "vite.config.ts",
+    "vite.testkit.config.ts"
+  ]
 }
