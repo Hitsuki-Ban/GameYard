@@ -97,7 +97,7 @@ async function main() {
 
   const metadata = JSON.parse(await readFile(arguments_.metadata, "utf8"));
   if (
-    metadata?.schemaVersion !== 2 ||
+    metadata?.schemaVersion !== 3 ||
     typeof metadata.buildId !== "string" ||
     !sourceShaPattern.test(metadata.sourceSha)
   ) {
