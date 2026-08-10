@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GameCatalogEntry, GameId } from "./catalog";
@@ -64,7 +64,6 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
   const [online, setOnline] = useState(navigator.onLine);
   const [storageEstimate, setStorageEstimate] = useState<StorageEstimateState>({ kind: "loading" });
   const [operationError, setOperationError] = useState(false);
-  const reloadOnControllerChange = useRef(false);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -73,10 +72,6 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
     }
     let cancelled = false;
     let stopWatching: () => void = () => undefined;
-    const onControllerChange = () => {
-      if (reloadOnControllerChange.current) window.location.reload();
-    };
-    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
     void registerHubServiceWorker()
       .then(async (nextRegistration) => {
         if (cancelled) return;
@@ -115,7 +110,6 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
     return () => {
       cancelled = true;
       stopWatching();
-      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
     };
   }, [games, onEvent]);
 
@@ -217,9 +211,9 @@ export function PwaPanel({ games, locale, open, selectedGame, onEvent }: PwaPane
         throw new Error("The published release changed; waiting for its current Service Worker");
       }
       await assertPwaWorkerBuild(waitingRelease.worker, publishedBuildId);
-      reloadOnControllerChange.current = true;
       await activatePwaUpdate(waitingRelease.worker, publishedBuildId);
       onEvent("pwa.update-accepted", { buildId: publishedBuildId });
+      window.location.reload();
     });
   };
 
