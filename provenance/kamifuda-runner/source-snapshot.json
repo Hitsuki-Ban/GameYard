@@ -11,6 +11,7 @@
   },
   "sourceSnapshot": {
     "kind": "owner-provided-archive",
+    "archiveAvailability": "owner-workspace-only",
     "archive": {
       "path": "games/kamifuda-runner-v4.zip",
       "sha256": "5f2d6469b12ec50674b80aaa45a2519cad67fbf4938921e61814a458241f7752",

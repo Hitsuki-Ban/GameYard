@@ -31,6 +31,7 @@ await test("verifies the admitted Kamifuda owner-provided source snapshot", asyn
 
   assert.equal(distribution.kind, "owner-provided-source-snapshot");
   assert.equal(distribution.record.gameId, manifest.id);
+  assert.equal(distribution.record.sourceSnapshot.archiveAvailability, "owner-workspace-only");
   assert.equal(
     distribution.record.sourceSnapshot.archive.sha256,
     manifest.provenance.archiveSha256,

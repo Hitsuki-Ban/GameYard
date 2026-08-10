@@ -454,11 +454,23 @@ export function parseSourceSnapshotRecord(value, label = "Source snapshot record
 
   assertExactKeys(
     value.sourceSnapshot,
-    ["kind", "archive", "inventory", "importedRoot", "repository", "revision", "license"],
+    [
+      "kind",
+      "archiveAvailability",
+      "archive",
+      "inventory",
+      "importedRoot",
+      "repository",
+      "revision",
+      "license",
+    ],
     `${label}.sourceSnapshot`,
   );
   if (value.sourceSnapshot.kind !== "owner-provided-archive") {
     throw new Error(`${label}.sourceSnapshot.kind must be owner-provided-archive.`);
+  }
+  if (value.sourceSnapshot.archiveAvailability !== "owner-workspace-only") {
+    throw new Error(`${label}.sourceSnapshot.archiveAvailability must be owner-workspace-only.`);
   }
   for (const field of ["repository", "revision", "license"]) {
     if (value.sourceSnapshot[field] !== null) {
@@ -467,6 +479,7 @@ export function parseSourceSnapshotRecord(value, label = "Source snapshot record
   }
   const sourceSnapshot = {
     kind: value.sourceSnapshot.kind,
+    archiveAvailability: value.sourceSnapshot.archiveAvailability,
     archive: parseArchiveEvidence(value.sourceSnapshot.archive, `${label}.sourceSnapshot.archive`),
     inventory: parseEvidence(value.sourceSnapshot.inventory, `${label}.sourceSnapshot.inventory`),
     importedRoot: parseRepositoryRelativePath(
@@ -688,7 +701,6 @@ export async function requireGameDistributionProvenance(
     { path: record.authorization.grantText, sha256: record.authorization.grantTextSha256 },
     `${label} authorization grant`,
   );
-  await requireMatchingFileHash(root, record.sourceSnapshot.archive, `${label} source archive`);
   await verifySourceInventory(root, record, label);
   return { kind: "owner-provided-source-snapshot", recordPath: manifestProvenance.record, record };
 }
