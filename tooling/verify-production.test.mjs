@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
-import { inspectArtifactText } from "./verify-production.mjs";
+import {
+  EXPECTED_STATIC_ASSET_HEADERS,
+  inspectArtifactText,
+  verifyPublishedArtifact,
+} from "./verify-production.mjs";
 
 const rejectedFixtures = [
   ["index.html", '<script src="/assets/app.js"></script>', "HTML src"],
@@ -49,4 +56,91 @@ await test("rejects a Service Worker by artifact filename", () => {
       "forbidden Service Worker file",
     ),
   );
+});
+
+await test("reports the invalid catalog entry instead of throwing an internal reference error", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gameyard-invalid-artifact-"));
+  const buildId = "gameyard@0123456789abcdef";
+  const files = [
+    "_headers",
+    "assets/app.js",
+    "build-info.json",
+    "games/catalog.json",
+    "games/demo/game.manifest.json",
+    "games/demo/index.html",
+    "icons/gameyard-192.png",
+    "icons/gameyard-512.png",
+    "index.html",
+    "manifest.webmanifest",
+    "service-worker.js",
+  ];
+  try {
+    await mkdir(join(root, "assets"), { recursive: true });
+    await mkdir(join(root, "games/demo"), { recursive: true });
+    await mkdir(join(root, "icons"), { recursive: true });
+    await writeFile(
+      join(root, "build-info.json"),
+      JSON.stringify({ schemaVersion: 1, buildId, files }),
+    );
+    await writeFile(join(root, "_headers"), EXPECTED_STATIC_ASSET_HEADERS);
+    await writeFile(
+      join(root, "games/catalog.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        buildId,
+        games: [{ id: "demo", entry: "./demo/index.html", manifest: "./demo/wrong.json" }],
+      }),
+    );
+    await writeFile(
+      join(root, "games/demo/game.manifest.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        protocol: 1,
+        id: "demo",
+        version: "1.0.0",
+        entry: "index.html",
+        locales: { source: "en", supported: ["en"] },
+        capabilities: [],
+        provenance: {
+          repository: "https://example.test/demo",
+          revision: "0123456789abcdef0123456789abcdef01234567",
+          license: "MIT",
+        },
+        buildId,
+        files: ["game.manifest.json", "index.html"],
+      }),
+    );
+    await writeFile(join(root, "games/demo/index.html"), "<!doctype html><title>Demo</title>");
+    await writeFile(
+      join(root, "assets/app.js"),
+      'navigator.serviceWorker.register("./service-worker.js");',
+    );
+    await writeFile(
+      join(root, "service-worker.js"),
+      `const BUILD_ID = "${buildId}"; const CACHE = "gameyard-"; self.registration.scope;`,
+    );
+    await writeFile(join(root, "index.html"), "<!doctype html><title>GameYard</title>");
+    await writeFile(
+      join(root, "manifest.webmanifest"),
+      JSON.stringify({
+        id: "./",
+        start_url: "./",
+        scope: "./",
+        display: "standalone",
+        icons: [
+          { src: "./icons/gameyard-192.png", sizes: "192x192" },
+          { src: "./icons/gameyard-512.png", sizes: "512x512" },
+        ],
+      }),
+    );
+    await writeFile(join(root, "icons/gameyard-192.png"), "fixture");
+    await writeFile(join(root, "icons/gameyard-512.png"), "fixture");
+
+    await assert.rejects(
+      verifyPublishedArtifact(root),
+      /games\/catalog\.json games\[0\]\.manifest must be \.\/demo\/game\.manifest\.json/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

@@ -5,6 +5,7 @@ export const PWA_MESSAGE_TIMEOUT_MS = 8_000;
 export interface PwaOfflineStatus {
   readonly buildId: string;
   readonly savedGames: readonly string[];
+  readonly staleGames: readonly string[];
 }
 
 export type PwaRequest =
@@ -52,6 +53,8 @@ export function isPwaResponse(value: unknown): value is PwaResponse {
   return (
     typeof status.buildId === "string" &&
     Array.isArray(status.savedGames) &&
-    status.savedGames.every((gameId) => typeof gameId === "string")
+    status.savedGames.every((gameId) => typeof gameId === "string") &&
+    Array.isArray(status.staleGames) &&
+    status.staleGames.every((gameId) => typeof gameId === "string")
   );
 }

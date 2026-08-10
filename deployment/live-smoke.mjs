@@ -149,6 +149,8 @@ async function main() {
   const origin = new URL(evidence.target);
   const bases = [new URL("/", origin), new URL("/GameYard/", origin)];
   const browser = await chromium.launch();
+  let catalogGameCount = 0;
+  let launchCount = 0;
   try {
     const publishedCatalogs = [];
     const requestContext = await browser.newContext();
@@ -163,13 +165,31 @@ async function main() {
     } finally {
       await requestContext.close();
     }
+    const expectedIds = publishedCatalogs[0]?.games.map((game) => game.id);
+    if (!expectedIds || expectedIds.length === 0) {
+      throw new Error("The deployed artifact catalog is empty");
+    }
+    for (const { baseUrl, games } of publishedCatalogs.slice(1)) {
+      if (
+        games.length !== expectedIds.length ||
+        games.some((game, index) => game.id !== expectedIds[index])
+      ) {
+        throw new Error(`${baseUrl.href} catalog does not match the deployed root catalog`);
+      }
+    }
+    catalogGameCount = expectedIds.length;
     for (const { baseUrl, games } of publishedCatalogs) {
-      for (const game of games) await assertGame(browser, baseUrl, game);
+      for (const game of games) {
+        await assertGame(browser, baseUrl, game);
+        launchCount += 1;
+      }
     }
   } finally {
     await browser.close();
   }
-  console.log(`Live root and /GameYard/ smoke passed for ${evidence.buildId} at ${origin.origin}`);
+  console.log(
+    `Live root and /GameYard/ smoke passed for ${evidence.buildId} at ${origin.origin}: ${launchCount} launches from ${catalogGameCount} catalog games across ${bases.length} paths.`,
+  );
 }
 
 await main();

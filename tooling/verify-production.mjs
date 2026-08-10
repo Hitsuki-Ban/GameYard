@@ -14,6 +14,33 @@ import {
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const productionDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
 const buildIdPattern = /^gameyard@[a-f0-9]{16}$/u;
+export const EXPECTED_STATIC_ASSET_HEADERS = `/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/games/:game/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/games/catalog.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/games/:game/game.manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/build-info.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+/service-worker.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/release-metadata.json
+  Cache-Control: public, max-age=0, must-revalidate
+`;
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -125,6 +152,13 @@ export async function verifyPublishedArtifact(directory = productionDirectory) {
 
   if (!actualFiles.includes("index.html"))
     throw new Error("Production Hub entry is missing: index.html");
+  if (!actualFiles.includes("_headers")) {
+    throw new Error("Production artifact is missing the Cloudflare static asset cache policy.");
+  }
+  const staticAssetHeaders = await readFile(resolve(root, "_headers"), "utf8");
+  if (staticAssetHeaders.replaceAll("\r\n", "\n") !== EXPECTED_STATIC_ASSET_HEADERS) {
+    throw new Error("Production _headers does not match the immutable and revalidation contract.");
+  }
   const serviceWorkers = actualFiles.filter((file) =>
     /(?:^|\/)(?:service-worker|service_worker|serviceworker|sw)\.js$/iu.test(file),
   );
@@ -178,7 +212,7 @@ export async function verifyPublishedArtifact(directory = productionDirectory) {
   }
 
   const allowedGameFiles = new Set(["games/catalog.json"]);
-  for (const game of catalog.games) {
+  for (const [index, game] of catalog.games.entries()) {
     const expectedManifestReference = `./${game.id}/game.manifest.json`;
     if (game.manifest !== expectedManifestReference) {
       throw new Error(

@@ -3,6 +3,8 @@ import type {
   GamePresentationSource,
 } from "../packages/game-contract/src/index.ts";
 
+export const REQUIRED_GAME_TASKS: readonly ["build", "check", "test"];
+
 export interface ProductionRegistryGame {
   id: string;
   packageName: string;
@@ -23,6 +25,8 @@ export interface LoadedProductionRegistryGame extends ProductionRegistryGame {
   stagePath: string;
   manifestSourcePath: string;
   presentationSourcePath: string;
+  packagePath: string;
+  packageScripts: Record<string, string>;
   manifest: GameManifestSource;
   presentation: GamePresentationSource;
   covers: Array<{ path: string; width: number; height: number; sourcePath: string }>;

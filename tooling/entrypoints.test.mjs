@@ -46,18 +46,30 @@ await test("development and browser installation cover every runtime workspace",
   );
   assert.equal(
     packageJson.scripts["e2e:install"],
-    "vp exec playwright install chromium && vp run tumbledrum#browser:install && vp run crown-breaker#browser:install",
+    "vp exec playwright install chromium && vp exec node tooling/run-production-registry-task.mjs browser:install",
   );
 });
 
 await test("registry task runner derives dev and build order without game ID branches", () => {
   const registry = {
-    games: [{ packageName: "@gameyard/alpha" }, { packageName: "@gameyard/synthetic-sixth" }],
+    games: [
+      {
+        id: "alpha",
+        packageName: "@gameyard/alpha",
+        packageScripts: { "browser:install": "vp exec playwright install chromium" },
+      },
+      {
+        id: "synthetic-sixth",
+        packageName: "@gameyard/synthetic-sixth",
+        packageScripts: { "browser:install": "vp exec playwright install chromium" },
+      },
+    ],
   };
   assert.deepEqual(createProductionRegistryTaskCommands(registry, "dev"), [
     [
       "run",
       "--parallel",
+      "--fail-if-no-match",
       "--filter",
       "@gameyard/alpha",
       "--filter",
@@ -68,9 +80,13 @@ await test("registry task runner derives dev and build order without game ID bra
     ],
   ]);
   assert.deepEqual(createProductionRegistryTaskCommands(registry, "build"), [
-    ["run", "--no-cache", "--filter", "@gameyard/alpha", "build"],
-    ["run", "--no-cache", "--filter", "@gameyard/synthetic-sixth", "build"],
-    ["run", "--no-cache", "--filter", "hub", "build"],
+    ["run", "--no-cache", "@gameyard/alpha#build"],
+    ["run", "--no-cache", "@gameyard/synthetic-sixth#build"],
+    ["run", "--no-cache", "hub#build"],
+  ]);
+  assert.deepEqual(createProductionRegistryTaskCommands(registry, "browser:install"), [
+    ["run", "--no-cache", "@gameyard/alpha#browser:install"],
+    ["run", "--no-cache", "@gameyard/synthetic-sixth#browser:install"],
   ]);
 });
 

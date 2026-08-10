@@ -73,7 +73,8 @@ const en = {
   "pwa.remove": "Remove copy",
   "pwa.gameSaved": "Available offline",
   "pwa.gameOnlineOnly": "Online only",
-  "pwa.staleRemoved": "Removed unavailable saved entries: {{games}}.",
+  "pwa.staleFound":
+    "Unavailable saved entries were found: {{games}}. Remove all offline games to clear them.",
   "pwa.storageHeading": "Storage estimate and cleanup",
   "pwa.storageDetail":
     "Browser values estimate this origin's total storage, not just offline copies. Removing copies keeps game saves and public settings; the browser may still reclaim offline data.",
@@ -228,7 +229,8 @@ const ja: TranslationCatalog = {
   "pwa.remove": "コピーを削除",
   "pwa.gameSaved": "オフライン利用可能",
   "pwa.gameOnlineOnly": "オンラインのみ",
-  "pwa.staleRemoved": "利用できない保存項目を削除しました：{{games}}。",
+  "pwa.staleFound":
+    "利用できない保存項目が見つかりました：{{games}}。オフラインゲームをすべて削除すると消去できます。",
   "pwa.storageHeading": "保存容量の推定と消去",
   "pwa.storageDetail":
     "表示値はこのオリジン全体の推定で、オフラインコピーだけの容量ではありません。コピーを削除してもゲーム保存データと共通設定は残りますが、オフラインデータはブラウザーに回収される場合があります。",
@@ -380,7 +382,7 @@ const zhHans: TranslationCatalog = {
   "pwa.remove": "移除副本",
   "pwa.gameSaved": "可离线使用",
   "pwa.gameOnlineOnly": "仅在线使用",
-  "pwa.staleRemoved": "已移除不再可用的保存项：{{games}}。",
+  "pwa.staleFound": "发现不可用的保存项：{{games}}。请移除所有离线游戏以清理。",
   "pwa.storageHeading": "存储估算与清理",
   "pwa.storageDetail":
     "显示值是此源全部存储空间的浏览器估算，并非仅计算离线副本。移除副本不会删除游戏存档或公共设置；浏览器仍可能回收离线数据。",

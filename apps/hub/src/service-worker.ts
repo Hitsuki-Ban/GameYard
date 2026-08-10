@@ -17,6 +17,7 @@ declare const self: ServiceWorkerGlobalScope & {
 
 const BUILD_ID = __GAMEYARD_BUILD__;
 const GAME_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const REGISTERED_GAME_IDS = new Set(__GAMEYARD_GAME_IDS__);
 const scopePath = new URL(self.registration.scope).pathname;
 const scopeKey =
   scopePath === "/"
@@ -44,11 +45,15 @@ function gameIdFromCacheName(cacheName: string): string | null {
 }
 
 async function offlineStatus(): Promise<PwaOfflineStatus> {
-  const savedGames = (await caches.keys())
+  const cachedGameIds = (await caches.keys())
     .map(gameIdFromCacheName)
     .filter((gameId): gameId is string => gameId !== null)
     .sort();
-  return { buildId: BUILD_ID, savedGames };
+  return {
+    buildId: BUILD_ID,
+    savedGames: cachedGameIds.filter((gameId) => REGISTERED_GAME_IDS.has(gameId)),
+    staleGames: cachedGameIds.filter((gameId) => !REGISTERED_GAME_IDS.has(gameId)),
+  };
 }
 
 function success(status: PwaOfflineStatus): PwaResponse {
@@ -62,6 +67,16 @@ function failure(error: unknown): PwaResponse {
 function assertCurrentRequest(request: PwaRequest): void {
   if (request.buildId !== BUILD_ID) {
     throw new Error(`PWA build mismatch: expected ${BUILD_ID}, received ${request.buildId}`);
+  }
+}
+
+function assertCurrentGameId(gameId: unknown): asserts gameId is string {
+  if (
+    typeof gameId !== "string" ||
+    !GAME_ID_PATTERN.test(gameId) ||
+    !REGISTERED_GAME_IDS.has(gameId)
+  ) {
+    throw new Error(`Offline game id is not in the current artifact catalog: ${String(gameId)}`);
   }
 }
 
@@ -84,9 +99,7 @@ async function readRequiredJson(
 }
 
 async function saveGame(request: Extract<PwaRequest, { type: "gameyard:pwa-save-game" }>) {
-  if (typeof request.gameId !== "string" || !GAME_ID_PATTERN.test(request.gameId)) {
-    throw new Error("Invalid offline game id");
-  }
+  assertCurrentGameId(request.gameId);
   if (
     !Array.isArray(request.files) ||
     request.files.length === 0 ||
@@ -177,9 +190,7 @@ async function clearGameCaches(): Promise<void> {
 async function removeGameCache(
   request: Extract<PwaRequest, { type: "gameyard:pwa-remove-game" }>,
 ): Promise<void> {
-  if (typeof request.gameId !== "string" || !GAME_ID_PATTERN.test(request.gameId)) {
-    throw new Error("Invalid offline game id");
-  }
+  assertCurrentGameId(request.gameId);
   await caches.delete(gameCacheName(request.gameId));
 }
 

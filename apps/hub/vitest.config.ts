@@ -11,6 +11,7 @@ export default defineConfig({
   plugins: [createProductionRegistryVitePlugin(productionRegistry)],
   define: {
     __GAMEYARD_BUILD__: JSON.stringify("hub@test"),
+    __GAMEYARD_GAME_IDS__: JSON.stringify(productionRegistry.games.map((game) => game.id)),
   },
   test: {
     include: ["src/**/*.test.ts"],

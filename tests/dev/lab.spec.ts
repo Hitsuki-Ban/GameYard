@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { REGISTERED_GAME_IDS } from "../registered-games";
 import { openPlayDiagnostics, openSettingsDrawer } from "../play-mode";
+import { SOURCE_GAME_IDS } from "../source-games";
 
 function collectRuntimeErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -18,7 +18,7 @@ test("the DEV Lab applies and round-trips exact manifest-bound startup scenes", 
   test.setTimeout(240_000);
   const runtimeErrors = collectRuntimeErrors(page);
 
-  for (const gameId of REGISTERED_GAME_IDS) {
+  for (const gameId of SOURCE_GAME_IDS) {
     await page.goto(`./?game=${gameId}`);
     await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
     const persistedSettings = await page.evaluate(() =>

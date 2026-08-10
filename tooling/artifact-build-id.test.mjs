@@ -32,7 +32,12 @@ async function createFixture() {
   await writeFile(join(root, "games/demo/src/game.js"), "first build\n");
   await writeFile(
     join(root, "games/demo/package.json"),
-    JSON.stringify({ name: "@gameyard/demo", version: "1.0.0", private: true }),
+    JSON.stringify({
+      name: "@gameyard/demo",
+      version: "1.0.0",
+      private: true,
+      scripts: { build: "vp build", check: "vp check", test: "vp test" },
+    }),
   );
   await writeFile(
     join(root, "games/demo/game.manifest.source.json"),

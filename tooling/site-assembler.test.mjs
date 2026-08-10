@@ -11,7 +11,7 @@ import {
   createAssemblyPlan,
   replaceDirectoryTransactional,
 } from "./site-assembler.mjs";
-import { verifyProductionArtifact } from "./verify-production.mjs";
+import { EXPECTED_STATIC_ASSET_HEADERS, verifyProductionArtifact } from "./verify-production.mjs";
 
 const temporaryRoots = [];
 const gameStagePath = ".gameyard/stage/games/demo";
@@ -45,7 +45,12 @@ async function createFixture() {
   await writeFile(join(root, gameProductionInput, "game.js"), "production source\n");
   await writeFile(
     join(root, "games/demo/package.json"),
-    JSON.stringify({ name: "@gameyard/demo", version: "1.0.0", private: true }),
+    JSON.stringify({
+      name: "@gameyard/demo",
+      version: "1.0.0",
+      private: true,
+      scripts: { build: "vp build", check: "vp check", test: "vp test" },
+    }),
   );
   await writeFile(
     join(root, "games/demo/game.manifest.source.json"),
@@ -155,6 +160,7 @@ async function createFixture() {
   const hubStage = join(root, ".gameyard/stage/hub");
   await mkdir(join(hubStage, "assets"), { recursive: true });
   await mkdir(join(hubStage, "icons"), { recursive: true });
+  await writeFile(join(hubStage, "_headers"), EXPECTED_STATIC_ASSET_HEADERS);
   await writeFile(
     join(hubStage, "index.html"),
     '<link rel="manifest" href="./manifest.webmanifest"><script src="./assets/hub.js"></script>',
@@ -228,7 +234,7 @@ await test("assembles a declared Hub and game transactionally", async () => {
   await mkdir(join(root, "dist"));
   await writeFile(join(root, "dist/old.txt"), "old artifact");
 
-  assert.deepEqual(await assembleSite(root), { buildId, fileCount: 10, gameCount: 1 });
+  assert.deepEqual(await assembleSite(root), { buildId, fileCount: 11, gameCount: 1 });
   await assert.rejects(stat(join(root, "dist/old.txt")), { code: "ENOENT" });
   assert.equal(
     await readFile(join(root, "dist/index.html"), "utf8"),
@@ -237,7 +243,7 @@ await test("assembles a declared Hub and game transactionally", async () => {
   assert.equal((await readJson(join(root, "dist/build-info.json"))).buildId, buildId);
   assert.deepEqual(await verifyProductionArtifact(join(root, "dist"), root), {
     buildId,
-    fileCount: 10,
+    fileCount: 11,
     gameCount: 1,
   });
 });

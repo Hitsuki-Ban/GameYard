@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { afterEach, test } from "node:test";
 
 import { loadProductionRegistry, parseProductionRegistry } from "./production-registry.mjs";
+import { createGameCiMatrix, writeGameCiMatrix } from "./production-registry-ci.mjs";
 import { createProductionRegistryVitePlugin } from "./production-registry-vite.mjs";
+import { createProductionRegistryTaskCommands } from "./run-production-registry-task.mjs";
 
 const temporaryRoots = [];
 
@@ -45,7 +47,18 @@ async function createFixture() {
     await mkdir(join(base, "src"), { recursive: true });
     await writeFile(
       join(base, "package.json"),
-      JSON.stringify({ name: game.packageName, version: "1.0.0", private: true }),
+      JSON.stringify({
+        name: game.packageName,
+        version: "1.0.0",
+        private: true,
+        scripts: {
+          "browser:install": "vp exec playwright install chromium",
+          dev: "vp dev",
+          build: "vp build",
+          check: "vp check",
+          test: "vp test",
+        },
+      }),
     );
     await writeFile(
       join(base, "game.manifest.source.json"),
@@ -107,6 +120,34 @@ await test("loads an ordered six-game registry and emits only browser-safe virtu
   assert.match(source, /virtual:gameyard\/cover\/5\/1/);
   assert.doesNotMatch(source, /@gameyard|\.gameyard\/stage|devPort|sourcePath/);
   assert.match(plugin.resolveId("virtual:gameyard/cover/5/1"), /\?url&no-inline$/);
+
+  const buildCommands = createProductionRegistryTaskCommands(registry, "build");
+  assert.equal(buildCommands.length, registry.games.length + 1);
+  assert.deepEqual(buildCommands[0], [
+    "run",
+    "--no-cache",
+    `${registry.games[0].packageName}#build`,
+  ]);
+  assert.ok(buildCommands.every((command) => !command.includes("--filter")));
+  assert.equal(
+    createProductionRegistryTaskCommands(registry, "browser:install").length,
+    registry.games.length,
+  );
+});
+
+await test("emits the GitHub game matrix from registry order and package identity", async () => {
+  const { root } = await createFixture();
+  const registry = await loadProductionRegistry(root);
+  assert.deepEqual(createGameCiMatrix(registry), {
+    include: registry.games.map((game) => ({
+      gameId: game.id,
+      packageName: game.packageName,
+    })),
+  });
+
+  const outputFile = join(root, "github-output.txt");
+  const matrix = await writeGameCiMatrix(root, outputFile);
+  assert.equal(await readFile(outputFile, "utf8"), `game-matrix=${JSON.stringify(matrix)}\n`);
 });
 
 await test("rejects legacy, empty, colliding, and unsafe registry configurations", () => {
@@ -175,4 +216,17 @@ await test("fails closed on locale, presentation, cover, and production coverage
     await writeFile(path, JSON.stringify(value));
     await assert.rejects(loadProductionRegistry(root), fixtureCase.expected);
   }
+});
+
+await test("rejects a registered package without the standard task surface", async () => {
+  const { root } = await createFixture();
+  const packagePath = join(root, "games/fixture-1/package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  delete packageJson.scripts.check;
+  await writeFile(packagePath, JSON.stringify(packageJson));
+
+  await assert.rejects(
+    loadProductionRegistry(root),
+    /game fixture-1 package @gameyard\/fixture-1 is missing required task check/,
+  );
 });
