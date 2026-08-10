@@ -170,6 +170,18 @@ importers:
         specifier: 'catalog:'
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2))(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)
 
+  games/kamifuda-runner:
+    devDependencies:
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.62.1
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2))(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)
+
   games/pulse-link-overdrive:
     dependencies:
       '@gameyard/game-contract':

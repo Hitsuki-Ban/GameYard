@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "archive": {
+    "path": "games/kamifuda-runner-v4.zip",
+    "sha256": "5f2d6469b12ec50674b80aaa45a2519cad67fbf4938921e61814a458241f7752",
+    "entryCount": 12,
+    "uncompressedBytes": 467437
+  },
+  "entries": [
+    {
+      "archivePath": "kamifuda-runner-v4/",
+      "kind": "directory",
+      "uncompressedBytes": 0,
+      "importedPath": null,
+      "sha256": null
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/PRESENTATION_SPEC.md",
+      "kind": "file",
+      "uncompressedBytes": 1222,
+      "importedPath": "games/kamifuda-runner/PRESENTATION_SPEC.md",
+      "sha256": "ded4c9ad87093d1ab1e3e71e8a75f7a0547d428119ef1f3b94468bf52ccfa3c8"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/VISUAL_PRESENTATION_AUDIT.md",
+      "kind": "file",
+      "uncompressedBytes": 4576,
+      "importedPath": "games/kamifuda-runner/VISUAL_PRESENTATION_AUDIT.md",
+      "sha256": "ec3fc1e68a83349f36f5fdd830fe9e47a36ed62391824dae3e2b41637ad7be6b"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/kamifuda-runner-v4-standalone.html",
+      "kind": "file",
+      "uncompressedBytes": 210722,
+      "importedPath": "games/kamifuda-runner/kamifuda-runner-v4-standalone.html",
+      "sha256": "3cc8f3d164d64456f110ed519029a3156ca6bf3a4e8f01589fa3acd3fa025d8c"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/TEST_REPORT.md",
+      "kind": "file",
+      "uncompressedBytes": 4822,
+      "importedPath": "games/kamifuda-runner/TEST_REPORT.md",
+      "sha256": "b254c5283a5641f0e691becb6bdc01c75d6d72e29d70a3d99ce7fe40cfc3eef0"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/build.py",
+      "kind": "file",
+      "uncompressedBytes": 2250,
+      "importedPath": "games/kamifuda-runner/build.py",
+      "sha256": "2a600a75f9d2a3f61789e7aa0dff83ac6539535ee1a34c1d8e1c4fa5551130e8"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/DESIGN_NOTES.md",
+      "kind": "file",
+      "uncompressedBytes": 9128,
+      "importedPath": "games/kamifuda-runner/DESIGN_NOTES.md",
+      "sha256": "d02945ce5b894e91387b0a2750489baca1b6330f3af832229d373e45efd78dfc"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/ACCEPTANCE_RESULTS.json",
+      "kind": "file",
+      "uncompressedBytes": 9790,
+      "importedPath": "games/kamifuda-runner/ACCEPTANCE_RESULTS.json",
+      "sha256": "82a64dec2c080a3dfa864e232b3abba5a03d222793a1b7adf6d4076ac775ab23"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/LEVEL_CONTENT_AUDIT.md",
+      "kind": "file",
+      "uncompressedBytes": 14168,
+      "importedPath": "games/kamifuda-runner/LEVEL_CONTENT_AUDIT.md",
+      "sha256": "7e0edff94bd7a0536e3790ebad0ce84fdf4a9fb8e47ceb416c0e5391e7672ecd"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/style.css",
+      "kind": "file",
+      "uncompressedBytes": 26833,
+      "importedPath": "games/kamifuda-runner/style.css",
+      "sha256": "c58472fcdcf453cfac2ed79734625c766d6cb195a6d4b36771bd044baa81119c"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/index.html",
+      "kind": "file",
+      "uncompressedBytes": 7318,
+      "importedPath": "games/kamifuda-runner/index.html",
+      "sha256": "59eb810724749c76028e6e005e7817f4a487fdcf700e85de4f34d92c06380962"
+    },
+    {
+      "archivePath": "kamifuda-runner-v4/game.js",
+      "kind": "file",
+      "uncompressedBytes": 176608,
+      "importedPath": "games/kamifuda-runner/game.js",
+      "sha256": "09f76fa8b7b9c9e8ea2a6247e4e86b575dda47e2d923dca11cc42bc9eef1e5ec"
+    }
+  ]
+}
