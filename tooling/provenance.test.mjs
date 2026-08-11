@@ -53,6 +53,19 @@ await test("verifies Neon source evidence without requiring its owner-only archi
   assert.equal(evidence.record.gameId, "neon-overdrive");
   assert.equal(evidence.record.productionBoundary.status, "source-evidence-only");
   assert.equal(evidence.record.productionBoundary.runtimeAdmissionIssue, 52);
+  assert.deepEqual(evidence.record.productionBoundary.excludedFromProductionInputs, [
+    "games/neon-overdrive.zip",
+    "games/neon-overdrive/NEON_OVERDRIVE.html",
+    "games/neon-overdrive/preview.png",
+    "games/neon-overdrive/overdrive-preview.png",
+    "games/neon-overdrive/boss-preview.png",
+    "games/neon-overdrive/run_local.sh",
+    "games/neon-overdrive/run_local.bat",
+    "games/neon-overdrive/playwright.baseline.config.ts",
+    "games/neon-overdrive/tools",
+    "games/neon-overdrive/tests",
+    "games/neon-overdrive/performance",
+  ]);
   assert.equal(evidence.record.sourceSnapshot.repository, null);
   assert.equal(evidence.record.sourceSnapshot.revision, null);
   assert.equal(evidence.record.sourceSnapshot.license, null);

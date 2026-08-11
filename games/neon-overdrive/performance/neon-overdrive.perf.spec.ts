@@ -25,6 +25,7 @@ type RuntimeSample = {
   playingSimulationTicks: number;
   hudMutationCount: number;
   audioSchedulerCalls: number;
+  audioSchedulerTimestampsEpochMs: number[];
   entityPeaks: Record<string, number>;
   state: string;
 };
@@ -51,6 +52,12 @@ type ScenarioEvidence = {
     playingSimulationTicks: number;
     hudMutationCount: number;
     audioSchedulerCalls: number;
+  };
+  frozenWindow: null | {
+    durationMs: number;
+    audioSchedulerCallsBeforeFrozen: number;
+    audioSchedulerCallsDuringFrozen: number;
+    audioSchedulerCallsAfterThawBeforeSnapshot: number;
   };
   entityPeaks: Record<string, number>;
   finalState: string;
@@ -121,6 +128,12 @@ test("records the fixed before-refactor performance matrix", async ({ browser, c
   expect(hidden.lifecycleState).toBe("frozen");
   expect(hidden.visibilityEvents).toContainEqual({ hidden: true, state: "hidden" });
   expect(hidden.documentHiddenDuringSample).toBe(true);
+  expect(hidden.frozenWindow).not.toBeNull();
+  expect(
+    hidden.frozenWindow!.audioSchedulerCallsBeforeFrozen +
+      hidden.frozenWindow!.audioSchedulerCallsDuringFrozen +
+      hidden.frozenWindow!.audioSchedulerCallsAfterThawBeforeSnapshot,
+  ).toBe(hidden.activity.audioSchedulerCalls);
 
   for (const entry of scenarios) {
     expect(entry.cdpDurationsMs.task).toBeGreaterThanOrEqual(0);
@@ -175,6 +188,7 @@ async function captureScenario(
       const originalScheduler = game.audio.scheduler.bind(game.audio);
       game.audio.scheduler = () => {
         metrics.audioSchedulerCalls += 1;
+        metrics.audioSchedulerTimestampsEpochMs.push(Date.now());
         originalScheduler();
       };
       new MutationObserver((records) => {
@@ -230,6 +244,11 @@ async function captureScenario(
 
     let lifecycleState: "active" | "frozen" = "active";
     let documentHiddenDuringSample = false;
+    let frozenBounds: null | {
+      startedAtEpochMs: number;
+      thawCommandAtEpochMs: number;
+      snapshotAtEpochMs: number;
+    } = null;
     if (scenario === "hidden-frozen") {
       await page.evaluate((sampleMs) => {
         const metrics = window.__NEON_PERF__;
@@ -242,8 +261,15 @@ async function captureScenario(
       }, SAMPLE_MS);
       lifecycleState = "frozen";
       await session.send("Page.setWebLifecycleState", { state: "frozen" });
+      const startedAtEpochMs = Date.now();
       await new Promise((resolveDelay) => setTimeout(resolveDelay, SAMPLE_MS));
+      const thawCommandAtEpochMs = Date.now();
       await session.send("Page.setWebLifecycleState", { state: "active" });
+      frozenBounds = {
+        startedAtEpochMs,
+        thawCommandAtEpochMs,
+        snapshotAtEpochMs: thawCommandAtEpochMs,
+      };
     } else {
       await page.evaluate((sampleMs) => window.__NEON_PERF__.startSample(sampleMs), SAMPLE_MS);
       await new Promise((resolveDelay) => setTimeout(resolveDelay, SAMPLE_MS + 250));
@@ -266,6 +292,26 @@ async function captureScenario(
       document.dispatchEvent(new Event("visibilitychange"));
       return hiddenSnapshot;
     }, scenario === "hidden-frozen");
+    if (frozenBounds) frozenBounds.snapshotAtEpochMs = Date.now();
+    const frozenWindow: ScenarioEvidence["frozenWindow"] = frozenBounds
+      ? {
+          durationMs: frozenBounds.thawCommandAtEpochMs - frozenBounds.startedAtEpochMs,
+          audioSchedulerCallsBeforeFrozen: runtime.audioSchedulerTimestampsEpochMs.filter(
+            (timestamp) => timestamp < frozenBounds.startedAtEpochMs,
+          ).length,
+          audioSchedulerCallsDuringFrozen: runtime.audioSchedulerTimestampsEpochMs.filter(
+            (timestamp) =>
+              timestamp >= frozenBounds.startedAtEpochMs &&
+              timestamp < frozenBounds.thawCommandAtEpochMs,
+          ).length,
+          audioSchedulerCallsAfterThawBeforeSnapshot:
+            runtime.audioSchedulerTimestampsEpochMs.filter(
+              (timestamp) =>
+                timestamp >= frozenBounds.thawCommandAtEpochMs &&
+                timestamp <= frozenBounds.snapshotAtEpochMs,
+            ).length,
+        }
+      : null;
     documentHiddenDuringSample = runtime.documentHidden;
     return summarizeScenario(
       scenario,
@@ -274,6 +320,7 @@ async function captureScenario(
       cdpAfter,
       lifecycleState,
       documentHiddenDuringSample,
+      frozenWindow,
     );
   } finally {
     if (scenario === "cpu-4x") await session.send("Emulation.setCPUThrottlingRate", { rate: 1 });
@@ -303,6 +350,7 @@ async function installRuntimeInstrumentation(page: Page) {
         playingSimulationTicks: 0,
         hudMutationCount: 0,
         audioSchedulerCalls: 0,
+        audioSchedulerTimestampsEpochMs: [] as number[],
         visibilityEvents: [] as Array<{ hidden: boolean; state: string }>,
         hiddenSnapshot: null as RuntimeSample | null,
         sampleSnapshot: null as RuntimeSample | null,
@@ -325,6 +373,7 @@ async function installRuntimeInstrumentation(page: Page) {
           this.playingSimulationTicks = 0;
           this.hudMutationCount = 0;
           this.audioSchedulerCalls = 0;
+          this.audioSchedulerTimestampsEpochMs.length = 0;
           this.visibilityEvents.length = 0;
           this.hiddenSnapshot = null;
           this.sampleSnapshot = null;
@@ -346,6 +395,7 @@ async function installRuntimeInstrumentation(page: Page) {
             playingSimulationTicks: this.playingSimulationTicks,
             hudMutationCount: this.hudMutationCount,
             audioSchedulerCalls: this.audioSchedulerCalls,
+            audioSchedulerTimestampsEpochMs: [...this.audioSchedulerTimestampsEpochMs],
             entityPeaks: { ...this.entityPeaks },
             state: window.__NEON_OVERDRIVE__?.state ?? "booting",
           };
@@ -422,6 +472,7 @@ function summarizeScenario(
   after: Record<string, number>,
   lifecycleState: "active" | "frozen",
   documentHiddenDuringSample: boolean,
+  frozenWindow: ScenarioEvidence["frozenWindow"],
 ): ScenarioEvidence {
   const frames = [...runtime.frameIntervalsMs].sort((left, right) => left - right);
   const longTasks = runtime.longTaskDurationsMs;
@@ -457,6 +508,7 @@ function summarizeScenario(
       hudMutationCount: runtime.hudMutationCount,
       audioSchedulerCalls: runtime.audioSchedulerCalls,
     },
+    frozenWindow,
     entityPeaks: runtime.entityPeaks,
     finalState: runtime.state,
     documentHiddenDuringSample,
@@ -497,6 +549,7 @@ declare global {
       playingSimulationTicks: number;
       hudMutationCount: number;
       audioSchedulerCalls: number;
+      audioSchedulerTimestampsEpochMs: number[];
       visibilityEvents: Array<{ hidden: boolean; state: string }>;
       hiddenSnapshot: RuntimeSample | null;
       sampleSnapshot: RuntimeSample | null;

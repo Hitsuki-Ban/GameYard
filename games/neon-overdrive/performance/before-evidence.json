@@ -31,13 +31,13 @@
       "visibilityMechanism": "natural",
       "sampleMs": 1200,
       "frames": {
-        "count": 4,
-        "meanMs": 270.85,
-        "p50Ms": 266.7,
-        "p95Ms": 466.7,
-        "p99Ms": 466.7,
-        "maxMs": 466.7,
-        "over20Ms": 4
+        "count": 3,
+        "meanMs": 311.1,
+        "p50Ms": 416.6,
+        "p95Ms": 416.7,
+        "p99Ms": 416.7,
+        "maxMs": 416.7,
+        "over20Ms": 3
       },
       "longTasks": {
         "count": 0,
@@ -45,16 +45,17 @@
         "maxMs": 0
       },
       "cdpDurationsMs": {
-        "task": 20.82,
-        "script": 10.66,
-        "layout": 1.91
+        "task": 30.78,
+        "script": 16.11,
+        "layout": 2.61
       },
       "activity": {
-        "updateCalls": 25,
-        "playingSimulationTicks": 25,
-        "hudMutationCount": 117,
+        "updateCalls": 20,
+        "playingSimulationTicks": 20,
+        "hudMutationCount": 90,
         "audioSchedulerCalls": 1
       },
+      "frozenWindow": null,
       "entityPeaks": {
         "enemies": 3,
         "enemyBullets": 2,
@@ -75,11 +76,11 @@
       "sampleMs": 1200,
       "frames": {
         "count": 1,
-        "meanMs": 66.6,
-        "p50Ms": 66.6,
-        "p95Ms": 66.6,
-        "p99Ms": 66.6,
-        "maxMs": 66.6,
+        "meanMs": 83.3,
+        "p50Ms": 83.3,
+        "p95Ms": 83.3,
+        "p99Ms": 83.3,
+        "maxMs": 83.3,
         "over20Ms": 1
       },
       "longTasks": {
@@ -88,16 +89,17 @@
         "maxMs": 0
       },
       "cdpDurationsMs": {
-        "task": 81.95,
-        "script": 46.78,
-        "layout": 4.74
+        "task": 127.74,
+        "script": 66.15,
+        "layout": 3.17
       },
       "activity": {
-        "updateCalls": 8,
-        "playingSimulationTicks": 8,
-        "hudMutationCount": 36,
-        "audioSchedulerCalls": 1
+        "updateCalls": 9,
+        "playingSimulationTicks": 9,
+        "hudMutationCount": 45,
+        "audioSchedulerCalls": 0
       },
+      "frozenWindow": null,
       "entityPeaks": {
         "enemies": 3,
         "enemyBullets": 2,
@@ -118,11 +120,11 @@
       "sampleMs": 1200,
       "frames": {
         "count": 1,
-        "meanMs": 83.34,
-        "p50Ms": 83.34,
-        "p95Ms": 83.34,
-        "p99Ms": 83.34,
-        "maxMs": 83.34,
+        "meanMs": 116.7,
+        "p50Ms": 116.7,
+        "p95Ms": 116.7,
+        "p99Ms": 116.7,
+        "maxMs": 116.7,
         "over20Ms": 1
       },
       "longTasks": {
@@ -131,16 +133,17 @@
         "maxMs": 0
       },
       "cdpDurationsMs": {
-        "task": 14.69,
-        "script": 7.39,
-        "layout": 0.47
+        "task": 20.06,
+        "script": 12,
+        "layout": 0.48
       },
       "activity": {
         "updateCalls": 10,
         "playingSimulationTicks": 10,
         "hudMutationCount": 45,
-        "audioSchedulerCalls": 1
+        "audioSchedulerCalls": 2
       },
+      "frozenWindow": null,
       "entityPeaks": {
         "enemies": 3,
         "enemyBullets": 422,
@@ -160,13 +163,13 @@
       "visibilityMechanism": "natural",
       "sampleMs": 1200,
       "frames": {
-        "count": 5,
-        "meanMs": 226.66,
-        "p50Ms": 249.9,
-        "p95Ms": 333.4,
-        "p99Ms": 333.4,
-        "maxMs": 333.4,
-        "over20Ms": 5
+        "count": 3,
+        "meanMs": 311.1,
+        "p50Ms": 300.1,
+        "p95Ms": 500,
+        "p99Ms": 500,
+        "maxMs": 500,
+        "over20Ms": 3
       },
       "longTasks": {
         "count": 0,
@@ -174,16 +177,17 @@
         "maxMs": 0
       },
       "cdpDurationsMs": {
-        "task": 13.7,
-        "script": 5,
+        "task": 14.4,
+        "script": 3.82,
         "layout": 0
       },
       "activity": {
-        "updateCalls": 29,
+        "updateCalls": 20,
         "playingSimulationTicks": 0,
         "hudMutationCount": 0,
-        "audioSchedulerCalls": 2
+        "audioSchedulerCalls": 1
       },
+      "frozenWindow": null,
       "entityPeaks": {
         "enemies": 2,
         "enemyBullets": 2,
@@ -217,8 +221,8 @@
         "maxMs": 0
       },
       "cdpDurationsMs": {
-        "task": 23.18,
-        "script": 1.41,
+        "task": 26.33,
+        "script": 3.35,
         "layout": 0
       },
       "activity": {
@@ -226,6 +230,12 @@
         "playingSimulationTicks": 0,
         "hudMutationCount": 0,
         "audioSchedulerCalls": 35
+      },
+      "frozenWindow": {
+        "durationMs": 1201,
+        "audioSchedulerCallsBeforeFrozen": 0,
+        "audioSchedulerCallsDuringFrozen": 34,
+        "audioSchedulerCallsAfterThawBeforeSnapshot": 1
       },
       "entityPeaks": {
         "enemies": 0,

@@ -12,6 +12,7 @@ import {
 } from "./baseline-driver";
 
 test("preserves the primary Story journey and canonical presentation", async ({ page }) => {
+  test.setTimeout(60_000);
   await bootSource(page, { clearStorage: true });
 
   await expect(page.locator("#title-screen")).toHaveClass(/overlay-visible/u);
@@ -89,6 +90,26 @@ test("preserves the primary Story journey and canonical presentation", async ({ 
   expect((await observe(page)).player.x).toBeGreaterThan(290);
 
   await resetPlayer(page);
+  await page.dispatchEvent("#game", "pointerdown", {
+    pointerId: 8,
+    pointerType: "mouse",
+    clientX: playerClient.x,
+    clientY: playerClient.y,
+    button: 2,
+  });
+  await step(page, 1 / 60);
+  expect((await observe(page)).player.focus).toBe(true);
+  await page.dispatchEvent("#game", "pointerup", {
+    pointerId: 8,
+    pointerType: "mouse",
+    clientX: playerClient.x,
+    clientY: playerClient.y,
+    button: 2,
+  });
+  await step(page, 1 / 60);
+  expect((await observe(page)).player.focus).toBe(false);
+
+  await resetPlayer(page);
   await setGamepad(page, { connected: true, x: 1, y: 0, action: false, focus: true, pause: false });
   await step(page, 0.2);
   const gamepadMove = await observe(page);
@@ -110,15 +131,33 @@ test("preserves the primary Story journey and canonical presentation", async ({ 
   expect((await observe(page)).stats.drives).toBe(drivesBefore + 1);
 
   await prepareDrive(page);
+  await page.dispatchEvent("#game", "pointerdown", {
+    pointerId: 10,
+    pointerType: "mouse",
+    clientX: playerClient.x,
+    clientY: playerClient.y,
+    button: 0,
+  });
+  await page.dispatchEvent("#game", "pointerup", {
+    pointerId: 10,
+    pointerType: "mouse",
+    clientX: playerClient.x,
+    clientY: playerClient.y,
+    button: 0,
+  });
+  await step(page, 1 / 60);
+  expect((await observe(page)).stats.drives).toBe(drivesBefore + 2);
+
+  await prepareDrive(page);
   await page
     .locator("#touch-drive")
     .dispatchEvent("pointerdown", { pointerId: 9, pointerType: "touch" });
-  expect((await observe(page)).stats.drives).toBe(drivesBefore + 2);
+  expect((await observe(page)).stats.drives).toBe(drivesBefore + 3);
 
   await prepareDrive(page);
   await setGamepad(page, { connected: true, x: 0, y: 0, action: true, focus: false, pause: false });
   await step(page, 1 / 60);
-  expect((await observe(page)).stats.drives).toBe(drivesBefore + 3);
+  expect((await observe(page)).stats.drives).toBe(drivesBefore + 4);
   await setGamepad(page, {
     connected: true,
     x: 0,
@@ -138,6 +177,28 @@ test("preserves the primary Story journey and canonical presentation", async ({ 
   await step(page, 1 / 60);
   expect((await observe(page)).state).toBe("paused");
   await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
+  await page.locator("#resume-button").click();
+  expect((await observe(page)).state).toBe("playing");
+
+  await setGamepad(page, {
+    connected: true,
+    x: 0,
+    y: 0,
+    action: false,
+    focus: false,
+    pause: true,
+  });
+  await step(page, 1 / 60);
+  expect((await observe(page)).state).toBe("paused");
+  await setGamepad(page, {
+    connected: true,
+    x: 0,
+    y: 0,
+    action: false,
+    focus: false,
+    pause: false,
+  });
+  await step(page, 1 / 60);
   await page.locator("#resume-button").click();
   expect((await observe(page)).state).toBe("playing");
 
@@ -213,6 +274,14 @@ test("preserves the primary Story journey and canonical presentation", async ({ 
 test("locks focused Rush and Endless mode checkpoints", async ({ page }) => {
   await bootSource(page, { clearStorage: true });
 
+  await page.evaluate(() => {
+    const game = window.__NEON_OVERDRIVE__;
+    game.startRun("story");
+    game.score = 111_111;
+    game.finishRun(true, "RITUAL COMPLETE");
+  });
+  await expect(page.locator("#result-score")).toHaveText("000111111");
+
   await page.evaluate(() => window.__NEON_OVERDRIVE__.startRun("rush"));
   const rush = await observe(page);
   expect(rush).toMatchObject({ state: "playing", mode: "rush", modeTimer: 180, reboots: 0 });
@@ -221,6 +290,7 @@ test("locks focused Rush and Endless mode checkpoints", async ({ page }) => {
   expect((await observe(page)).modeTimer).toBeCloseTo(179, 5);
   await page.evaluate(() => {
     const game = window.__NEON_OVERDRIVE__;
+    game.score = 222_222;
     game.modeTimer = 1 / 60;
   });
   await step(page, 1 / 60);
@@ -242,4 +312,26 @@ test("locks focused Rush and Endless mode checkpoints", async ({ page }) => {
   const sector = await observe(page);
   expect(sector.endlessBossesSpawned).toBe(1);
   await expect(page.locator("#boss-hud")).not.toHaveClass(/boss-hud-hidden/u);
+
+  await page.evaluate(() => {
+    const game = window.__NEON_OVERDRIVE__;
+    game.score = 333_333;
+    game.finishRun(false, "SIGNAL LOST");
+  });
+  await expect(page.locator("#result-score")).toHaveText("000333333");
+
+  await page.reload({ waitUntil: "load" });
+  await page.waitForFunction(() => Boolean(window.__NEON_OVERDRIVE__));
+  await expect(page.locator("#endless-mode-card")).toBeEnabled();
+
+  for (const [mode, expectedBest] of [
+    ["story", "BEST 000111111"],
+    ["rush", "BEST 000222222"],
+    ["endless", "BEST 000333333"],
+  ] as const) {
+    await page.locator("#mode-button").click();
+    await page.locator(`.mode-card[data-mode="${mode}"]`).click();
+    await page.locator("#mode-confirm").click();
+    await expect(page.locator("#best-score-title")).toHaveText(expectedBest);
+  }
 });

@@ -50,7 +50,11 @@
       "games/neon-overdrive/overdrive-preview.png",
       "games/neon-overdrive/boss-preview.png",
       "games/neon-overdrive/run_local.sh",
-      "games/neon-overdrive/run_local.bat"
+      "games/neon-overdrive/run_local.bat",
+      "games/neon-overdrive/playwright.baseline.config.ts",
+      "games/neon-overdrive/tools",
+      "games/neon-overdrive/tests",
+      "games/neon-overdrive/performance"
     ]
   }
 }

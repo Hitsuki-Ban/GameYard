@@ -107,9 +107,29 @@ jobs:
       - run: vp run @gameyard/kamifuda-runner#browser:install
       - run: vp run @gameyard/kamifuda-runner#test
 
+  neon-source-baseline:
+    name: Source baseline · neon-overdrive · ${{ matrix.os }}
+    needs: registry
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: true
+          run-install: false
+      - run: vp install --frozen-lockfile
+      - run: vp run @gameyard/neon-overdrive#browser:install
+      - run: vp run @gameyard/neon-overdrive#test
+
   artifact:
     name: Build the immutable artifact
-    needs: [quality, game-baseline, kamifuda-source-baseline]
+    needs: [quality, game-baseline, kamifuda-source-baseline, neon-source-baseline]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
