@@ -641,7 +641,10 @@ export async function loadProvenanceIndex(projectRoot) {
 
 export async function requireSourceSnapshotEvidence(projectRoot, recordPath, gameId) {
   const root = resolve(projectRoot);
-  const normalizedRecordPath = parseRepositoryRelativePath(recordPath, "Source snapshot record path");
+  const normalizedRecordPath = parseRepositoryRelativePath(
+    recordPath,
+    "Source snapshot record path",
+  );
   const expectedGameId = requirePattern(gameId, gameIdPattern, "Source snapshot game id");
   const label = `Source snapshot record ${normalizedRecordPath}`;
   const record = parseSourceSnapshotRecord(

@@ -53,10 +53,26 @@ const kamifudaRunnerUpstreamStyleFiles = [
   "games/kamifuda-runner/style.css",
 ];
 
+const neonOverdriveUpstreamStyleFiles = [
+  "games/neon-overdrive/boss-preview.png",
+  "games/neon-overdrive/DESIGN_NOTES.md",
+  "games/neon-overdrive/game.js",
+  "games/neon-overdrive/index.html",
+  "games/neon-overdrive/NEON_OVERDRIVE.html",
+  "games/neon-overdrive/overdrive-preview.png",
+  "games/neon-overdrive/preview.png",
+  "games/neon-overdrive/QA_REPORT.md",
+  "games/neon-overdrive/README.md",
+  "games/neon-overdrive/run_local.bat",
+  "games/neon-overdrive/run_local.sh",
+  "games/neon-overdrive/styles.css",
+];
+
 const upstreamStyleFiles = [
   ...tumbledrumUpstreamStyleFiles,
   ...crownBreakerUpstreamStyleFiles,
   ...kamifudaRunnerUpstreamStyleFiles,
+  ...neonOverdriveUpstreamStyleFiles,
 ];
 
 export default defineConfig({
