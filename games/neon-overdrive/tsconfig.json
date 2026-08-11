@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2023",
+    "types": ["node"]
+  },
+  "include": [
+    "performance/**/*.ts",
+    "playwright.baseline.config.ts",
+    "tests/**/*.ts",
+    "vite.config.ts"
+  ]
+}

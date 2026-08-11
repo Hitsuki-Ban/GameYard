@@ -3,6 +3,7 @@
   "references": [
     { "path": "./apps/hub" },
     { "path": "./games/kamifuda-runner" },
+    { "path": "./games/neon-overdrive" },
     { "path": "./games/pulse-link-overdrive" },
     { "path": "./packages/game-contract" },
     { "path": "./packages/host-bridge" },

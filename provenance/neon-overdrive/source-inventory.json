@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "archive": {
+    "path": "games/neon-overdrive.zip",
+    "sha256": "08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883",
+    "entryCount": 13,
+    "uncompressedBytes": 2751656
+  },
+  "entries": [
+    {
+      "archivePath": "neon-overdrive/",
+      "kind": "directory",
+      "uncompressedBytes": 0,
+      "importedPath": null,
+      "sha256": null
+    },
+    {
+      "archivePath": "neon-overdrive/game.js",
+      "kind": "file",
+      "uncompressedBytes": 164511,
+      "importedPath": "games/neon-overdrive/game.js",
+      "sha256": "eb474cd4645e6a74871e0d0f158b24de389350bf96808f07eb068ae25ec8de96"
+    },
+    {
+      "archivePath": "neon-overdrive/preview.png",
+      "kind": "file",
+      "uncompressedBytes": 707401,
+      "importedPath": "games/neon-overdrive/preview.png",
+      "sha256": "388bfa2ced3642ce7b7d7cd7692850bd8eb51ce57162f6e0db0f1af93b5d97d9"
+    },
+    {
+      "archivePath": "neon-overdrive/DESIGN_NOTES.md",
+      "kind": "file",
+      "uncompressedBytes": 20356,
+      "importedPath": "games/neon-overdrive/DESIGN_NOTES.md",
+      "sha256": "f2f9e3485920382e664bfcb33520716ac0fe2437372a7ca0407a2571733a448c"
+    },
+    {
+      "archivePath": "neon-overdrive/run_local.sh",
+      "kind": "file",
+      "uncompressedBytes": 174,
+      "importedPath": "games/neon-overdrive/run_local.sh",
+      "sha256": "7c398f46b771d455e63e5b3fb0718f2583fd700e9423bcd16999192a55269e94"
+    },
+    {
+      "archivePath": "neon-overdrive/index.html",
+      "kind": "file",
+      "uncompressedBytes": 12271,
+      "importedPath": "games/neon-overdrive/index.html",
+      "sha256": "29cdcb7d380bc59775b24db5447a64b5d315819f5240f3f5802a7addb0dcf393"
+    },
+    {
+      "archivePath": "neon-overdrive/run_local.bat",
+      "kind": "file",
+      "uncompressedBytes": 213,
+      "importedPath": "games/neon-overdrive/run_local.bat",
+      "sha256": "47f2d2825798692d0deb8a071facbaa4977c480fb4b01d4b965b3db9a8c39dd5"
+    },
+    {
+      "archivePath": "neon-overdrive/overdrive-preview.png",
+      "kind": "file",
+      "uncompressedBytes": 809803,
+      "importedPath": "games/neon-overdrive/overdrive-preview.png",
+      "sha256": "1c55672170aca79a5fbe308327300b5cff2230fb6adce46fc20caf1222b88742"
+    },
+    {
+      "archivePath": "neon-overdrive/README.md",
+      "kind": "file",
+      "uncompressedBytes": 4275,
+      "importedPath": "games/neon-overdrive/README.md",
+      "sha256": "5e25e2fff2cbc20b2091e9035fb6c351c35c7948aa4ab0afed02ab95abf494b9"
+    },
+    {
+      "archivePath": "neon-overdrive/QA_REPORT.md",
+      "kind": "file",
+      "uncompressedBytes": 2697,
+      "importedPath": "games/neon-overdrive/QA_REPORT.md",
+      "sha256": "628a651a6e9955eefbdb5928991cb505b75714eea3ed32f9f13b596f336573d4"
+    },
+    {
+      "archivePath": "neon-overdrive/boss-preview.png",
+      "kind": "file",
+      "uncompressedBytes": 800875,
+      "importedPath": "games/neon-overdrive/boss-preview.png",
+      "sha256": "3358cbccd6cfe84f1a72702ad59fd060416097f95d8c8050cf192a30a609864e"
+    },
+    {
+      "archivePath": "neon-overdrive/NEON_OVERDRIVE.html",
+      "kind": "file",
+      "uncompressedBytes": 202912,
+      "importedPath": "games/neon-overdrive/NEON_OVERDRIVE.html",
+      "sha256": "21e74f1d14012bf9c28d997dfebda6f77df2a4203989ef40ec6dc07a8c7186de"
+    },
+    {
+      "archivePath": "neon-overdrive/styles.css",
+      "kind": "file",
+      "uncompressedBytes": 26168,
+      "importedPath": "games/neon-overdrive/styles.css",
+      "sha256": "013299d8edc7e08eccaceff95c3a4135420326984e0c1cc49f5946082201a06f"
+    }
+  ]
+}

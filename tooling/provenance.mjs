@@ -514,21 +514,26 @@ export function parseSourceSnapshotRecord(value, label = "Source snapshot record
     ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
     `${label}.productionBoundary`,
   );
-  if (value.productionBoundary.status !== "production-admitted") {
-    throw new Error(`${label}.productionBoundary.status must be production-admitted.`);
+  if (
+    value.productionBoundary.status !== "source-evidence-only" &&
+    value.productionBoundary.status !== "production-admitted"
+  ) {
+    throw new Error(
+      `${label}.productionBoundary.status must be source-evidence-only or production-admitted.`,
+    );
   }
   const productionBoundary = {
     status: value.productionBoundary.status,
-    runtimeAdmissionIssue: value.productionBoundary.runtimeAdmissionIssue,
+    runtimeAdmissionIssue: parsePositiveSafeInteger(
+      value.productionBoundary.runtimeAdmissionIssue,
+      `${label}.productionBoundary.runtimeAdmissionIssue`,
+    ),
     excludedFromProductionInputs: requireUniqueStringArray(
       value.productionBoundary.excludedFromProductionInputs,
       `${label}.productionBoundary.excludedFromProductionInputs`,
       { paths: true },
     ),
   };
-  if (productionBoundary.runtimeAdmissionIssue !== 55) {
-    throw new Error(`${label}.productionBoundary.runtimeAdmissionIssue must be 55.`);
-  }
   if (!productionBoundary.excludedFromProductionInputs.includes(sourceSnapshot.archive.path)) {
     throw new Error(`${label} must exclude its source archive from production inputs.`);
   }
@@ -634,6 +639,27 @@ export async function loadProvenanceIndex(projectRoot) {
   return parseProvenanceIndex(await readJson(root, provenanceIndexPath, provenanceIndexPath));
 }
 
+export async function requireSourceSnapshotEvidence(projectRoot, recordPath, gameId) {
+  const root = resolve(projectRoot);
+  const normalizedRecordPath = parseRepositoryRelativePath(recordPath, "Source snapshot record path");
+  const expectedGameId = requirePattern(gameId, gameIdPattern, "Source snapshot game id");
+  const label = `Source snapshot record ${normalizedRecordPath}`;
+  const record = parseSourceSnapshotRecord(
+    await readJson(root, normalizedRecordPath, label),
+    label,
+  );
+  if (record.gameId !== expectedGameId) {
+    throw new Error(`${label} does not belong to game ${expectedGameId}.`);
+  }
+  await requireMatchingFileHash(
+    root,
+    { path: record.authorization.grantText, sha256: record.authorization.grantTextSha256 },
+    `${label} authorization grant`,
+  );
+  await verifySourceInventory(root, record, label);
+  return { recordPath: normalizedRecordPath, record };
+}
+
 async function requireRepositoryDistributionRights(projectRoot, provenance, gameId) {
   const root = resolve(projectRoot);
   const repository = provenance.byId.get(gameId);
@@ -688,19 +714,16 @@ export async function requireGameDistributionProvenance(
     throw new Error(`Unsupported manifest provenance kind for game ${gameId}.`);
   }
   const label = `Source snapshot record ${manifestProvenance.record}`;
-  const record = parseSourceSnapshotRecord(
-    await readJson(root, manifestProvenance.record, label),
-    label,
+  const { recordPath, record } = await requireSourceSnapshotEvidence(
+    root,
+    manifestProvenance.record,
+    gameId,
   );
-  if (record.gameId !== gameId) throw new Error(`${label} does not belong to game ${gameId}.`);
   if (record.sourceSnapshot.archive.sha256 !== manifestProvenance.archiveSha256) {
     throw new Error(`${label} archive hash does not match manifest provenance for game ${gameId}.`);
   }
-  await requireMatchingFileHash(
-    root,
-    { path: record.authorization.grantText, sha256: record.authorization.grantTextSha256 },
-    `${label} authorization grant`,
-  );
-  await verifySourceInventory(root, record, label);
-  return { kind: "owner-provided-source-snapshot", recordPath: manifestProvenance.record, record };
+  if (record.productionBoundary.status !== "production-admitted") {
+    throw new Error(`${label} is not admitted to production.`);
+  }
+  return { kind: "owner-provided-source-snapshot", recordPath, record };
 }

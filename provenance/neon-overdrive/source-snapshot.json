@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "recordId": "neon-overdrive-gameyard-source-snapshot-2026-08-10",
+  "gameId": "neon-overdrive",
+  "authorization": {
+    "source": "owner-project-direction",
+    "recordedAt": "2026-08-10T00:00:00+09:00",
+    "taskId": "019fbbb1-910c-7652-9cb5-f27d8150dd88",
+    "grantText": "provenance/neon-overdrive/distribution-grant.md",
+    "grantTextSha256": "ffb3d4d99ec06db5769b8dc07bef2a654545dd2f144e323d3f3e3ee6c3e381d4"
+  },
+  "sourceSnapshot": {
+    "kind": "owner-provided-archive",
+    "archiveAvailability": "owner-workspace-only",
+    "archive": {
+      "path": "games/neon-overdrive.zip",
+      "sha256": "08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883",
+      "entryCount": 13,
+      "uncompressedBytes": 2751656
+    },
+    "inventory": {
+      "path": "provenance/neon-overdrive/source-inventory.json",
+      "sha256": "5e0cfe20c1730b09690007379f52adc5b9c5145d756194fc22c66096ad2ca395"
+    },
+    "importedRoot": "games/neon-overdrive",
+    "repository": null,
+    "revision": null,
+    "license": null
+  },
+  "permissions": {
+    "actions": [
+      "copy",
+      "modify",
+      "build",
+      "public-host",
+      "display-and-run",
+      "distribute-source",
+      "distribute-static-artifact"
+    ],
+    "venues": ["https://github.com/Hitsuki-Ban/GameYard", "GitHub Pages", "Cloudflare"],
+    "licenseScope": "GameYard-project-only"
+  },
+  "productionBoundary": {
+    "status": "source-evidence-only",
+    "runtimeAdmissionIssue": 52,
+    "excludedFromProductionInputs": [
+      "games/neon-overdrive.zip",
+      "games/neon-overdrive/NEON_OVERDRIVE.html",
+      "games/neon-overdrive/preview.png",
+      "games/neon-overdrive/overdrive-preview.png",
+      "games/neon-overdrive/boss-preview.png",
+      "games/neon-overdrive/run_local.sh",
+      "games/neon-overdrive/run_local.bat"
+    ]
+  }
+}

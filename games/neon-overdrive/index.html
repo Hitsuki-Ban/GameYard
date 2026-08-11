@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#05040d" />
+  <meta name="description" content="NEON OVERDRIVE：演出特化型纵向弹幕射击。零说明也能开打，支持键鼠、触控与手柄。" />
+  <title>NEON OVERDRIVE // 弹幕爆奏</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2305040d'/%3E%3Cpath d='M32 7 52 51 32 42 12 51Z' fill='%2300f7ff'/%3E%3Ccircle cx='32' cy='34' r='7' fill='%23ff2bd6'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <main id="cabinet" class="cabinet" aria-label="NEON OVERDRIVE 游戏区域">
+      <section class="side-panel side-panel-left" aria-hidden="true">
+        <div class="brand-mark">N/O</div>
+        <div class="vertical-copy">NEON RITUAL SYSTEM</div>
+        <div class="side-rule"></div>
+        <div class="side-readout">
+          <span>SYNC</span>
+          <strong id="side-sync">000</strong>
+        </div>
+        <div class="side-readout">
+          <span>THREAT</span>
+          <strong id="side-threat">LOW</strong>
+        </div>
+      </section>
+
+      <section id="screen-shell" class="screen-shell">
+        <canvas id="game" width="540" height="960" tabindex="0" aria-label="NEON OVERDRIVE 弹幕射击游戏画面"></canvas>
+
+        <div class="crt-overlay" aria-hidden="true"></div>
+        <div id="danger-vignette" class="danger-vignette" aria-hidden="true"></div>
+
+        <header id="hud" class="hud hud-hidden" aria-live="polite">
+          <div class="hud-top">
+            <div class="hud-score">
+              <span class="hud-label">SCORE</span>
+              <strong id="score-value">000000000</strong>
+            </div>
+            <div id="hype-grade" class="hype-grade grade-c">C</div>
+            <div class="hud-stage">
+              <span class="hud-label" id="mode-label">STORY</span>
+              <strong id="stage-label">ACT 1</strong>
+            </div>
+          </div>
+
+          <div id="boss-hud" class="boss-hud boss-hud-hidden">
+            <div class="boss-meta">
+              <span id="boss-name">AELLA</span>
+              <span id="boss-phase">PHASE 1</span>
+            </div>
+            <div class="boss-bar"><i id="boss-bar-fill"></i></div>
+          </div>
+
+          <div class="hud-bottom">
+            <div class="shield-wrap" aria-label="护盾">
+              <span class="hud-label">SHIELD</span>
+              <div id="shield-pips" class="shield-pips"></div>
+            </div>
+            <div class="drive-wrap">
+              <div class="drive-meta">
+                <span class="hud-label">OVERDRIVE</span>
+                <strong id="drive-value">0%</strong>
+              </div>
+              <div id="drive-bar" class="drive-bar"><i id="drive-bar-fill"></i></div>
+            </div>
+            <div class="chain-wrap">
+              <span class="hud-label">CHAIN</span>
+              <strong id="chain-value">x1.00</strong>
+            </div>
+          </div>
+        </header>
+
+        <div id="touch-drive" class="touch-drive" role="button" aria-label="发动超载" tabindex="0">
+          <span>DROP</span>
+          <small>●</small>
+        </div>
+
+        <div id="title-screen" class="overlay title-screen overlay-visible">
+          <div class="title-grid" aria-hidden="true"></div>
+          <div class="title-content">
+            <div class="eyebrow">A SYNTHETIC DANMAKU RITUAL</div>
+            <h1><span>NEON</span><span>OVERDRIVE</span></h1>
+            <div class="title-jp">弾 幕 爆 奏</div>
+            <button id="ignite-button" class="ignite-button" type="button">
+              <span class="ignite-core">IGNITE</span>
+              <span class="ignite-sub">按任意键 / TAP</span>
+            </button>
+            <div class="title-actions">
+              <button id="mode-button" class="text-button" type="button">模式</button>
+              <button id="settings-button" class="text-button" type="button">设置</button>
+              <button id="credits-button" class="text-button" type="button">档案</button>
+            </div>
+            <div id="best-score-title" class="best-score-title">BEST 000000000</div>
+          </div>
+          <div class="photosensitive-note">含高频闪光与画面震动，可在设置中降低。</div>
+        </div>
+
+        <div id="mode-screen" class="overlay panel-screen">
+          <div class="panel-card wide-card">
+            <div class="panel-eyebrow">SELECT RITUAL</div>
+            <h2>模式</h2>
+            <div class="mode-grid">
+              <button class="mode-card selected" data-mode="story" type="button">
+                <span class="mode-index">01</span>
+                <strong>STORY DRIVE</strong>
+                <small>三幕战役 · 自适应强度 · 自动重启</small>
+              </button>
+              <button class="mode-card" data-mode="rush" type="button">
+                <span class="mode-index">02</span>
+                <strong>RUSH 180</strong>
+                <small>三分钟高密度计分战</small>
+              </button>
+              <button class="mode-card" data-mode="endless" type="button" id="endless-mode-card">
+                <span class="mode-index">03</span>
+                <strong>ENDLESS</strong>
+                <small id="endless-mode-note">完成战役后解锁</small>
+              </button>
+            </div>
+            <div class="panel-actions">
+              <button class="primary-button" id="mode-confirm" type="button">确认</button>
+              <button class="secondary-button back-title" type="button">返回</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="settings-screen" class="overlay panel-screen">
+          <div class="panel-card settings-card">
+            <div class="panel-eyebrow">CALIBRATION</div>
+            <h2>设置</h2>
+            <div class="settings-list">
+              <label>
+                <span>主音量</span>
+                <input id="master-volume" type="range" min="0" max="1" value="0.82" step="0.01" />
+                <output id="master-volume-output">82</output>
+              </label>
+              <label>
+                <span>音乐</span>
+                <input id="music-volume" type="range" min="0" max="1" value="0.72" step="0.01" />
+                <output id="music-volume-output">72</output>
+              </label>
+              <label>
+                <span>效果密度</span>
+                <select id="fx-density">
+                  <option value="1">MAX</option>
+                  <option value="0.68">BALANCED</option>
+                  <option value="0.38">LOW</option>
+                </select>
+              </label>
+              <label class="toggle-row">
+                <span>画面震动</span>
+                <input id="screen-shake" type="checkbox" checked />
+                <i></i>
+              </label>
+              <label class="toggle-row">
+                <span>高频闪光</span>
+                <input id="flash-effects" type="checkbox" checked />
+                <i></i>
+              </label>
+              <label class="toggle-row">
+                <span>常显判定点</span>
+                <input id="show-hitbox" type="checkbox" />
+                <i></i>
+              </label>
+              <label class="toggle-row">
+                <span>自动保险</span>
+                <input id="auto-guard" type="checkbox" checked />
+                <i></i>
+              </label>
+            </div>
+            <div class="panel-actions">
+              <button class="primary-button" id="settings-save" type="button">保存</button>
+              <button class="secondary-button back-title" type="button">返回</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="credits-screen" class="overlay panel-screen">
+          <div class="panel-card archive-card">
+            <div class="panel-eyebrow">ARCHIVE / BUILD 1.0</div>
+            <h2>设计档案</h2>
+            <p>风险不是惩罚，而是演出燃料。擦弹和贴脸击破会充满 OVERDRIVE；发动后，弹幕被转化为分数、火力与新的危险。</p>
+            <div class="archive-columns">
+              <div><strong>零门槛</strong><span>自动射击、微小判定、自动超载、自动重启</span></div>
+              <div><strong>高上限</strong><span>贴脸倍率、延迟清算、Rank 管理、无伤相位</span></div>
+              <div><strong>纯浏览器</strong><span>Canvas 2D、Web Audio、键鼠/触屏/手柄</span></div>
+            </div>
+            <p class="archive-small">所有图形、动画与声音均在运行时程序化生成，不加载外部素材。</p>
+            <div class="panel-actions single-action">
+              <button class="primary-button back-title" type="button">返回</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="pause-screen" class="overlay panel-screen">
+          <div class="panel-card compact-card">
+            <div class="panel-eyebrow">SIGNAL SUSPENDED</div>
+            <h2>暂停</h2>
+            <div class="panel-actions vertical-actions">
+              <button id="resume-button" class="primary-button" type="button">继续</button>
+              <button id="restart-button" class="secondary-button" type="button">重新开始</button>
+              <button id="quit-button" class="secondary-button" type="button">返回标题</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="upgrade-screen" class="overlay upgrade-screen">
+          <div class="upgrade-header">
+            <div class="panel-eyebrow">RITUAL COMPLETE</div>
+            <h2>选择强化</h2>
+            <p>任意一个都只会让你更强。</p>
+          </div>
+          <div id="upgrade-cards" class="upgrade-cards"></div>
+          <div class="upgrade-hint">点击 / 1—3</div>
+        </div>
+
+        <div id="gameover-screen" class="overlay panel-screen">
+          <div class="panel-card result-card">
+            <div class="panel-eyebrow" id="result-eyebrow">SIGNAL LOST</div>
+            <h2 id="result-title">GAME OVER</h2>
+            <div class="result-score" id="result-score">000000000</div>
+            <div class="result-grid">
+              <div><span>最大连锁</span><strong id="result-chain">x1.00</strong></div>
+              <div><span>擦弹</span><strong id="result-graze">0</strong></div>
+              <div><span>击破</span><strong id="result-kills">0</strong></div>
+              <div><span>评级</span><strong id="result-grade">C</strong></div>
+            </div>
+            <div id="new-record" class="new-record">NEW RECORD</div>
+            <div class="panel-actions">
+              <button id="result-retry" class="primary-button" type="button">再次点火</button>
+              <button id="result-title-button" class="secondary-button" type="button">返回标题</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="toast" class="toast" aria-live="assertive"></div>
+      </section>
+
+      <section class="side-panel side-panel-right" aria-hidden="true">
+        <div class="side-readout big-readout">
+          <span>CHAIN</span>
+          <strong id="side-chain">1.00</strong>
+        </div>
+        <div class="side-spectrum" id="side-spectrum">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="side-rule"></div>
+        <div class="vertical-copy reverse-copy">BURN BRIGHTER / DODGE CLOSER</div>
+        <div class="build-label">BUILD 1.0<br />60 FPS TARGET</div>
+      </section>
+    </main>
+
+    <footer class="desktop-help">
+      <span>移动 WASD / 方向键 / 鼠标 / 左摇杆</span>
+      <span>聚焦 SHIFT / LB</span>
+      <span>超载 SPACE / 点击 / A</span>
+      <span>暂停 ESC / P</span>
+    </footer>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
