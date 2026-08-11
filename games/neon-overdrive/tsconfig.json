@@ -6,12 +6,25 @@
     "noEmit": true,
     "strict": true,
     "target": "ES2023",
-    "types": ["node"]
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false
   },
   "include": [
+    "guest/src/**/*",
     "performance/**/*.ts",
     "playwright.baseline.config.ts",
+    "playwright.runtime.config.ts",
     "tests/**/*.ts",
-    "vite.config.ts"
+    "tools/**/*.mjs",
+    "vite.config.ts",
+    "vite.candidate.config.ts",
+    "vite.testkit.config.ts"
+  ],
+  "references": [
+    { "path": "../../packages/game-contract" },
+    { "path": "../../packages/guest-bridge" },
+    { "path": "../../packages/manifest-tools" }
   ]
 }

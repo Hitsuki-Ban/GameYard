@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "protocol": 1,
+  "id": "neon-overdrive",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "locales": {
+    "source": "zh-Hans",
+    "supported": ["zh-Hans"]
+  },
+  "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch", "gamepad"],
+  "provenance": {
+    "kind": "owner-provided-source-snapshot",
+    "record": "provenance/neon-overdrive/source-snapshot.json",
+    "archiveSha256": "08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883"
+  }
+}

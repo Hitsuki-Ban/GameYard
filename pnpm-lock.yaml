@@ -196,6 +196,16 @@ importers:
         version: 0.2.7(@types/node@26.1.2)(@voidzero-dev/vite-plus-core@0.2.7(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2))(esbuild@0.28.1)(terser@5.49.0)(typescript@7.0.2)
 
   games/neon-overdrive:
+    dependencies:
+      '@gameyard/game-contract':
+        specifier: workspace:*
+        version: link:../../packages/game-contract
+      '@gameyard/guest-bridge':
+        specifier: workspace:*
+        version: link:../../packages/guest-bridge
+      '@gameyard/manifest-tools':
+        specifier: workspace:*
+        version: link:../../packages/manifest-tools
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'

@@ -1,0 +1,56 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+import { GameManifestSourceSchema } from "@gameyard/game-contract";
+import { createGameManifestPlugin } from "@gameyard/manifest-tools";
+import { defineConfig } from "vite-plus";
+
+import manifestSourceJson from "./candidate.manifest.source.json";
+import { createNeonCandidateBuildId, listNeonGuestDevFiles } from "./tools/verify-candidate.mjs";
+
+const buildId = await createNeonCandidateBuildId();
+const manifestSource = GameManifestSourceSchema.parse(manifestSourceJson);
+const devFiles = await listNeonGuestDevFiles();
+const hostTemplate = await readFile(
+  path.join(import.meta.dirname, "tests/testkit/host.js"),
+  "utf8",
+);
+const buildToken = "__GAMEYARD_TESTKIT_BUILD__";
+if (hostTemplate.split(buildToken).length !== 2) {
+  throw new Error(`Neon testkit Host must contain exactly one ${buildToken} token.`);
+}
+const hostSource = hostTemplate.replace(buildToken, buildId);
+
+export default defineConfig({
+  root: "guest",
+  base: "./",
+  publicDir: false,
+  define: {
+    __GAMEYARD_BUILD__: JSON.stringify(buildId),
+    __GAMEYARD_TESTKIT__: "true",
+  },
+  plugins: [
+    createGameManifestPlugin({ source: manifestSource, buildId, devFiles }),
+    {
+      name: "neon-overdrive-testkit-self-host",
+      transformIndexHtml() {
+        return [{ tag: "script", children: hostSource, injectTo: "head-prepend" }];
+      },
+    },
+  ],
+  build: {
+    outDir: "../../../.gameyard/testkit/games/neon-overdrive",
+    emptyOutDir: true,
+  },
+  server: {
+    host: "127.0.0.1",
+    port: 5194,
+    strictPort: true,
+    hmr: false,
+  },
+  preview: {
+    host: "127.0.0.1",
+    port: 5194,
+    strictPort: true,
+  },
+});
