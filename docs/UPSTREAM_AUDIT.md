@@ -66,3 +66,9 @@ CrownBreaker 仍以独立 iframe 保住单体玩法、run/save schema、资源�
 ## Kamifuda Runner
 
 Kamifuda Runner 不是仓库导入。项目所有者提供的 `games/kamifuda-runner-v4.zip` 由 `provenance/kamifuda-runner/source-snapshot.json` 与完整 inventory 固定；该来源没有 repository、Git revision 或 public license，因此记录保持三个字段为 `null`，生产 manifest 使用 `owner-provided-source-snapshot` 判别项直接绑定 record 与 archive SHA-256。原 archive 明确标记为 `owner-workspace-only`，保留在 owner 工作区而不进入版本库、CI 或发布产物；可复现门禁严格校验 manifest、record、inventory、授权文本及每个导入文件的大小和摘要。Issue #55 的 production admission 只覆盖 GameYard modular Guest 与 catalog/pipeline 输入；standalone、Python packaging helper、candidate helper 和测试材料同样明确排除。Assembler 与 release metadata 会重新校验这条证据链和 admission 状态，缺失或被篡改时整站构建失败。
+
+## Neon Overdrive
+
+Neon Overdrive 同样来自项目所有者提供的工作区 archive，不关联可核验的公开仓库。`games/neon-overdrive.zip` 的 SHA-256 是 `08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883`；`provenance/neon-overdrive/source-inventory.json` 按原始顺序固定一个目录项和 12 个文件项，并为每个导入文件记录大小与 SHA-256。`provenance/neon-overdrive/source-snapshot.json` 将 repository、revision 和 license 保持为显式 `null`，授权边界只来自项目所有者对 GameYard 的项目级发布指示。
+
+当前记录状态是 `source-evidence-only`，production admission 明确归属 Issue #52。来源验证只依赖版本库内的授权文本、inventory 和原样导入文件，不读取 owner 工作区专有 ZIP；因此干净 CI 可以复核证据，但 production provenance 门会拒绝 Neon。原单文件发行版、三个预览 PNG、本地服务器脚本、baseline 和性能证据均不属于未来生产输入，也没有注册 production manifest 或 runtime。

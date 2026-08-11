@@ -6,8 +6,8 @@ import test from "node:test";
 import { GameManifestSourceSchema } from "../packages/game-contract/src/index.ts";
 import {
   loadProvenanceIndex,
-  parseSourceSnapshotRecord,
   requireGameDistributionProvenance,
+  requireSourceSnapshotEvidence,
 } from "./provenance.mjs";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -42,16 +42,44 @@ await test("verifies the admitted Kamifuda owner-provided source snapshot", asyn
   assert.equal(distribution.record.sourceSnapshot.license, null);
 });
 
-await test("rejects a source-evidence-only snapshot at the production provenance gate", async () => {
-  const record = JSON.parse(
-    await readFile(
-      new URL("../provenance/kamifuda-runner/source-snapshot.json", import.meta.url),
-      "utf8",
-    ),
+await test("verifies Neon source evidence without requiring its owner-only archive", async () => {
+  const evidence = await requireSourceSnapshotEvidence(
+    projectRoot,
+    "provenance/neon-overdrive/source-snapshot.json",
+    "neon-overdrive",
   );
-  record.productionBoundary.status = "source-evidence-only";
-  assert.throws(
-    () => parseSourceSnapshotRecord(record),
-    /productionBoundary\.status must be production-admitted/u,
+
+  assert.equal(evidence.recordPath, "provenance/neon-overdrive/source-snapshot.json");
+  assert.equal(evidence.record.gameId, "neon-overdrive");
+  assert.equal(evidence.record.productionBoundary.status, "source-evidence-only");
+  assert.equal(evidence.record.productionBoundary.runtimeAdmissionIssue, 52);
+  assert.deepEqual(evidence.record.productionBoundary.excludedFromProductionInputs, [
+    "games/neon-overdrive.zip",
+    "games/neon-overdrive/NEON_OVERDRIVE.html",
+    "games/neon-overdrive/preview.png",
+    "games/neon-overdrive/overdrive-preview.png",
+    "games/neon-overdrive/boss-preview.png",
+    "games/neon-overdrive/run_local.sh",
+    "games/neon-overdrive/run_local.bat",
+    "games/neon-overdrive/playwright.baseline.config.ts",
+    "games/neon-overdrive/tools",
+    "games/neon-overdrive/tests",
+    "games/neon-overdrive/performance",
+  ]);
+  assert.equal(evidence.record.sourceSnapshot.repository, null);
+  assert.equal(evidence.record.sourceSnapshot.revision, null);
+  assert.equal(evidence.record.sourceSnapshot.license, null);
+});
+
+await test("rejects Neon source evidence at the production provenance gate", async () => {
+  const provenance = await loadProvenanceIndex(projectRoot);
+
+  await assert.rejects(
+    requireGameDistributionProvenance(projectRoot, provenance, "neon-overdrive", {
+      kind: "owner-provided-source-snapshot",
+      record: "provenance/neon-overdrive/source-snapshot.json",
+      archiveSha256: "08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883",
+    }),
+    /is not admitted to production/u,
   );
 });

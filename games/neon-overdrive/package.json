@@ -1,0 +1,19 @@
+{
+  "name": "@gameyard/neon-overdrive",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "browser:install": "vp exec playwright install chromium",
+    "dev": "vp dev",
+    "check": "vp check package.json tsconfig.json vite.config.ts tools playwright.baseline.config.ts tests performance && vp exec node tools/verify-source-snapshot.mjs",
+    "test": "vp run check && vp exec playwright test --config playwright.baseline.config.ts tests",
+    "test:update": "vp exec playwright test --config playwright.baseline.config.ts tests --update-snapshots",
+    "perf": "vp exec playwright test --config playwright.baseline.config.ts performance/neon-overdrive.perf.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

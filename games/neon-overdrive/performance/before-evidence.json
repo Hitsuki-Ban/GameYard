@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "subject": "neon-overdrive-source-before-issue-54",
+  "browser": {
+    "engine": "chromium",
+    "version": "151.0.7922.34",
+    "playwrightVersion": "1.62.1"
+  },
+  "harness": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "deviceScaleFactor": 1,
+    "seed": 1313165134,
+    "warmUpMs": 2000,
+    "warmUpMode": "fixed 60 Hz simulation with one terminal render before natural RAF sampling",
+    "sampleMs": 1200,
+    "longFrameThresholdMs": 20,
+    "input": "source Story auto-fire with centered player; dense adds source enemy bullets and particles"
+  },
+  "capture": {
+    "platform": "win32",
+    "hiddenPolicy": "Chromium automation does not change document.hidden when Page.setWebLifecycleState freezes a target; the harness controls document.hidden and dispatches visibilitychange before applying the real CDP frozen lifecycle, and records both mechanisms explicitly"
+  },
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "cpuThrottleRate": 1,
+      "lifecycleState": "active",
+      "visibilityMechanism": "natural",
+      "sampleMs": 1200,
+      "frames": {
+        "count": 3,
+        "meanMs": 311.1,
+        "p50Ms": 416.6,
+        "p95Ms": 416.7,
+        "p99Ms": 416.7,
+        "maxMs": 416.7,
+        "over20Ms": 3
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdpDurationsMs": {
+        "task": 30.78,
+        "script": 16.11,
+        "layout": 2.61
+      },
+      "activity": {
+        "updateCalls": 20,
+        "playingSimulationTicks": 20,
+        "hudMutationCount": 90,
+        "audioSchedulerCalls": 1
+      },
+      "frozenWindow": null,
+      "entityPeaks": {
+        "enemies": 3,
+        "enemyBullets": 2,
+        "playerBullets": 39,
+        "particles": 102,
+        "pickups": 0,
+        "lasers": 0
+      },
+      "finalState": "playing",
+      "documentHiddenDuringSample": false,
+      "visibilityEvents": []
+    },
+    {
+      "scenario": "cpu-4x",
+      "cpuThrottleRate": 4,
+      "lifecycleState": "active",
+      "visibilityMechanism": "natural",
+      "sampleMs": 1200,
+      "frames": {
+        "count": 1,
+        "meanMs": 83.3,
+        "p50Ms": 83.3,
+        "p95Ms": 83.3,
+        "p99Ms": 83.3,
+        "maxMs": 83.3,
+        "over20Ms": 1
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdpDurationsMs": {
+        "task": 127.74,
+        "script": 66.15,
+        "layout": 3.17
+      },
+      "activity": {
+        "updateCalls": 9,
+        "playingSimulationTicks": 9,
+        "hudMutationCount": 45,
+        "audioSchedulerCalls": 0
+      },
+      "frozenWindow": null,
+      "entityPeaks": {
+        "enemies": 3,
+        "enemyBullets": 2,
+        "playerBullets": 39,
+        "particles": 34,
+        "pickups": 0,
+        "lasers": 0
+      },
+      "finalState": "playing",
+      "documentHiddenDuringSample": false,
+      "visibilityEvents": []
+    },
+    {
+      "scenario": "dense",
+      "cpuThrottleRate": 1,
+      "lifecycleState": "active",
+      "visibilityMechanism": "natural",
+      "sampleMs": 1200,
+      "frames": {
+        "count": 1,
+        "meanMs": 116.7,
+        "p50Ms": 116.7,
+        "p95Ms": 116.7,
+        "p99Ms": 116.7,
+        "maxMs": 116.7,
+        "over20Ms": 1
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdpDurationsMs": {
+        "task": 20.06,
+        "script": 12,
+        "layout": 0.48
+      },
+      "activity": {
+        "updateCalls": 10,
+        "playingSimulationTicks": 10,
+        "hudMutationCount": 45,
+        "audioSchedulerCalls": 2
+      },
+      "frozenWindow": null,
+      "entityPeaks": {
+        "enemies": 3,
+        "enemyBullets": 422,
+        "playerBullets": 39,
+        "particles": 395,
+        "pickups": 0,
+        "lasers": 0
+      },
+      "finalState": "playing",
+      "documentHiddenDuringSample": false,
+      "visibilityEvents": []
+    },
+    {
+      "scenario": "paused",
+      "cpuThrottleRate": 1,
+      "lifecycleState": "active",
+      "visibilityMechanism": "natural",
+      "sampleMs": 1200,
+      "frames": {
+        "count": 3,
+        "meanMs": 311.1,
+        "p50Ms": 300.1,
+        "p95Ms": 500,
+        "p99Ms": 500,
+        "maxMs": 500,
+        "over20Ms": 3
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdpDurationsMs": {
+        "task": 14.4,
+        "script": 3.82,
+        "layout": 0
+      },
+      "activity": {
+        "updateCalls": 20,
+        "playingSimulationTicks": 0,
+        "hudMutationCount": 0,
+        "audioSchedulerCalls": 1
+      },
+      "frozenWindow": null,
+      "entityPeaks": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 37,
+        "particles": 31,
+        "pickups": 0,
+        "lasers": 0
+      },
+      "finalState": "paused",
+      "documentHiddenDuringSample": false,
+      "visibilityEvents": []
+    },
+    {
+      "scenario": "hidden-frozen",
+      "cpuThrottleRate": 1,
+      "lifecycleState": "frozen",
+      "visibilityMechanism": "controlled-hidden+Page.setWebLifecycleState",
+      "sampleMs": 1200,
+      "frames": {
+        "count": 0,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over20Ms": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdpDurationsMs": {
+        "task": 26.33,
+        "script": 3.35,
+        "layout": 0
+      },
+      "activity": {
+        "updateCalls": 0,
+        "playingSimulationTicks": 0,
+        "hudMutationCount": 0,
+        "audioSchedulerCalls": 35
+      },
+      "frozenWindow": {
+        "durationMs": 1201,
+        "audioSchedulerCallsBeforeFrozen": 0,
+        "audioSchedulerCallsDuringFrozen": 34,
+        "audioSchedulerCallsAfterThawBeforeSnapshot": 1
+      },
+      "entityPeaks": {
+        "enemies": 0,
+        "enemyBullets": 0,
+        "playerBullets": 0,
+        "particles": 0,
+        "pickups": 0,
+        "lasers": 0
+      },
+      "finalState": "paused",
+      "documentHiddenDuringSample": true,
+      "visibilityEvents": [
+        {
+          "hidden": true,
+          "state": "hidden"
+        }
+      ]
+    }
+  ]
+}

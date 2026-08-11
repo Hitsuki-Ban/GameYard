@@ -80,8 +80,8 @@
       "additionalProperties": false,
       "required": ["status", "runtimeAdmissionIssue", "excludedFromProductionInputs"],
       "properties": {
-        "status": { "const": "production-admitted" },
-        "runtimeAdmissionIssue": { "const": 55 },
+        "status": { "enum": ["source-evidence-only", "production-admitted"] },
+        "runtimeAdmissionIssue": { "type": "integer", "minimum": 1 },
         "excludedFromProductionInputs": {
           "type": "array",
           "minItems": 1,
