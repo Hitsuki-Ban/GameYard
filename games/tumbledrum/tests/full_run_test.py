@@ -38,12 +38,18 @@ def main() -> None:
         page.goto(args.target, wait_until="load")
         page.wait_for_function("typeof window.__TUMBLEDRUM__?.debugSnapshot === 'function'")
 
-        campaign = page.evaluate(
-            """() => {
+        campaign_script = """() => {
               const g = window.__TUMBLEDRUM__;
               g.settings.audio = false;
               g.settings.music = false;
+              g.settings.motion = false;
               g.audio.setSettings(g.settings);
+              if (!g.rng || !Number.isInteger(g.rng.state) || !Number.isFinite(g.time)) {
+                throw new TypeError('TUMBLEDRUM full-run requires the gameplay RNG and simulation clock.');
+              }
+              g.rng.state = 0x51a7c0de;
+              g.time = 0;
+              g.accumulator = 0;
               g.startRun('campaign');
               let elapsed = 0;
               for (let i=0; i<120*60*20; i++) {
@@ -59,14 +65,22 @@ def main() -> None:
               }
               return {elapsed, snapshot:g.debugSnapshot(), save:g.save, boss:g.boss ? {hp:g.boss.hp, phase:g.boss.phase} : null};
             }"""
-        )
+        campaign = page.evaluate(campaign_script)
+        campaign_repeat = page.evaluate(campaign_script)
+        assert campaign_repeat == campaign, {"first": campaign, "repeat": campaign_repeat}
         assert campaign["snapshot"]["state"] == "victory", campaign
         assert campaign["save"]["cleared"] is True, campaign
         assert campaign["save"]["stamps"]["boss"] is True, campaign
 
-        endless = page.evaluate(
-            """() => {
+        endless_script = """() => {
               const g = window.__TUMBLEDRUM__;
+              g.settings.motion = false;
+              if (!g.rng || !Number.isInteger(g.rng.state) || !Number.isFinite(g.time)) {
+                throw new TypeError('TUMBLEDRUM full-run requires the gameplay RNG and simulation clock.');
+              }
+              g.rng.state = 0x51a7c0de;
+              g.time = 0;
+              g.accumulator = 0;
               g.startRun('endless');
               let reached = 1;
               let elapsed = 0;
@@ -85,7 +99,9 @@ def main() -> None:
               }
               return {elapsed, reached, snapshot:g.debugSnapshot(), save:g.save};
             }"""
-        )
+        endless = page.evaluate(endless_script)
+        endless_repeat = page.evaluate(endless_script)
+        assert endless_repeat == endless, {"first": endless, "repeat": endless_repeat}
         assert endless["reached"] >= 12, endless
         assert endless["save"]["stamps"]["endless"] is True, endless
         assert endless["save"]["bestEndless"] >= 12, endless
