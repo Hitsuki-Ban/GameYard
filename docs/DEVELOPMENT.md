@@ -32,6 +32,12 @@ vp run "<registered-package>#test"
 
 缺失 `vp`、根 `packageManager`、必需 schema 或构建输入时直接停止；不要回退到其他 manager 或静态服务器。
 
+## 完整性校验边界
+
+密码学摘要只用于跨越真实信任或复现边界：项目所有者提供的原始 archive 与 inventory、Git source SHA、不可变发布 artifact，以及部署消费者对该 artifact 的复验。构建 ID 继续绑定显式 production inputs，缺失或不一致时直接失败。
+
+已经由 Git 版本化的内部测试记录、性能 trace、截图和同仓辅助文件不再逐份叠加 SHA、内容寻址文件名或写回读比对。它们使用稳定文件名，按 schema、预算或用户可见语义验证内容，并由正常 review 与 Git history 提供变更审计。新增摘要前必须先指出它跨越的信任边界；不能仅以“可能更安全”为理由复制 Git 已有职责。
+
 `vp run dev` 是唯一的交互式游戏开发入口：它先严格加载 `site.assembly.json` v2，再按 registry 顺序和其中声明的唯一端口并行启动全部已登记 Guest 与 Hub。Hub 必须等每份严格 dev manifest 都就绪且 build ID 匹配后才监听，并为每个登记 ID 生成 `/games/<id>/` 同源代理；不存在目录扫描、stage 清空窗口或缺失游戏 fallback。游戏关闭自动 HMR，源码变化后使用 Hub 的“重新加载”按钮建立新的 INIT/MessageChannel 连接。单独打开 game server 没有 Host INIT，不能作为 standalone 页面运行。
 
 ## 验证梯度

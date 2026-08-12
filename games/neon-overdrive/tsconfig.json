@@ -13,13 +13,14 @@
   },
   "include": [
     "guest/src/**/*",
+    "build/**/*.mjs",
     "performance/**/*.ts",
     "playwright.baseline.config.ts",
     "playwright.runtime.config.ts",
     "tests/**/*.ts",
     "tools/**/*.mjs",
     "vite.config.ts",
-    "vite.candidate.config.ts",
+    "vite.source.config.ts",
     "vite.testkit.config.ts"
   ],
   "references": [

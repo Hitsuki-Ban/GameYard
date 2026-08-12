@@ -5,6 +5,7 @@ export function createNeonDebug({
   simulation,
   renderer,
   getMotionPolicy,
+  clockCounters,
   canAdvance,
   freezePresentation,
   resumePresentation,
@@ -103,6 +104,22 @@ export function createNeonDebug({
           raw: rawChain,
           multiplier: (1 + rawChain * 0.04) * (simulation.state.overdrive > 0 ? 2 : 1),
         },
+      },
+    };
+  }
+
+  function performanceCounters() {
+    return {
+      runTick: simulation.state.runTicks,
+      clock: clockCounters(),
+      entities: {
+        enemies: simulation.state.enemies.length,
+        enemyBullets: simulation.state.enemyBullets.length,
+        playerBullets: simulation.state.playerBullets.length,
+        particles: simulation.state.particles.length,
+        pickups: simulation.state.pickups.length,
+        lasers: simulation.state.lasers.length,
+        floaters: simulation.state.floaters.length,
       },
     };
   }
@@ -227,6 +244,7 @@ export function createNeonDebug({
       return observe();
     },
     observe,
+    performanceCounters,
     command(command) {
       simulation.command(command);
       return observe();

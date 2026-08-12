@@ -9,8 +9,8 @@ const evidence = await requireSourceSnapshotEvidence(
   "neon-overdrive",
 );
 
-if (evidence.record.productionBoundary.status !== "source-evidence-only") {
-  throw new Error("Neon source evidence must remain outside the production runtime.");
+if (evidence.record.productionBoundary.status !== "production-admitted") {
+  throw new Error("Neon production admission must remain explicit in its source evidence record.");
 }
 if (evidence.record.productionBoundary.runtimeAdmissionIssue !== 52) {
   throw new Error("Neon runtime admission must remain assigned to Issue #52.");

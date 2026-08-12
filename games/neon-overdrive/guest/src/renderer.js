@@ -142,7 +142,7 @@ export function createRenderer(document, i18n) {
     throw new TypeError("Neon renderer requires an i18n translation port.");
   }
   const canvas = requireCanvas(document);
-  const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
+  const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
   if (context === null) throw new Error("Neon Overdrive requires Canvas 2D.");
   canvas.width = W;
   canvas.height = H;
@@ -162,6 +162,7 @@ export function createRenderer(document, i18n) {
     seed: rng.range(0, 100),
   }));
   let disposed = false;
+  let projectedStage = null;
 
   function drawGlow(color, x, y, diameter, opacity = 1) {
     context.save();
@@ -326,19 +327,13 @@ export function createRenderer(document, i18n) {
   }
 
   function drawBackground(state, time) {
-    const themes = [
-      ["#05040d", "#0b0a28", "#061a23"],
-      ["#040817", "#071f34", "#160b2d"],
-      ["#080309", "#24070e", "#0a061a"],
-    ];
-    const theme = themes[state.stage];
-    if (theme === undefined) throw new RangeError(`Unknown Neon stage: ${state.stage}`);
-    const gradient = context.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, theme[0]);
-    gradient.addColorStop(0.55, theme[1]);
-    gradient.addColorStop(1, theme[2]);
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, W, H);
+    if (![0, 1, 2].includes(state.stage)) {
+      throw new RangeError(`Unknown Neon stage: ${state.stage}`);
+    }
+    if (projectedStage !== state.stage) {
+      projectedStage = state.stage;
+      canvas.dataset.stage = String(state.stage);
+    }
 
     const speedBoost = 1 + state.rank * 1.2 + (state.overdrive > 0 ? 1.5 : 0);
     context.save();
@@ -361,19 +356,6 @@ export function createRenderer(document, i18n) {
     else if (state.stage === 1) drawGlassBackground(time);
     else if (state.stage === 2) drawZeroSunBackground(time);
     else throw new RangeError(`Unknown Neon stage: ${state.stage}`);
-
-    const vignette = context.createRadialGradient(
-      W / 2,
-      H * 0.48,
-      H * 0.12,
-      W / 2,
-      H * 0.48,
-      H * 0.72,
-    );
-    vignette.addColorStop(0, "rgba(0,0,0,0)");
-    vignette.addColorStop(1, "rgba(0,0,0,0.62)");
-    context.fillStyle = vignette;
-    context.fillRect(0, 0, W, H);
   }
 
   function drawPickups(pickups) {
@@ -1140,6 +1122,7 @@ export function createRenderer(document, i18n) {
       context.setTransform(1, 0, 0, 1, 0, 0);
       context.globalAlpha = 1;
       context.globalCompositeOperation = "source-over";
+      context.clearRect(0, 0, W, H);
       drawBackground(state, time);
 
       const shake = motionPolicy.shake === "enabled" ? state.shake : 0;

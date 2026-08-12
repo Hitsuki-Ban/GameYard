@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
@@ -43,10 +42,6 @@ const sourceAssets = [
 ].sort((a, b) => a.path.localeCompare(b.path, 'en'));
 
 if (sourceAssets.length !== 50) throw new Error(`Internal inventory error: expected 50 assets, got ${sourceAssets.length}`);
-
-function sha256(buffer) {
-  return createHash('sha256').update(buffer).digest('hex');
-}
 
 async function listSvgFiles(directory) {
   const files = [];
@@ -146,7 +141,7 @@ const sourceRecords = [];
 for (const asset of sourceAssets) {
   const content = await readFile(resolve(root, asset.path));
   assertStrictSvgDocument(content.toString('utf8'), asset.path);
-  sourceRecords.push({ ...asset, sha256: sha256(content) });
+  sourceRecords.push(asset);
 }
 
 const appIconPath = resolve(root, 'assets/brand/app-icon.svg');
@@ -176,9 +171,9 @@ try {
   if (dimensions512.width !== 512 || dimensions512.height !== 512) throw new Error('icon-512.png: export dimensions are not 512x512');
 
   const pwaOutputs = [
-    { path: 'icon.svg', viewBox: '0 0 100 100', bytes: favicon.length, sha256: sha256(favicon) },
-    { path: 'icon-192.png', width: 192, height: 192, bytes: icon192.length, sha256: sha256(icon192) },
-    { path: 'icon-512.png', width: 512, height: 512, bytes: icon512.length, sha256: sha256(icon512) },
+    { path: 'icon.svg', viewBox: '0 0 100 100', bytes: favicon.length },
+    { path: 'icon-192.png', width: 192, height: 192, bytes: icon192.length },
+    { path: 'icon-512.png', width: 512, height: 512, bytes: icon512.length },
   ];
   const catalog = {
     schemaVersion: 1,

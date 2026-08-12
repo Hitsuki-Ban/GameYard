@@ -42,7 +42,7 @@ await test("verifies the admitted Kamifuda owner-provided source snapshot", asyn
   assert.equal(distribution.record.sourceSnapshot.license, null);
 });
 
-await test("verifies Neon source evidence without requiring its owner-only archive", async () => {
+await test("verifies the admitted Neon owner-provided source snapshot", async () => {
   const evidence = await requireSourceSnapshotEvidence(
     projectRoot,
     "provenance/neon-overdrive/source-snapshot.json",
@@ -51,7 +51,7 @@ await test("verifies Neon source evidence without requiring its owner-only archi
 
   assert.equal(evidence.recordPath, "provenance/neon-overdrive/source-snapshot.json");
   assert.equal(evidence.record.gameId, "neon-overdrive");
-  assert.equal(evidence.record.productionBoundary.status, "source-evidence-only");
+  assert.equal(evidence.record.productionBoundary.status, "production-admitted");
   assert.equal(evidence.record.productionBoundary.runtimeAdmissionIssue, 52);
   assert.deepEqual(evidence.record.productionBoundary.excludedFromProductionInputs, [
     "games/neon-overdrive.zip",
@@ -62,6 +62,7 @@ await test("verifies Neon source evidence without requiring its owner-only archi
     "games/neon-overdrive/run_local.sh",
     "games/neon-overdrive/run_local.bat",
     "games/neon-overdrive/playwright.baseline.config.ts",
+    "games/neon-overdrive/vite.source.config.ts",
     "games/neon-overdrive/tools",
     "games/neon-overdrive/tests",
     "games/neon-overdrive/performance",
@@ -69,17 +70,17 @@ await test("verifies Neon source evidence without requiring its owner-only archi
   assert.equal(evidence.record.sourceSnapshot.repository, null);
   assert.equal(evidence.record.sourceSnapshot.revision, null);
   assert.equal(evidence.record.sourceSnapshot.license, null);
-});
-
-await test("rejects Neon source evidence at the production provenance gate", async () => {
   const provenance = await loadProvenanceIndex(projectRoot);
-
-  await assert.rejects(
-    requireGameDistributionProvenance(projectRoot, provenance, "neon-overdrive", {
+  const distribution = await requireGameDistributionProvenance(
+    projectRoot,
+    provenance,
+    "neon-overdrive",
+    {
       kind: "owner-provided-source-snapshot",
       record: "provenance/neon-overdrive/source-snapshot.json",
       archiveSha256: "08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883",
-    }),
-    /is not admitted to production/u,
+    },
   );
+  assert.equal(distribution.kind, "owner-provided-source-snapshot");
+  assert.equal(distribution.record.productionBoundary.status, "production-admitted");
 });

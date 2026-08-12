@@ -138,10 +138,11 @@ await test("loads an ordered six-game registry and emits only browser-safe virtu
   );
 });
 
-await test("registers Kamifuda fourth with the strict production-only input set", async () => {
+await test("registers Kamifuda fourth and Neon fifth with strict production-only inputs", async () => {
   const registry = await loadProductionRegistry(projectRoot);
   const kamifuda = registry.games[3];
-  assert.equal(registry.games.length, 4);
+  const neon = registry.games[4];
+  assert.equal(registry.games.length, 5);
   assert.equal(kamifuda.id, "kamifuda-runner");
   assert.equal(kamifuda.devPort, 5_177);
   assert.deepEqual(kamifuda.productionInputs, [
@@ -158,6 +159,33 @@ await test("registers Kamifuda fourth with the strict production-only input set"
     assert.ok(
       kamifuda.productionInputs.every((input) => !input.includes(excluded)),
       `productionInputs must exclude ${excluded}`,
+    );
+  }
+  assert.equal(neon.id, "neon-overdrive");
+  assert.equal(neon.devPort, 5_178);
+  assert.deepEqual(neon.productionInputs, [
+    "games/neon-overdrive/assets/catalog-cover.svg",
+    "games/neon-overdrive/assets/catalog-cover-small.svg",
+    "games/neon-overdrive/game.manifest.source.json",
+    "games/neon-overdrive/game.presentation.source.json",
+    "games/neon-overdrive/guest",
+    "games/neon-overdrive/package.json",
+    "games/neon-overdrive/build/list-guest-dev-files.mjs",
+    "games/neon-overdrive/tsconfig.json",
+    "games/neon-overdrive/vite.config.ts",
+  ]);
+  for (const excluded of [
+    "candidate",
+    "standalone",
+    "game.js",
+    "/tools",
+    "/tests",
+    "/performance",
+    ".zip",
+  ]) {
+    assert.ok(
+      neon.productionInputs.every((input) => !input.includes(excluded)),
+      `Neon productionInputs must exclude ${excluded}`,
     );
   }
 });

@@ -6,7 +6,7 @@ import { createInput } from "./input.js";
 import { ManagedRuntime } from "./managed-runtime.js";
 import { deriveMotionPolicy } from "./motion-policy.ts";
 import { createRenderer } from "./renderer.js";
-import { createNeonSimulation, FIXED_STEP_SECONDS } from "./simulation.js";
+import { createNeonSimulation, FIXED_STEP_SECONDS, NEON_GAMEPLAY_SEED } from "./simulation.js";
 import { createProfileStorage } from "./storage.js";
 import { createNeonDebug } from "./testkit.js";
 import { createUiProjection } from "./ui-projection.ts";
@@ -42,6 +42,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
   let accumulator = 0;
   let clampedFrames = 0;
   let droppedFixedSteps = 0;
+  let gateFirstFrameElapsedMs = null;
   const testkitEventMirror = __GAMEYARD_TESTKIT__ ? [] : null;
 
   function projectHostSettings(snapshot) {
@@ -99,6 +100,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
 
   function syncFrameGate() {
     clearClock();
+    if (__GAMEYARD_TESTKIT__) gateFirstFrameElapsedMs = null;
     ui?.applyLifecycle(!hostGateOpen());
     if (shouldRun()) {
       runtime.resume();
@@ -157,6 +159,9 @@ export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
     current.setMovement(input.movement());
     if (previousFrame === null) previousFrame = timestamp;
     const rawElapsed = Math.max(0, (timestamp - previousFrame) / 1000);
+    if (__GAMEYARD_TESTKIT__ && gateFirstFrameElapsedMs === null) {
+      gateFirstFrameElapsedMs = rawElapsed * 1000;
+    }
     previousFrame = timestamp;
     if (rawElapsed > MAX_FRAME_SECONDS) {
       clampedFrames = Math.min(65_535, clampedFrames + 1);
@@ -232,6 +237,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
         if (event.type === "scene.changed") audio.setMusicActive(event.scene === "playing");
         ui.applyEvent(event);
       },
+      seed: NEON_GAMEPLAY_SEED,
     });
     projectHostSettings(settingsProjection.snapshot());
     input = createInput({
@@ -268,6 +274,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
       simulation,
       renderer,
       getMotionPolicy: () => motionPolicy,
+      clockCounters: () => ({ clampedFrames, droppedFixedSteps, gateFirstFrameElapsedMs }),
       canAdvance: hostGateOpen,
       freezePresentation,
       resumePresentation,

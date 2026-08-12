@@ -27,7 +27,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: "vp run dev",
+    command: "vp dev --config vite.source.config.ts",
     url: "http://127.0.0.1:5192",
     reuseExistingServer: false,
     timeout: 30_000,

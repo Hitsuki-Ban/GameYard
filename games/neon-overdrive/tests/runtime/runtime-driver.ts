@@ -147,6 +147,15 @@ declare global {
       observe(): any;
       command(command: Record<string, unknown>): void;
       mutate(action: string, payload?: unknown): void;
+      performanceCounters(): {
+        runTick: number;
+        clock: {
+          clampedFrames: number;
+          droppedFixedSteps: number;
+          gateFirstFrameElapsedMs: number | null;
+        };
+        entities: Record<string, number>;
+      };
       drainEvents(): any[];
       resources(): Record<string, number>;
       freezePresentation(): void;

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
@@ -46,10 +45,6 @@ let maskableMaximumRadiusPercent = null;
 
 function fail(message) {
   errors.push(message);
-}
-
-function sha256(buffer) {
-  return createHash('sha256').update(buffer).digest('hex');
 }
 
 async function listSvgFiles(directory) {
@@ -235,7 +230,7 @@ for (const asset of expectedAssets) {
   if (asset.id === 'brand.appIcon' && !/<g\b(?=[^>]*\bdata-maskable-core="true")(?=[^>]*\btransform="translate\(12 12\) scale\(\.76\)")[^>]*>/.test(source)) {
     fail(`${asset.path}: canonical transformed maskable-core group is required`);
   }
-  sourceRecords.push({ ...asset, sha256: sha256(buffer) });
+  sourceRecords.push(asset);
 }
 
 let favicon = null;
@@ -274,9 +269,9 @@ if (favicon && icon192 && icon512 && sourceRecords.length === expectedAssets.len
     sourceCount: 50,
     sources: sourceRecords,
     pwaOutputs: [
-      { path: 'icon.svg', viewBox: '0 0 100 100', bytes: favicon.length, sha256: sha256(favicon) },
-      { path: 'icon-192.png', width: 192, height: 192, bytes: icon192.length, sha256: sha256(icon192) },
-      { path: 'icon-512.png', width: 512, height: 512, bytes: icon512.length, sha256: sha256(icon512) },
+      { path: 'icon.svg', viewBox: '0 0 100 100', bytes: favicon.length },
+      { path: 'icon-192.png', width: 192, height: 192, bytes: icon192.length },
+      { path: 'icon-512.png', width: 512, height: 512, bytes: icon512.length },
     ],
   };
   try {

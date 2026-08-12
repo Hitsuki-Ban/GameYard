@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">NEON OVERDRIVE</title>
+  <desc id="description">A cyan and magenta bullet-hell flight cuts through a black neon city toward a red zero sun.</desc>
+  <defs>
+    <linearGradient id="void" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#05030f"/>
+      <stop offset="0.58" stop-color="#100529"/>
+      <stop offset="1" stop-color="#02030b"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff4d6"/>
+      <stop offset="0.24" stop-color="#ffd166"/>
+      <stop offset="0.62" stop-color="#ff4d6d"/>
+      <stop offset="1" stop-color="#ff2bd6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stage" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff2bd6" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#00f7ff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#00f7ff" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="scan" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M0 11.5H12" stroke="#ffffff" stroke-opacity="0.035"/>
+    </pattern>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#void)"/>
+  <rect width="1600" height="900" fill="url(#scan)"/>
+  <path d="M0 690 430 492 750 520 1600 228V900H0Z" fill="#08071b"/>
+  <g fill="none" stroke="#00f7ff" stroke-opacity="0.22">
+    <path d="M0 780 750 520 1600 330"/>
+    <path d="M0 840 750 520 1600 414"/>
+    <path d="M180 900 750 520 1530 900"/>
+    <path d="M420 900 750 520 1280 900"/>
+    <path d="M650 900 750 520 1030 900"/>
+  </g>
+  <g transform="translate(950 42)">
+    <rect x="0" y="0" width="450" height="800" rx="24" fill="#02030b" stroke="#00f7ff" stroke-width="3"/>
+    <rect x="18" y="18" width="414" height="764" rx="15" fill="url(#stage)" stroke="#ff2bd6" stroke-opacity="0.5"/>
+    <circle cx="225" cy="166" r="144" fill="url(#sun)"/>
+    <circle cx="225" cy="166" r="65" fill="#05030f" stroke="#ff4d6d" stroke-width="4" filter="url(#glow)"/>
+    <g fill="none" stroke="#ff2bd6" stroke-width="3" opacity="0.9">
+      <path d="M65 170C132 76 318 76 385 170"/>
+      <path d="M72 205C150 125 300 125 378 205"/>
+    </g>
+    <g filter="url(#glow)">
+      <g fill="#ff2bd6">
+        <circle cx="94" cy="244" r="7"/><circle cx="139" cy="279" r="7"/><circle cx="188" cy="301" r="7"/>
+        <circle cx="356" cy="244" r="7"/><circle cx="311" cy="279" r="7"/><circle cx="262" cy="301" r="7"/>
+        <circle cx="75" cy="326" r="6"/><circle cx="375" cy="326" r="6"/>
+      </g>
+      <g fill="#00f7ff">
+        <circle cx="112" cy="365" r="6"/><circle cx="166" cy="388" r="6"/><circle cx="225" cy="397" r="6"/>
+        <circle cx="338" cy="365" r="6"/><circle cx="284" cy="388" r="6"/>
+      </g>
+      <g fill="#ffd166">
+        <path d="M55 438 63 447 55 456 47 447Z"/><path d="M395 438 403 447 395 456 387 447Z"/>
+        <path d="M116 482 124 491 116 500 108 491Z"/><path d="M334 482 342 491 334 500 326 491Z"/>
+      </g>
+    </g>
+    <path d="M225 506 259 586 225 569 191 586Z" fill="#081827" stroke="#00f7ff" stroke-width="5" filter="url(#glow)"/>
+    <path d="M225 522 238 558 225 551 212 558Z" fill="#fff4d6"/>
+    <path d="M213 583 225 630 237 583" fill="#ff2bd6" opacity="0.8" filter="url(#glow)"/>
+    <g stroke="#00f7ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)">
+      <path d="M208 512 187 404"/><path d="M218 505 211 381"/><path d="M232 505 239 381"/><path d="M242 512 263 404"/>
+    </g>
+    <path d="M22 651H428" stroke="#ff4d6d" stroke-width="5" filter="url(#glow)"/>
+    <text x="42" y="706" fill="#ff4d6d" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="5">REDLINE / 99.5</text>
+    <text x="42" y="749" fill="#00f7ff" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">540 × 960 FIXED STAGE</text>
+  </g>
+  <g transform="translate(104 132)">
+    <text x="0" y="0" fill="#00f7ff" font-family="Arial Narrow, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="14">GAMEYARD / 05</text>
+    <text x="0" y="140" fill="#f6f3ff" font-family="Arial Black, Arial, sans-serif" font-size="132" font-weight="900" letter-spacing="-8">NEON</text>
+    <text x="0" y="253" fill="#ff2bd6" font-family="Arial Black, Arial, sans-serif" font-size="98" font-weight="900" letter-spacing="-5">OVERDRIVE</text>
+    <path d="M0 292H710" stroke="#00f7ff" stroke-width="3"/>
+    <text x="0" y="345" fill="#ffd166" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="7">BULLET / SIGNAL / BREAK</text>
+    <text x="0" y="404" fill="#b9b4d7" font-family="Arial, sans-serif" font-size="22" letter-spacing="2">THREAD THE BARRAGE.</text>
+    <text x="0" y="442" fill="#b9b4d7" font-family="Arial, sans-serif" font-size="22" letter-spacing="2">BURN BEYOND THE REDLINE.</text>
+    <g transform="translate(0 518)" font-family="Arial, sans-serif" font-weight="700">
+      <rect width="182" height="54" rx="27" fill="#00f7ff" fill-opacity="0.12" stroke="#00f7ff"/>
+      <text x="91" y="35" fill="#00f7ff" text-anchor="middle" font-size="18" letter-spacing="3">STORY</text>
+      <rect x="198" width="182" height="54" rx="27" fill="#ff2bd6" fill-opacity="0.12" stroke="#ff2bd6"/>
+      <text x="289" y="35" fill="#ff2bd6" text-anchor="middle" font-size="18" letter-spacing="3">RUSH</text>
+      <rect x="396" width="210" height="54" rx="27" fill="#ffd166" fill-opacity="0.1" stroke="#ffd166"/>
+      <text x="501" y="35" fill="#ffd166" text-anchor="middle" font-size="18" letter-spacing="3">ENDLESS</text>
+    </g>
+  </g>
+</svg>

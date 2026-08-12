@@ -16,7 +16,7 @@ function relativePresentationTime(snapshot: any, origin: number) {
 
 async function feedAtRefreshRate(
   page: Page,
-  refreshHz: 30 | 60 | 120,
+  refreshHz: 30 | 60 | 120 | 144,
   startFrame: number,
   ticks: number,
 ) {
@@ -33,7 +33,7 @@ async function feedAtRefreshRate(
   );
 }
 
-async function runTrace(page: Page, refreshHz: 30 | 60 | 120): Promise<DeterministicRun> {
+async function runTrace(page: Page, refreshHz: 30 | 60 | 120 | 144): Promise<DeterministicRun> {
   await bootRuntime(page);
   await page.evaluate(() => window.__NEON_DEBUG__.freezePresentation());
   await page.evaluate(() => window.__NEON_DEBUG__.feedFrame(0));
@@ -65,7 +65,9 @@ async function runTrace(page: Page, refreshHz: 30 | 60 | 120): Promise<Determini
   return { checkpoints, events };
 }
 
-test("keeps checkpoints, snapshots, and events equal at 30/60/120 Hz feeding", async ({ page }) => {
+test("keeps checkpoints, snapshots, and events equal at 30/60/120/144 Hz feeding", async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   await page.addInitScript(() =>
     localStorage.removeItem("gameyard.game.neon-overdrive.profile.v1"),
@@ -73,8 +75,10 @@ test("keeps checkpoints, snapshots, and events equal at 30/60/120 Hz feeding", a
   const at30 = await runTrace(page, 30);
   const at60 = await runTrace(page, 60);
   const at120 = await runTrace(page, 120);
+  const at144 = await runTrace(page, 144);
 
   expect(at60).toEqual(at30);
   expect(at120).toEqual(at30);
+  expect(at144).toEqual(at30);
   expect(at30.checkpoints.map((checkpoint) => checkpoint.tick)).toEqual([30, 60, 120]);
 });

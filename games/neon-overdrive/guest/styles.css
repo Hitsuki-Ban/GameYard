@@ -115,7 +115,6 @@ button:disabled {
   height: 46vmin;
   z-index: -2;
   border-radius: 50%;
-  filter: blur(90px);
   opacity: 0.14;
   pointer-events: none;
   animation: ambient-drift 8s ease-in-out infinite alternate;
@@ -124,12 +123,12 @@ button:disabled {
 .ambient-a {
   top: 8vmin;
   left: -12vmin;
-  background: var(--cyan);
+  background: radial-gradient(circle, rgba(0, 247, 255, 0.92), rgba(0, 247, 255, 0) 72%);
 }
 .ambient-b {
   right: -10vmin;
   bottom: 4vmin;
-  background: var(--pink);
+  background: radial-gradient(circle, rgba(255, 43, 214, 0.92), rgba(255, 43, 214, 0) 72%);
   animation-delay: -3s;
 }
 
@@ -198,9 +197,20 @@ button:disabled {
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--ink);
   outline: none;
   touch-action: none;
+}
+
+#gameCanvas[data-stage="0"] {
+  background: linear-gradient(#05040d 0%, #0b0a28 55%, #061a23 100%);
+}
+
+#gameCanvas[data-stage="1"] {
+  background: linear-gradient(#040817 0%, #071f34 55%, #160b2d 100%);
+}
+
+#gameCanvas[data-stage="2"] {
+  background: linear-gradient(#080309 0%, #24070e 55%, #0a061a 100%);
 }
 
 #gameCanvas:focus-visible {
@@ -213,8 +223,9 @@ button:disabled {
   z-index: 40;
   pointer-events: none;
   opacity: 0.2;
-  mix-blend-mode: overlay;
+  mix-blend-mode: normal;
   background:
+    radial-gradient(circle at 50% 48%, transparent 12%, rgba(0, 0, 0, 0.62) 72%),
     repeating-linear-gradient(
       0deg,
       rgba(255, 255, 255, 0.04) 0,

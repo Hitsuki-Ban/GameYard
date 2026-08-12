@@ -18,7 +18,6 @@ export class DialogController {
   readonly #registrations: ReadonlyMap<NeonDialogName, DialogRegistration>;
   readonly #removeListeners: (() => void)[] = [];
   #active: ActiveDialog | null = null;
-  #restoreOnClose = true;
   #disposed = false;
 
   constructor(
@@ -51,10 +50,8 @@ export class DialogController {
       const handleClose = (): void => {
         if (this.#active?.name !== name) return;
         const restoreFocus = this.#active.restoreFocus;
-        const shouldRestore = this.#restoreOnClose;
         this.#active = null;
-        this.#restoreOnClose = true;
-        if (shouldRestore && restoreFocus?.isConnected) {
+        if (restoreFocus?.isConnected) {
           restoreFocus.focus({ preventScroll: true });
         }
       };
@@ -96,8 +93,12 @@ export class DialogController {
       }
       return;
     }
-    this.#restoreOnClose = restoreFocus;
+    const active = this.#active;
+    this.#active = null;
     registration.element.close();
+    if (restoreFocus && active.restoreFocus?.isConnected) {
+      active.restoreFocus.focus({ preventScroll: true });
+    }
   }
 
   closeActive(restoreFocus = true): void {

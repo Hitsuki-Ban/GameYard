@@ -86,6 +86,25 @@
         "games/kamifuda-runner/tsconfig.json",
         "games/kamifuda-runner/vite.config.ts"
       ]
+    },
+    {
+      "id": "neon-overdrive",
+      "packageName": "@gameyard/neon-overdrive",
+      "stage": ".gameyard/stage/games/neon-overdrive",
+      "manifestSource": "games/neon-overdrive/game.manifest.source.json",
+      "presentationSource": "games/neon-overdrive/game.presentation.source.json",
+      "devPort": 5178,
+      "productionInputs": [
+        "games/neon-overdrive/assets/catalog-cover.svg",
+        "games/neon-overdrive/assets/catalog-cover-small.svg",
+        "games/neon-overdrive/game.manifest.source.json",
+        "games/neon-overdrive/game.presentation.source.json",
+        "games/neon-overdrive/guest",
+        "games/neon-overdrive/package.json",
+        "games/neon-overdrive/build/list-guest-dev-files.mjs",
+        "games/neon-overdrive/tsconfig.json",
+        "games/neon-overdrive/vite.config.ts"
+      ]
     }
   ]
 }
