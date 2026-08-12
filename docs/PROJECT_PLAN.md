@@ -173,7 +173,7 @@ Issue #15 的发布链只产生一次 verified artifact：GitHub runner 固定 V
 
 Issue #15 已在真实 GitHub runner 与 `cloudflare-production` environment 完成远端证据。Issue #16 将同一 Worker 的 `/GameYard/` 设为第二个公开 mount；Worker 入口与 `dist` 一起进入唯一 artifact，两个 URL 不产生第二次构建。当前唯一正式 origin 为 `https://gameyard.hitsuki.space`，生产 Worker 不发布 `workers.dev` 入口。
 
-最终发布门复用已有三游戏 × 三语言 × 三视口视觉矩阵、50 次切换/周期重载、PWA 离线与原子更新流程，只补一条覆盖 Tab/焦点、WCAG A/AA 扫描、系统 reduced motion、真实 fullscreen 和活动 orientation rotation 的宽旅程。Windows runner 从唯一 artifact 直接执行该门；生产部署后再对 root 与 `/GameYard/` 运行真实网络/console/page smoke。只有 Actions 原始 ZIP 的 SHA-256 与 artifact digest 精确一致时，workflow 才能对该 source SHA 创建 release tag 与 GitHub Release。
+最终发布门复用已有视觉矩阵、registry 游戏 × 公共语言的最小完整切换矩阵、PWA 离线与原子更新流程，并以一条宽旅程覆盖 Tab/焦点、WCAG A/AA 扫描、系统 reduced motion、真实 fullscreen 和活动 orientation rotation。每个游戏/语言组合只覆盖一次，同时保留逐轮资源归零与周期重载，不追加没有新语义的固定耐久次数。Windows runner 从唯一 artifact 直接执行该门；生产部署后再对 root 与 `/GameYard/` 运行真实网络/console/page smoke。只有 Actions 原始 ZIP 的 SHA-256 与 artifact digest 精确一致时，workflow 才能对该 source SHA 创建 release tag 与 GitHub Release。
 
 ## 风险与暂不处理
 

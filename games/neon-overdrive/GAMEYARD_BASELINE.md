@@ -109,7 +109,7 @@ The very small frame counts are themselves part of the before evidence: percenti
 
 - Player journey and visual comparison: `vp run test`.
 - Windows golden refresh after intentional baseline review: `vp run test:update`.
-- Final admitted performance verification and trace-hash check: `vp run perf`.
+- Final admitted performance verification against the recorded budgets and stable trace semantics: `vp run perf`.
 - Performance evidence replacement is an explicit review action using `NEON_PERF_RECORD=1`; ordinary tests never rewrite it.
 
 All commands run from `games/neon-overdrive`. The archive-owned source files must remain unchanged.
