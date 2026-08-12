@@ -48,7 +48,7 @@ export class DialogController {
         }
       };
       const handleClose = (): void => {
-        if (this.#active?.name !== name) return;
+        if (this.#active?.name !== name || registration.element.open) return;
         const restoreFocus = this.#active.restoreFocus;
         this.#active = null;
         if (restoreFocus?.isConnected) {

@@ -41,15 +41,10 @@ async function expectLifecycleRequest(page: Page, action: "pause" | "resume") {
 
 async function setControlledHidden(page: Page, hidden: boolean) {
   await page.evaluate((nextHidden) => {
-    if (nextHidden) {
-      Object.defineProperties(document, {
-        hidden: { configurable: true, get: () => true },
-        visibilityState: { configurable: true, get: () => "hidden" },
-      });
-    } else {
-      Reflect.deleteProperty(document, "hidden");
-      Reflect.deleteProperty(document, "visibilityState");
-    }
+    Object.defineProperties(document, {
+      hidden: { configurable: true, get: () => nextHidden },
+      visibilityState: { configurable: true, get: () => (nextHidden ? "hidden" : "visible") },
+    });
     document.dispatchEvent(new Event("visibilitychange"));
   }, hidden);
 }
