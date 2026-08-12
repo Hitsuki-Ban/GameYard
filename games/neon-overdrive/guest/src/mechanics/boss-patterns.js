@@ -12,31 +12,31 @@ import {
 export const BOSS_DEFINITIONS = Object.freeze(
   [
     {
-      name: "AELLA // THE FEED",
+      id: "aella",
       color: COLORS.pink,
       phases: [
-        { name: "INFINITE SCROLL", hp: 4700, duration: 24 },
-        { name: "RED DOT HUNGER", hp: 5600, duration: 26 },
-        { name: "FEED COLLAPSE", hp: 6800, duration: 30 },
+        { id: "infiniteScroll", hp: 4700, duration: 24 },
+        { id: "redDotHunger", hp: 5600, duration: 26 },
+        { id: "feedCollapse", hp: 6800, duration: 30 },
       ],
     },
     {
-      name: "MIRROR SAINT",
+      id: "mirrorSaint",
       color: COLORS.cyan,
       phases: [
-        { name: "TWIN REFLECTION", hp: 6100, duration: 27 },
-        { name: "GLASS LATTICE", hp: 7200, duration: 29 },
-        { name: "KALEIDOSCOPE END", hp: 8500, duration: 32 },
+        { id: "twinReflection", hp: 6100, duration: 27 },
+        { id: "glassLattice", hp: 7200, duration: 29 },
+        { id: "kaleidoscopeEnd", hp: 8500, duration: 32 },
       ],
     },
     {
-      name: "THE ALGORITHM",
+      id: "algorithm",
       color: COLORS.gold,
       phases: [
-        { name: "PREDICTIVE DESIRE", hp: 7200, duration: 29 },
-        { name: "PERFECT CORRIDOR", hp: 8200, duration: 31 },
-        { name: "GOLDEN ENGAGEMENT", hp: 9300, duration: 34 },
-        { name: "ZERO SUN // FINAL", hp: 11200, duration: 40 },
+        { id: "predictiveDesire", hp: 7200, duration: 29 },
+        { id: "perfectCorridor", hp: 8200, duration: 31 },
+        { id: "goldenEngagement", hp: 9300, duration: 34 },
+        { id: "zeroSunFinal", hp: 11200, duration: 40 },
       ],
     },
   ].map((boss) =>
@@ -67,7 +67,6 @@ export function createBossState({ id, mode, runTime, statsHits, challenge }) {
     mode === "rush" ? 0.72 : mode === "endless" ? 0.88 + Math.min(0.6, runTime / 420) : 1;
   return {
     id,
-    name: definition.name,
     color: definition.color,
     phases: definition.phases,
     phaseIndex: 0,

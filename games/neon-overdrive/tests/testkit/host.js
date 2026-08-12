@@ -9,6 +9,7 @@ const host = {
   pending: new Map(),
   events: [],
   autoInit: new URL(location.href).searchParams.get("init") !== "manual",
+  settingsMode: "auto",
 };
 globalThis.__NEON_HOST__ = host;
 
@@ -126,6 +127,7 @@ function handlePortMessage(event) {
       fail("received an invalid settings request");
       return;
     }
+    if (host.settingsMode === "deferred") return;
     const next = {
       revision: context.settings.revision + 1,
       audio: { ...context.settings.audio, ...message.change.audio },
@@ -181,9 +183,15 @@ function handleWindowMessage(event) {
 }
 
 host.drainEvents = () => host.events.splice(0, host.events.length);
+host.setSettingsMode = (mode) => {
+  if (!["auto", "deferred"].includes(mode)) {
+    throw new RangeError(`Unknown Neon testkit settings mode: ${String(mode)}`);
+  }
+  host.settingsMode = mode;
+};
 host.applySettings = async (settings) => {
-  context.settings = settings;
   await send("settings.apply", { settings });
+  context.settings = structuredClone(settings);
 };
 host.applyLocale = async (locale) => {
   context.locale = locale;

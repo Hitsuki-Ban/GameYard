@@ -38,6 +38,10 @@ for (const invalid of invalidProfiles) {
       "data-neon-boot-error",
       invalid.label === "invalid JSON" ? "profile.json" : "profile.schema",
     );
+    await expect(failure.locator("h1")).toHaveText("NEON OVERDRIVE // 初始化失败");
+    await expect(failure.locator("p")).toHaveText(
+      invalid.label === "invalid JSON" ? "无法读取游戏档案。" : "游戏档案格式无效。",
+    );
     expect(await page.evaluate((key) => localStorage.getItem(key), PROFILE_KEY)).toBe(
       invalid.value,
     );

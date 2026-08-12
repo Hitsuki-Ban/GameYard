@@ -4,7 +4,7 @@ import { COLORS } from "./mechanics/index.js";
 export function createNeonDebug({
   simulation,
   renderer,
-  getSettings,
+  getMotionPolicy,
   canAdvance,
   freezePresentation,
   resumePresentation,
@@ -202,13 +202,13 @@ export function createNeonDebug({
           Array.isArray(payload) ||
           Object.keys(payload).length !== 2 ||
           !Object.hasOwn(payload, "victory") ||
-          !Object.hasOwn(payload, "label") ||
+          !Object.hasOwn(payload, "labelId") ||
           typeof payload.victory !== "boolean" ||
-          typeof payload.label !== "string"
+          !["ritualComplete", "signalLost", "timeComplete"].includes(payload.labelId)
         ) {
           throw new TypeError("finish payload must be exact.");
         }
-        simulation.controls.finish(payload.victory, payload.label);
+        simulation.controls.finish(payload.victory, payload.labelId);
         break;
       default:
         throw new RangeError(`Unknown Neon mutation: ${action}`);
@@ -223,7 +223,7 @@ export function createNeonDebug({
       if (canAdvance()) {
         for (let index = 0; index < ticks; index += 1) simulation.step(FIXED_STEP_SECONDS);
       }
-      renderer.render(simulation.state, 0, getSettings());
+      renderer.render(simulation.state, 0, getMotionPolicy());
       return observe();
     },
     observe,

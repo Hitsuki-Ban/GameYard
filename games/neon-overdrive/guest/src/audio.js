@@ -66,6 +66,15 @@ export function createAudioEngine(targetWindow, initialSettings) {
   let lastShot = -Infinity;
   const sources = new Set();
 
+  function projectGain(parameter, value, now) {
+    parameter.cancelScheduledValues(now);
+    if (value === 0) {
+      parameter.setValueAtTime(0, now);
+      return;
+    }
+    parameter.setTargetAtTime(value, now, 0.02);
+  }
+
   function activate(active) {
     if (disposed) return;
     if (typeof active !== "boolean") throw new TypeError("Audio activation gate must be boolean.");
@@ -96,9 +105,9 @@ export function createAudioEngine(targetWindow, initialSettings) {
     settings = next;
     if (context !== null) {
       const now = context.currentTime;
-      master.gain.setTargetAtTime(next.audio.master, now, 0.02);
-      music.gain.setTargetAtTime(next.audio.music * 0.42, now, 0.02);
-      sfx.gain.setTargetAtTime(next.audio.sfx, now, 0.02);
+      projectGain(master.gain, next.audio.master, now);
+      projectGain(music.gain, next.audio.music * 0.42, now);
+      projectGain(sfx.gain, next.audio.sfx, now);
     }
   }
 

@@ -40,7 +40,15 @@ async function feedFrameSamples(page: Page, startMs: number, frames: number) {
 }
 
 async function feedFrozenAudioFrame(page: Page, timestampMs: number) {
-  await page.evaluate((timestamp) => window.__NEON_DEBUG__.feedFrame(timestamp), timestampMs);
+  await expect
+    .poll(async () => {
+      await page.evaluate((timestamp) => window.__NEON_DEBUG__.feedFrame(timestamp), timestampMs);
+      return page.evaluate(() => {
+        const resources = window.__NEON_DEBUG__.resources();
+        return resources.musicScheduler === 1 && resources.musicSources > 0;
+      });
+    })
+    .toBe(true);
 }
 
 async function expectMusicState(page: Page, active: boolean) {
@@ -153,16 +161,16 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await command(page, { type: "title" });
 
   await drainEvents(page);
-  await page.locator("#credits-button").click();
+  await page.locator("#archive-button").click();
   expectSingleAudioCue(await drainEvents(page), "select");
-  await expect(page.locator("#credits-screen")).toHaveClass(/overlay-visible/u);
-  await page.locator("#credits-screen .back-title").click();
+  await expect(page.locator("#archive-dialog")).toBeVisible();
+  await page.locator("#archive-back").click();
   expectSingleAudioCue(await drainEvents(page), "select");
-  await expect(page.locator("#title-screen")).toHaveClass(/overlay-visible/u);
+  await expect(page.locator("#title-screen")).toBeVisible();
 
   await page.locator("#settings-button").click();
   expectSingleAudioCue(await drainEvents(page), "select");
-  await expect(page.locator("#settings-screen")).toHaveClass(/overlay-visible/u);
+  await expect(page.locator("#settings-dialog")).toBeVisible();
   await page.evaluate(() => window.__NEON_HOST__.drainEvents());
   await page.locator("#fullscreen-button").click();
   expectSingleAudioCue(await drainEvents(page), "select");
@@ -180,29 +188,33 @@ test("reuses the #50 Story journey and five canonical presentation references", 
     .filter({ has: page.locator("#auto-guard") });
   await autoGuardToggle.click();
   await expect(page.locator("#auto-guard")).not.toBeChecked();
-  expect(
-    await page.evaluate(() => ({
-      revision: window.__NEON_HOST__.context.settings.revision,
-      master: window.__NEON_HOST__.context.settings.audio.master,
-      music: window.__NEON_HOST__.context.settings.audio.music,
-    })),
-  ).toEqual({ revision: 0, master: 0, music: 0 });
-  await page.evaluate(() => window.__NEON_HOST__.drainEvents());
-  await page.locator("#settings-save").click();
-  await expect(page.locator("#title-screen")).toHaveClass(/overlay-visible/u);
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        revision: window.__NEON_HOST__.context.settings.revision,
+        master: window.__NEON_HOST__.context.settings.audio.master,
+        music: window.__NEON_HOST__.context.settings.audio.music,
+      })),
+    )
+    .toEqual({ revision: 2, master: 1, music: 1 });
   expect(
     await page.evaluate(() =>
-      window.__NEON_HOST__.events.find((event: any) => event?.type === "settings.changeRequest"),
+      window.__NEON_HOST__.events.filter((event: any) => event?.type === "settings.changeRequest"),
     ),
-  ).toEqual({
-    type: "settings.changeRequest",
-    change: {
-      audio: { master: 1, music: 1 },
-      motion: { screenShake: false, reduced: false },
-    },
-  });
+  ).toEqual([
+    { type: "settings.changeRequest", change: { audio: { master: 1 } } },
+    { type: "settings.changeRequest", change: { audio: { music: 1 } } },
+  ]);
+  await page.evaluate(() => window.__NEON_HOST__.drainEvents());
+  await page.locator("#settings-save").click();
+  await expect(page.locator("#title-screen")).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      window.__NEON_HOST__.events.some((event: any) => event?.type === "settings.changeRequest"),
+    ),
+  ).toBe(false);
   expect(await page.evaluate(() => window.__NEON_HOST__.context.settings)).toMatchObject({
-    revision: 1,
+    revision: 2,
     audio: { master: 1, music: 1 },
   });
   expect(await observe(page)).toMatchObject({
@@ -212,11 +224,14 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await page.locator("#master-volume").fill("0.25");
   await autoGuardToggle.click();
   await expect(page.locator("#auto-guard")).toBeChecked();
-  await page.locator("#settings-screen .back-title").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__NEON_HOST__.context.settings.audio.master))
+    .toBe(0.25);
+  await page.locator("#settings-close").click();
   await page.locator("#settings-button").click();
-  await expect(page.locator("#master-volume")).toHaveValue("1");
+  await expect(page.locator("#master-volume")).toHaveValue("0.25");
   await expect(page.locator("#auto-guard")).not.toBeChecked();
-  await page.locator("#settings-screen .back-title").click();
+  await page.locator("#settings-close").click();
 
   await drainEvents(page);
   await page.locator("#ignite-button").click();
@@ -225,7 +240,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   expect(await observe(page)).toMatchObject({
     screen: "playing",
     mode: "story",
-    stage: 1,
+    stage: { kind: "act", value: 1 },
     shield: 3,
     rank: 0.22,
   });
@@ -240,11 +255,12 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await page.keyboard.press("Escape");
   await expectLifecycleRequest(page, "pause");
   await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.pause"));
-  await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
+  await expect(page.locator("#pause-dialog")).toBeVisible();
   await page.locator("#restart-button").click();
-  await expect(page.locator("#gameCanvas")).toBeFocused();
+  await expect(page.locator("#pause-dialog")).toBeVisible();
   await expectLifecycleRequest(page, "resume");
   await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
+  await expect(page.locator("#pause-dialog")).not.toBeVisible();
   await expect(page.locator("#gameCanvas")).toBeFocused();
   expect(await observe(page)).toMatchObject({
     screen: "playing",
@@ -254,7 +270,16 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   frameTime = 0;
   await page.evaluate(() => window.__NEON_DEBUG__.feedFrame(0));
   const beforeRestartKeyboard = (await observe(page)).player.x;
+  const restartCanvas = page.locator("#gameCanvas");
+  const restartCanvasBox = await restartCanvas.boundingBox();
+  if (restartCanvasBox === null) throw new Error("Neon canvas must be measurable after restart.");
+  await page.mouse.move(
+    restartCanvasBox.x + restartCanvasBox.width * 0.75,
+    restartCanvasBox.y + restartCanvasBox.height * 0.75,
+  );
+  await expect(page.locator("#control-move")).toContainText("鼠标");
   await page.keyboard.down("ArrowLeft");
+  await expect(page.locator("#control-move")).toContainText("WASD");
   ({ timestampMs: frameTime } = await feedFrames(page, frameTime, 4));
   await page.keyboard.up("ArrowLeft");
   expect((await observe(page)).player.x).toBeLessThan(beforeRestartKeyboard);
@@ -298,13 +323,14 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   }
   expect(scoutShotAccents).toEqual([5, 11, 13]);
   await command(page, { type: "restart" });
-  for (const [rank, label] of [
-    [0.22, "LOW"],
-    [0.48, "RISING"],
-    [0.6, "HIGH"],
-    [0.8, "FATAL"],
+  for (const [rank, threat, label] of [
+    [0.22, "low", "低"],
+    [0.48, "rising", "上升"],
+    [0.6, "high", "高"],
+    [0.8, "fatal", "致命"],
   ] as const) {
     await mutate(page, "prepareThreat", rank);
+    expect(await observe(page)).toMatchObject({ threat });
     await expect(page.locator("#side-threat")).toHaveText(label);
   }
   await mutate(page, "prepareThreat", 0.22);
@@ -613,7 +639,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await page.keyboard.press("Escape");
   await expectLifecycleRequest(page, "pause");
   await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.pause"));
-  await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
+  await expect(page.locator("#pause-dialog")).toBeVisible();
   await page.locator("#resume-button").click();
   await expectLifecycleRequest(page, "resume");
   await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
@@ -807,7 +833,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
     const card = page.locator(`[data-upgrade-index="${index}"]`);
     await expect(card.locator(".upgrade-icon")).toHaveText(upgrade.icon);
     await expect(card.locator(".upgrade-level")).toHaveText(
-      `LV ${upgrade.level - 1} → ${upgrade.level}`,
+      `等级 ${upgrade.level - 1} → ${upgrade.level}`,
     );
     expect(await card.evaluate((element) => element.style.getPropertyValue("--accent"))).toBe(
       upgrade.accent,
@@ -819,19 +845,41 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   const beforeVoltage = await observe(page);
   await page.locator('[data-upgrade-index="0"]').click();
   await expect(page.locator("#gameCanvas")).toBeFocused();
-  expect(await observe(page)).toMatchObject({ stage: 2, tick: beforeVoltage.tick });
+  expect(await observe(page)).toMatchObject({
+    stage: { kind: "act", value: 2 },
+    tick: beforeVoltage.tick,
+  });
   expect((await observe(page)).mods.fireRate).toBeGreaterThan(beforeVoltage.mods.fireRate);
   await feedFrozenAudioFrame(page, frameTime);
   await expectMusicState(page, true);
+
+  await mutate(page, "spawnBoss", 1);
+  await advance(page, 12);
+  expect((await observe(page)).boss).toMatchObject({
+    id: "mirrorSaint",
+    phase: "twinReflection",
+  });
+  await expect(page.locator("#boss-name")).toHaveText("MIRROR SAINT");
+  await expect(page).toHaveScreenshot("boss.png");
+
+  await command(page, { type: "restart" });
+  const beforeRecreatedVoltage = await observe(page);
+  await mutate(page, "offerUpgrades", ["voltage", "satellite", "echo"]);
+  await page.locator('[data-upgrade-index="0"]').click();
+  expect(await observe(page)).toMatchObject({ stage: { kind: "act", value: 2 } });
+  expect((await observe(page)).mods.fireRate).toBeGreaterThan(beforeRecreatedVoltage.mods.fireRate);
+  await feedFrozenAudioFrame(page, frameTime);
+  await expectMusicState(page, true);
+
   await mutate(page, "prepareGuardBoundary");
   await mutate(page, "prepareResult", { score: 0, chain: 50, maxChain: 3, bosses: 0 });
   expect((await observe(page)).chain).toBe(3);
-  await expect(page.locator("#chain-value")).toHaveText("x3.00");
+  await expect(page.locator("#chain-value")).toHaveText("3.00");
   await mutate(page, "prepareDrive");
   await page.keyboard.press("Space");
   await mutate(page, "prepareResult", { score: 0, chain: 50, maxChain: 6, bosses: 0 });
   expect((await observe(page)).chain).toBe(6);
-  await expect(page.locator("#chain-value")).toHaveText("x6.00");
+  await expect(page.locator("#chain-value")).toHaveText("6.00");
   await mutate(page, "prepareGuardBoundary");
   await page.keyboard.press("Space");
   await mutate(page, "offerUpgrades", ["magnet", "nova", "armor"]);
@@ -855,7 +903,10 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   );
   const beforeArmor = await observe(page);
   await page.keyboard.press("Digit3");
-  expect(await observe(page)).toMatchObject({ stage: 3, tick: beforeArmor.tick });
+  expect(await observe(page)).toMatchObject({
+    stage: { kind: "act", value: 3 },
+    tick: beforeArmor.tick,
+  });
   expect((await observe(page)).maxShield).toBe(beforeArmor.maxShield + 1);
   await feedFrozenAudioFrame(page, frameTime);
   await expectMusicState(page, true);
@@ -874,9 +925,11 @@ test("reuses the #50 Story journey and five canonical presentation references", 
 
   await mutate(page, "spawnBoss", 1);
   await advance(page, 12);
-  expect((await observe(page)).boss).toMatchObject({ name: "MIRROR SAINT" });
+  expect((await observe(page)).boss).toMatchObject({
+    id: "mirrorSaint",
+    phase: "twinReflection",
+  });
   await expect(page.locator("#boss-name")).toHaveText("MIRROR SAINT");
-  await expect(page).toHaveScreenshot("boss.png");
   await mutate(page, "protectPlayer");
   await advance(page, 120);
   const patterned = await observe(page);
@@ -887,7 +940,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await advance(page, 1);
   const phaseStopped = await observe(page);
   expect(phaseStopped).toMatchObject({
-    boss: { phase: 2 },
+    boss: { id: "mirrorSaint", phase: "glassLattice" },
     hitStop: { remainingTicks: 8 },
   });
   const phaseEvents = await drainEvents(page);
@@ -921,7 +974,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await mutate(page, "prepareBossPhaseBreak");
   await advance(page, 1);
   expect(await observe(page)).toMatchObject({
-    boss: { phase: 3 },
+    boss: { id: "mirrorSaint", phase: "kaleidoscopeEnd" },
     hitStop: { remainingTicks: 8 },
   });
   const secondPhaseEvents = await drainEvents(page);
@@ -983,7 +1036,13 @@ test("reuses the #50 Story journey and five canonical presentation references", 
     screen: "result",
     mode: "story",
     boss: null,
-    result: { victory: true, score: 123_456, chain: 4.2, isRecord: true },
+    result: {
+      victory: true,
+      labelId: "ritualComplete",
+      score: 123_456,
+      chain: 4.2,
+      isRecord: true,
+    },
   });
   expect(storyResult.counts).toEqual(beforeResultTransition.counts);
   await page.evaluate(() => window.__NEON_HOST__.drainEvents());
@@ -1004,7 +1063,11 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await expect(page).toHaveScreenshot("result.png");
   await page.locator("#result-retry").click();
   await expect(page.locator("#gameCanvas")).toBeFocused();
-  expect(await observe(page)).toMatchObject({ screen: "playing", mode: "story", stage: 1 });
+  expect(await observe(page)).toMatchObject({
+    screen: "playing",
+    mode: "story",
+    stage: { kind: "act", value: 1 },
+  });
   await feedFrozenAudioFrame(page, frameTime);
   await expectMusicState(page, true);
   const beforeNova = await observe(page);
@@ -1018,7 +1081,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   await page.keyboard.press("Space");
   await mutate(page, "prepareGuardBoundary");
   await page.keyboard.press("Space");
-  await mutate(page, "finish", { victory: false, label: "SIGNAL LOST" });
+  await mutate(page, "finish", { victory: false, labelId: "signalLost" });
   const resultAmbient = await observe(page);
   expect(resultAmbient.presentationEntities.particles.count).toBeGreaterThan(0);
   expect(resultAmbient.presentationEntities.floaters.count).toBeGreaterThan(0);
@@ -1128,7 +1191,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
     counts: { enemyBullets: 6 },
   });
   expect((await observe(page)).presentationState.shake).toBeCloseTo(2.5 - 26 / 60, 8);
-  await expect(page.locator("#toast")).toHaveText("POWER 2");
+  await expect(page.locator("#toast")).toHaveText("火力提升至 2。");
 
   await drainEvents(page);
   await mutate(page, "prepareEliteKill");
@@ -1166,7 +1229,7 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   expect(await observe(page)).toMatchObject({
     screen: "result",
     player: { x: defeatBeforeResult.player.x },
-    result: { victory: false },
+    result: { victory: false, labelId: "signalLost" },
   });
   await expectMusicState(page, false);
   await command(page, { type: "title" });
@@ -1254,44 +1317,51 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
 
   await command(page, { type: "start", mode: "story" });
   await mutate(page, "prepareResult", { score: 111_111, chain: 0, maxChain: 1, bosses: 0 });
-  await mutate(page, "finish", { victory: true, label: "RITUAL COMPLETE" });
+  await mutate(page, "finish", { victory: true, labelId: "ritualComplete" });
   await page.locator("#result-title-button").click();
 
   await page.locator("#mode-button").click();
   await page.locator('[data-mode="story"]').click();
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000111111");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000111111");
   await drainEvents(page);
   await page.locator('[data-mode="rush"]').click();
   expectSingleAudioCue(await drainEvents(page), "select");
   await expect(page.locator('[data-mode="rush"]')).toHaveClass(/selected/u);
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000000000");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000000000");
   await drainEvents(page);
   await page.locator("#mode-confirm").click();
   expectSingleAudioCue(await drainEvents(page), "select");
   await expect(page.locator("#title-screen")).toBeVisible();
-  await expect(page.locator("#mode-screen")).not.toBeVisible();
+  await expect(page.locator("#mode-dialog")).not.toBeVisible();
   expect(await observe(page)).toMatchObject({ screen: "title", selectedMode: "rush" });
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000000000");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000000000");
   await drainEvents(page);
   await page.locator("#ignite-button").click();
   expectSingleAudioCue(await drainEvents(page), "select");
   await mutate(page, "protectPlayer");
   const rush = await observe(page);
-  expect(rush).toMatchObject({ screen: "playing", mode: "rush", timer: 180 });
+  expect(rush).toMatchObject({
+    screen: "playing",
+    mode: "rush",
+    stage: { kind: "timer", value: 180 },
+  });
   expect(rush.rank).toBeCloseTo(0.48, 5);
-  await expect(page.locator("#mode-label")).toHaveText("RUSH");
-  await expect(page.locator("#stage-label")).toHaveText("3:00");
-  await expect(page.locator("#side-threat")).toHaveText("RISING");
+  await expect(page.locator("#mode-label")).toHaveText("RUSH 180");
+  await expect(page.locator("#stage-label")).toHaveText("03:00");
+  await expect(page.locator("#side-threat")).toHaveText("上升");
   await advance(page, 60);
-  expect((await observe(page)).timer).toBe(179);
-  await expect(page.locator("#stage-label")).toHaveText("2:59");
+  expect((await observe(page)).stage).toEqual({ kind: "timer", value: 179 });
+  await expect(page.locator("#stage-label")).toHaveText("02:59");
   await drainEvents(page);
   await advanceToRunTick(page, 45 * 60 - 1);
   const preBossThreat = await page.locator("#side-threat").textContent();
   if (preBossThreat === null) throw new Error("Neon threat HUD requires text before the boss.");
   await advanceToRunTick(page, 45 * 60);
   const firstRushBoss = await observe(page);
-  expect(firstRushBoss).toMatchObject({ stage: 1, boss: { name: "AELLA // THE FEED" } });
+  expect(firstRushBoss).toMatchObject({
+    stage: { kind: "timer", value: 135 },
+    boss: { id: "aella", phase: "infiniteScroll" },
+  });
   await expect(page.locator("#side-threat")).toHaveText(preBossThreat);
   expect((await drainEvents(page)).filter((event) => event.type === "boss.entered")).toEqual([
     expect.objectContaining({ id: 0, runTick: 45 * 60 }),
@@ -1299,7 +1369,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await defeatCurrentBoss(page);
   const rushSequence = await observe(page);
   expect(rushSequence).toMatchObject({
-    stage: 1,
+    stage: { kind: "timer", value: 135 },
     boss: null,
     hitStop: { remainingTicks: 14 },
     sequence: { locked: true, kind: "modeResume", remainingTicks: 126 },
@@ -1314,6 +1384,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await drainEvents(page);
   await advance(page, 125);
   expect(await observe(page)).toMatchObject({
+    stage: { kind: "timer", value: 133 },
     boss: null,
     sequence: { locked: true, kind: "modeResume", remainingTicks: 1 },
     directorClock: { time: rushDirectorTime },
@@ -1322,7 +1393,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await advance(page, 1);
   const resumedRush = await observe(page);
   expect(resumedRush).toMatchObject({
-    stage: 1,
+    stage: { kind: "timer", value: 133 },
     rank: firstRushBoss.rank,
     sequence: { locked: false, kind: null, remainingTicks: 0 },
   });
@@ -1335,9 +1406,12 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
       bosses: 1,
     },
   ]);
-  await expect(page.locator("#toast")).toHaveText("BOSS 1 // CHAIN ON");
+  await expect(page.locator("#toast")).toHaveText("首领 1 已击破，连锁继续。");
   await advanceToRunTick(page, 90 * 60);
-  expect(await observe(page)).toMatchObject({ stage: 1, boss: { name: "MIRROR SAINT" } });
+  expect(await observe(page)).toMatchObject({
+    stage: { kind: "timer", value: 90 },
+    boss: { id: "mirrorSaint", phase: "twinReflection" },
+  });
   expect((await drainEvents(page)).filter((event) => event.type === "boss.entered")).toEqual([
     expect.objectContaining({ id: 1, runTick: 90 * 60 }),
   ]);
@@ -1347,7 +1421,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   });
   await advance(page, 14 + 126);
   expect(await observe(page)).toMatchObject({
-    stage: 1,
+    stage: { kind: "timer", value: 88 },
     sequence: { locked: false, kind: null, remainingTicks: 0 },
   });
   await mutate(page, "prepareDrive");
@@ -1359,42 +1433,52 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   );
   expect(rushClockMarker).toMatchObject({ runTick: expect.any(Number) });
   await advanceToRunTick(page, 180 * 60 - 1);
-  expect(await observe(page)).toMatchObject({ screen: "playing", timer: 1 });
+  expect(await observe(page)).toMatchObject({
+    screen: "playing",
+    stage: { kind: "timer", value: 1 },
+  });
   await mutate(page, "prepareResult", { score: 222_222, chain: 0, maxChain: 1, bosses: 0 });
   await advanceToRunTick(page, 180 * 60);
   expect(await observe(page)).toMatchObject({
     screen: "result",
-    result: { victory: true, label: "TIME COMPLETE", score: 222_222 },
+    result: { victory: true, labelId: "timeComplete", score: 222_222 },
   });
-  await expect(page.locator("#result-title")).toHaveText("TIME CLEAR");
-  await expect(page.locator("#result-eyebrow")).toHaveText("TIME COMPLETE");
+  await expect(page.locator("#result-title")).toHaveText("计时完成");
+  await expect(page.locator("#result-eyebrow")).toHaveText("计时完成");
   await page.locator("#result-title-button").click();
 
   await page.locator("#mode-button").click();
   await page.locator('[data-mode="rush"]').click();
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000222222");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000222222");
   await page.locator('[data-mode="endless"]').click();
   await expect(page.locator('[data-mode="endless"]')).toHaveClass(/selected/u);
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000000000");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000000000");
   await drainEvents(page);
   await page.locator("#mode-confirm").click();
   expectSingleAudioCue(await drainEvents(page), "select");
   await expect(page.locator("#title-screen")).toBeVisible();
-  await expect(page.locator("#mode-screen")).not.toBeVisible();
+  await expect(page.locator("#mode-dialog")).not.toBeVisible();
   expect(await observe(page)).toMatchObject({ screen: "title", selectedMode: "endless" });
-  await expect(page.locator("#best-score-title")).toHaveText("BEST 000000000");
+  await expect(page.locator("#best-score-title")).toHaveText("最高分 000000000");
   await drainEvents(page);
   await page.locator("#ignite-button").click();
   expectSingleAudioCue(await drainEvents(page), "select");
   await mutate(page, "protectPlayer");
   const endless = await observe(page);
-  expect(endless).toMatchObject({ screen: "playing", mode: "endless", timer: 0 });
+  expect(endless).toMatchObject({
+    screen: "playing",
+    mode: "endless",
+    stage: { kind: "sector", value: 1 },
+  });
   expect(endless.rank).toBeCloseTo(0.42, 5);
-  await expect(page.locator("#stage-label")).toHaveText("SECTOR 1");
+  await expect(page.locator("#stage-label")).toHaveText("区域 1");
   await drainEvents(page);
   await advanceToNonBossTicks(page, 70 * 60);
   const firstEndlessBoss = await observe(page);
-  expect(firstEndlessBoss).toMatchObject({ stage: 1, boss: { name: "MIRROR SAINT" } });
+  expect(firstEndlessBoss).toMatchObject({
+    stage: { kind: "sector", value: 2 },
+    boss: { id: "mirrorSaint", phase: "twinReflection" },
+  });
   const firstEndlessEvents = (await drainEvents(page)).filter(
     (event) => event.type === "boss.entered",
   );
@@ -1403,7 +1487,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await advance(page, 10 * 60);
   const activeEndlessBoss = await observe(page);
   expect(activeEndlessBoss).toMatchObject({
-    boss: { name: "MIRROR SAINT" },
+    boss: { id: "mirrorSaint", phase: "twinReflection" },
     directorClock: { nonBossTicks: 70 * 60 },
   });
   expect((await drainEvents(page)).some((event) => event.type === "boss.entered")).toBe(false);
@@ -1411,7 +1495,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await defeatCurrentBoss(page);
   const endlessSequence = await observe(page);
   expect(endlessSequence).toMatchObject({
-    stage: 1,
+    stage: { kind: "sector", value: 2 },
     boss: null,
     hitStop: { remainingTicks: 14 },
     sequence: { locked: true, kind: "modeResume", remainingTicks: 126 },
@@ -1425,7 +1509,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await drainEvents(page);
   await advance(page, 125);
   expect(await observe(page)).toMatchObject({
-    stage: 1,
+    stage: { kind: "sector", value: 2 },
     boss: null,
     sequence: { locked: true, kind: "modeResume", remainingTicks: 1 },
     directorClock: { nonBossTicks: 70 * 60 },
@@ -1433,7 +1517,7 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
   await advance(page, 1);
   const resumedEndless = await observe(page);
   expect(resumedEndless).toMatchObject({
-    stage: 2,
+    stage: { kind: "sector", value: 2 },
     rank: activeEndlessBoss.rank,
     sequence: { locked: false, kind: null, remainingTicks: 0 },
     directorClock: { nonBossTicks: 70 * 60 + 1 },
@@ -1447,23 +1531,28 @@ test("keeps focused Rush and Endless checkpoints without duplicating the Story m
       sector: 2,
     },
   ]);
-  await expect(page.locator("#toast")).toHaveText("SECTOR 2");
-  await expect(page.locator("#stage-label")).toHaveText("SECTOR 2");
+  await expect(page.locator("#toast")).toHaveText("进入区域 2。");
+  await expect(page.locator("#stage-label")).toHaveText("区域 2");
   await advanceToNonBossTicks(page, 140 * 60 - 1);
   expect(await observe(page)).toMatchObject({
     boss: null,
     directorClock: { nonBossTicks: 140 * 60 - 1 },
   });
   await advanceToNonBossTicks(page, 140 * 60);
-  expect(await observe(page)).toMatchObject({ stage: 2, boss: { name: "THE ALGORITHM" } });
+  expect(await observe(page)).toMatchObject({
+    stage: { kind: "sector", value: 3 },
+    boss: { id: "algorithm", phase: "predictiveDesire" },
+  });
   const secondEndlessEvents = (await drainEvents(page)).filter(
     (event) => event.type === "boss.entered",
   );
   expect(secondEndlessEvents).toEqual([expect.objectContaining({ id: 2 })]);
   expect(secondEndlessEvents[0].runTick).toBeGreaterThan(firstEndlessRunTick + 70 * 60);
   await mutate(page, "prepareResult", { score: 333_333, chain: 0, maxChain: 1, bosses: 1 });
-  await mutate(page, "finish", { victory: false, label: "SIGNAL LOST" });
-  expect(await observe(page)).toMatchObject({ result: { score: 333_333 } });
+  await mutate(page, "finish", { victory: false, labelId: "signalLost" });
+  expect(await observe(page)).toMatchObject({
+    result: { labelId: "signalLost", score: 333_333 },
+  });
 
   await dispose(page);
 
