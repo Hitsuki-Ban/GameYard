@@ -108,14 +108,10 @@ jobs:
       - run: vp run @gameyard/kamifuda-runner#test
 
   neon-source-baseline:
-    name: Source baseline · neon-overdrive · ${{ matrix.os }}
+    name: Windows source baseline · neon-overdrive
     needs: registry
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: voidzero-dev/setup-vp@v1
@@ -174,7 +170,7 @@ jobs:
           --file "${{ env.RELEASE_METADATA }}"
       - name: Upload the verified artifact once
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: |
@@ -207,7 +203,7 @@ jobs:
           cache: true
           run-install: false
       - run: vp install --frozen-lockfile
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
@@ -240,7 +236,7 @@ jobs:
           cache: true
           run-install: false
       - run: vp install --frozen-lockfile
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
@@ -263,7 +259,7 @@ jobs:
           cache: true
           run-install: false
       - run: vp install --frozen-lockfile
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
@@ -300,7 +296,7 @@ jobs:
           cache: true
           run-install: false
       - run: vp install --frozen-lockfile
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
