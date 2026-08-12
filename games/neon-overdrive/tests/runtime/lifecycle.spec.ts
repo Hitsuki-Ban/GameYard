@@ -377,16 +377,23 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
         });
         await page.mouse.move(box.x + box.width / 2, box.y + box.height * 0.75);
         await page.mouse.down();
-        capturedPointerId = Number(await canvas.getAttribute("data-test-pointer-id"));
-        expect(
-          await page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().pointerCaptures),
-        ).toBe(1);
-        expect(
-          await canvas.evaluate(
-            (element, pointerId) => element.hasPointerCapture(pointerId),
-            capturedPointerId,
-          ),
-        ).toBe(true);
+        await expect.poll(() => canvas.getAttribute("data-test-pointer-id")).not.toBeNull();
+        const pointerId = Number(await canvas.getAttribute("data-test-pointer-id"));
+        if (!Number.isInteger(pointerId)) throw new Error("Neon canvas pointer ID is invalid.");
+        capturedPointerId = pointerId;
+        await expect
+          .poll(() =>
+            page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().pointerCaptures),
+          )
+          .toBe(1);
+        await expect
+          .poll(() =>
+            canvas.evaluate(
+              (element, pointerId) => element.hasPointerCapture(pointerId),
+              pointerId,
+            ),
+          )
+          .toBe(true);
       }
     });
 
