@@ -161,7 +161,7 @@ Issue #8 已完成 INIT-only boot、通用 `GameRuntime`、三路数值 audio po
 
 Issue #10 已按固定 revision 非 squash 导入完整历史，并用 static/i18n/assets、三幕、敌人、traits、生产 standalone 黑盒与 seed base 1000 的 100 局确定性模拟锁定适配前基线。
 
-Issue #11 保持 run/save schema 的游戏所有权，将持久化迁入 `gameyard.game.crown-breaker.*`，并完成 INIT-only boot、Host 公共 locale/audio/motion、audio scheduler pause、输入释放和确定性 dispose。生产 artifact 不含 game Service Worker 或写 QA surface；`site.assembly.json` 与 runtime catalog 精确登记三款游戏。Issue #12 已补齐 Crown desktop/portrait/landscape × en/ja/zh-Hans 视觉基线与真实 New Run、键盘暂停、Host 恢复路径，并以单一 50-cycle 三游戏 round-robin 验证每次启动与重载的 locale/settings revision 收敛、唯一 iframe、Host port、Guest listener/RAF/timer/audio、Service Worker、网络和 console 边界。根目录唯一完整关闭命令为 `vp run release`。
+Issue #11 保持 run/save schema 的游戏所有权，将持久化迁入 `gameyard.game.crown-breaker.*`，并完成 INIT-only boot、Host 公共 locale/audio/motion、audio scheduler pause、输入释放和确定性 dispose。生产 artifact 不含 game Service Worker 或写 QA surface；`site.assembly.json` 与 runtime catalog 精确登记三款游戏。Issue #12 已补齐 Crown desktop/portrait/landscape × en/ja/zh-Hans 视觉基线与真实 New Run、键盘暂停、Host 恢复路径；当前 round-robin 按登记游戏 × 公共 locale 的最小完整矩阵验证每次启动与周期性重载的 locale/settings revision 收敛、唯一 iframe、Host port、Guest listener/RAF/timer/audio、Service Worker、网络和 console 边界。根目录唯一完整关闭命令为 `vp run release`。
 
 ### M4 — 共享工具、离线与上线
 

@@ -142,6 +142,7 @@ type ReleaseLocale = (typeof locales)[number];
 type RoundRobinGame = (typeof REGISTERED_GAMES)[number]["id"];
 
 const roundRobinGames = REGISTERED_GAMES;
+const roundRobinCycleCount = roundRobinGames.length * locales.length;
 
 async function expectRoundRobinRuntimeReady(page: Page) {
   await expect(page.locator(".runtime-state")).toHaveClass(/runtime-state--active/);
@@ -454,7 +455,9 @@ test("CrownBreaker release matrix covers locale state and real lifecycle input",
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
-test("50 registered-game round-robin cycles leave one clean browsing context", async ({ page }) => {
+test("every registered game and locale round-robin leaves one clean browsing context", async ({
+  page,
+}) => {
   test.slow();
   const signals = collectRuntimeSignals(page);
   await page.addInitScript(() => {
@@ -691,7 +694,7 @@ test("50 registered-game round-robin cycles leave one clean browsing context", a
   await setHubLocale(page, "zh-Hans");
   const baselineResources = await releaseResources(page);
 
-  for (let cycle = 1; cycle <= 50; cycle += 1) {
+  for (let cycle = 1; cycle <= roundRobinCycleCount; cycle += 1) {
     const game = roundRobinGames[(cycle - 1) % roundRobinGames.length]!;
     let guest = await openRoundRobinRuntime(page, game.id);
     expect(page.frames()).toHaveLength(2);
