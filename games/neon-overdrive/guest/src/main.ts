@@ -1,39 +1,53 @@
 import { connectGuest } from "@gameyard/guest-bridge";
 import type { DiagnosticSnapshot } from "@gameyard/game-contract";
 
+import { createNeonI18n } from "./i18n.js";
 import { createRuntimeOwner } from "./runtime-owner.js";
 import { NeonProfileError } from "./storage.js";
 
 declare const __GAMEYARD_BUILD__: string;
 
 const GAME_ID = "neon-overdrive";
+let runtimeOwner: ReturnType<typeof createRuntimeOwner> | null = null;
+let bootI18n: ReturnType<typeof createNeonI18n> | null = null;
 
 function showBootFailure(error: unknown): void {
   console.error("Neon Overdrive guest initialization failed.", error);
   const failure = document.createElement("section");
   failure.className = "boot-failure";
-  failure.dataset.neonBootError = "initialization";
+  let errorCode = "initialization";
   let cause: unknown = error;
   while (cause instanceof Error) {
     if (cause instanceof NeonProfileError) {
-      failure.dataset.neonBootError = `profile.${cause.code}`;
+      errorCode = `profile.${cause.code}`;
       break;
     }
     cause = cause.cause;
   }
+  failure.dataset.neonBootError = errorCode;
+  const copy =
+    bootI18n === null
+      ? { title: "GameYard", detail: "GUEST_INITIALIZATION_FAILED" }
+      : {
+          title: bootI18n.t("error.init.title"),
+          detail: bootI18n.t(
+            errorCode === "profile.json" || errorCode === "profile.schema"
+              ? `error.${errorCode}`
+              : "error.init.unknown",
+          ),
+        };
   const title = document.createElement("h1");
-  title.textContent = "NEON OVERDRIVE // INIT FAILED";
+  title.textContent = copy.title;
   const detail = document.createElement("p");
-  detail.textContent = error instanceof Error ? error.message : "Unknown initialization failure.";
+  detail.textContent = copy.detail;
   failure.append(title, detail);
   document.body.replaceChildren(failure);
 }
 
 async function boot(): Promise<void> {
-  let owner: ReturnType<typeof createRuntimeOwner> | null = null;
   const requireOwner = (): ReturnType<typeof createRuntimeOwner> => {
-    if (owner === null) throw new Error("Neon runtime has not been initialized.");
-    return owner;
+    if (runtimeOwner === null) throw new Error("Neon runtime has not been initialized.");
+    return runtimeOwner;
   };
   const bridge = await connectGuest({
     window,
@@ -58,7 +72,13 @@ async function boot(): Promise<void> {
       },
     },
     initialize: (initializingBridge) => {
-      owner = createRuntimeOwner({ targetWindow: window, document, bridge: initializingBridge });
+      bootI18n = createNeonI18n(initializingBridge.context.locale);
+      runtimeOwner = createRuntimeOwner({
+        targetWindow: window,
+        document,
+        bridge: initializingBridge,
+        i18n: bootI18n,
+      });
     },
   });
   requireOwner().markReady();

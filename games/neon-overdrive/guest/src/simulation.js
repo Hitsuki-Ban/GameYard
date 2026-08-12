@@ -16,6 +16,7 @@ import {
   createLaser,
   createPickup,
   emitRing,
+  getBossDefinition,
   laserSegment,
   missileImpact,
   overdriveStartDamage,
@@ -37,6 +38,7 @@ export const FIXED_STEP_SECONDS = 1 / 60;
 const OVERDRIVE_ZERO_EPSILON = FIXED_STEP_SECONDS * 1e-9;
 
 const MODES = new Set(["story", "rush", "endless"]);
+const RESULT_LABEL_IDS = new Set(["ritualComplete", "signalLost", "timeComplete"]);
 const GAME_FX_DENSITIES = new Set([1, 0.68, 0.38]);
 const BULLET_CANCEL_REASONS = new Set([
   "transition",
@@ -97,6 +99,7 @@ function hypeGrade(chain, overdrive) {
 export function createNeonSimulation({
   profile,
   storage,
+  getMotionPolicy,
   project,
   emitCue,
   emitEvent,
@@ -106,6 +109,9 @@ export function createNeonSimulation({
     throw new TypeError("Neon simulation seed must be a safe integer.");
   if (typeof emitEvent !== "function") {
     throw new TypeError("Neon simulation requires an explicit semantic event port.");
+  }
+  if (typeof getMotionPolicy !== "function") {
+    throw new TypeError("Neon simulation requires an explicit motion policy port.");
   }
   const rng = createRng(seed);
   const fxRng = createRng((seed ^ 0x46584546) >>> 0);
@@ -214,26 +220,39 @@ export function createNeonSimulation({
 
   function uiSnapshot() {
     const timer = Math.max(0, Math.ceil(state.modeTimer));
-    const stageLabel =
+    const stage =
       state.mode === "story"
-        ? `ACT ${state.stage + 1}`
+        ? { kind: "act", value: state.stage + 1 }
         : state.mode === "rush"
-          ? `${Math.floor(timer / 60)}:${String(timer % 60).padStart(2, "0")}`
-          : `SECTOR ${Math.floor(state.runTicks / (70 * 60)) + 1}`;
+          ? { kind: "timer", value: timer }
+          : { kind: "sector", value: Math.floor(state.runTicks / (70 * 60)) + 1 };
     const threat =
       state.rank < 0.33
-        ? "LOW"
+        ? "low"
         : state.rank < 0.55
-          ? "RISING"
+          ? "rising"
           : state.rank < 0.76
-            ? "HIGH"
-            : "FATAL";
+            ? "high"
+            : "fatal";
+    let boss = null;
+    if (state.boss !== null) {
+      const definition = getBossDefinition(state.boss.id);
+      const phase = definition.phases[state.boss.phaseIndex];
+      if (phase === undefined) {
+        throw new RangeError("Neon boss projection phase is out of range.");
+      }
+      boss = {
+        id: definition.id,
+        phase: phase.id,
+        health: state.boss.hp,
+        maxHealth: state.boss.maxHp,
+      };
+    }
     return {
       screen: state.screen,
       mode: state.mode,
       selectedMode: state.selectedMode,
-      stage: state.stage + 1,
-      stageLabel,
+      stage,
       score: Math.floor(state.score),
       chain: multiplier(),
       drive: Math.floor(state.drive),
@@ -244,23 +263,12 @@ export function createNeonSimulation({
       threat,
       hypeGrade: hypeGrade(state.chain, state.overdrive),
       danger: state.screen === "playing" ? state.danger : 0,
-      boss:
-        state.boss === null
-          ? null
-          : {
-              name: state.boss.name,
-              phase: state.boss.phaseIndex + 1,
-              health: state.boss.hp,
-              maxHealth: state.boss.maxHp,
-            },
-      timer,
+      boss,
       profile: deepCopy(profile),
       upgrades: state.upgradeChoices.map((upgrade) => ({
         id: upgrade.id,
-        name: upgrade.name,
         icon: upgrade.icon,
         accent: upgrade.accent,
-        detail: upgrade.description,
         level: (state.upgradeLevels[upgrade.id] ?? 0) + 1,
       })),
       result: state.result === null ? null : { ...state.result },
@@ -416,6 +424,7 @@ export function createNeonSimulation({
   }
 
   function spawnParticle(options) {
+    if (getMotionPolicy().particles === "reduced") return null;
     const particleLimit = Math.max(160, Math.floor(950 * state.gameSettings.fxDensity));
     if (state.particles.length >= particleLimit) return null;
     const particle = Object.assign(pools.particles.pop() ?? {}, options, {
@@ -494,7 +503,7 @@ export function createNeonSimulation({
         showUpgrade();
         break;
       case "storyVictory":
-        finish(true, "RITUAL COMPLETE");
+        finish(true, "ritualComplete");
         break;
       case "modeResume":
         state.director.waveClock = 1.2;
@@ -512,7 +521,7 @@ export function createNeonSimulation({
         projectIfDirty();
         break;
       case "runDefeat":
-        finish(false, "SIGNAL LOST");
+        finish(false, "signalLost");
         break;
       default:
         throw new RangeError("Unknown Neon pending sequence reached execution.");
@@ -629,7 +638,7 @@ export function createNeonSimulation({
     if (state.mode === "rush") {
       state.modeTimer = Math.max(0, (180 * 60 - state.runTicks) / 60);
       if (state.runTicks >= 180 * 60) {
-        finish(true, "TIME COMPLETE");
+        finish(true, "timeComplete");
         return;
       }
     }
@@ -1765,8 +1774,11 @@ export function createNeonSimulation({
     pushEvent("audio", { cue: "pulse" });
   }
 
-  function finish(victory, label) {
+  function finish(victory, labelId) {
     if (state.screen === "result") return;
+    if (typeof victory !== "boolean" || !RESULT_LABEL_IDS.has(labelId)) {
+      throw new TypeError("Neon result requires a victory flag and semantic label id.");
+    }
     const score = Math.max(0, Math.floor(state.score));
     const isRecord = score > profile.best[state.mode];
     if (isRecord) profile.best[state.mode] = score;
@@ -1792,7 +1804,7 @@ export function createNeonSimulation({
                 : "C";
     state.result = {
       victory,
-      label,
+      labelId,
       score,
       isRecord,
       kills: state.kills,
@@ -1816,6 +1828,10 @@ export function createNeonSimulation({
     if (disposed) throw new Error("Neon simulation is disposed.");
     if (dt !== FIXED_STEP_SECONDS)
       throw new RangeError("Neon simulation accepts only its 60 Hz fixed step.");
+    const currentMotionPolicy = getMotionPolicy();
+    if (currentMotionPolicy.particles === "reduced" && state.particles.length > 0) {
+      clearIntoPool(state.particles, pools.particles);
+    }
     state.presentationTime += dt;
     if (state.screen === "title") {
       updateParticles(dt);
@@ -1830,6 +1846,7 @@ export function createNeonSimulation({
       return;
     }
     if (state.screen !== "playing") throw new RangeError(`Unknown Neon screen: ${state.screen}`);
+    if (currentMotionPolicy.canvas === "reduced") state.hitStopTicks = 0;
     if (state.hitStopTicks > 0) {
       state.hitStopTicks -= 1;
       updateParticles(dt * 0.3);

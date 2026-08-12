@@ -4,7 +4,11 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { GameManifestSchema, GameManifestSourceSchema } from "@gameyard/game-contract";
+import {
+  GameManifestSchema,
+  GameManifestSourceSchema,
+  PUBLIC_LOCALES,
+} from "@gameyard/game-contract";
 
 const projectRoot = path.resolve(import.meta.dirname, "../../..");
 const gameRoot = path.join(projectRoot, "games/neon-overdrive");
@@ -207,7 +211,10 @@ async function verifyCandidate() {
 
   assert.equal(source.id, "neon-overdrive");
   assert.equal(source.version, packageJson.version);
-  assert.deepEqual(source.locales, { source: "zh-Hans", supported: ["zh-Hans"] });
+  assert.deepEqual(source.locales, {
+    source: "zh-Hans",
+    supported: [...PUBLIC_LOCALES],
+  });
   assert.deepEqual(source.capabilities, expectedCapabilities);
   assert.deepEqual(source.provenance, {
     kind: "owner-provided-source-snapshot",

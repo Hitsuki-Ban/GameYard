@@ -211,14 +211,24 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
       });
 
       await test.step("gates the on-screen DROP behind Host input authority", async () => {
+        const canvas = page.locator("#gameCanvas");
+        const canvasBox = await canvas.boundingBox();
+        if (canvasBox === null) throw new Error("Neon canvas has no touch presentation box.");
+        await page.touchscreen.tap(
+          canvasBox.x + canvasBox.width / 2,
+          canvasBox.y + canvasBox.height * 0.75,
+        );
+        await expect(page.locator("#control-focus")).toBeHidden();
+        await expect(page.locator("#touch-drive")).toBeVisible();
+        const drop = await page.locator("#touch-drive").boundingBox();
+        if (drop === null) throw new Error("Neon on-screen DROP control has no input box.");
         await mutate(page, "prepareDrive");
         const beforeDisabledDrop = await observe(page);
         await page.evaluate(() => window.__NEON_DEBUG__.drainEvents());
         await page.evaluate(() =>
           window.__NEON_HOST__.send("input.setEnabled", { enabled: false }),
         );
-        const drop = await page.locator("#touch-drive").boundingBox();
-        if (drop === null) throw new Error("Neon on-screen DROP control has no input box.");
+        await expect(page.locator("#touch-drive")).toBeHidden();
         await page.touchscreen.tap(drop.x + drop.width / 2, drop.y + drop.height / 2);
         expect(await observe(page)).toMatchObject({
           drive: beforeDisabledDrop.drive,
@@ -230,15 +240,16 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
           ),
         ).toBe(false);
         await page.evaluate(() => window.__NEON_HOST__.send("input.setEnabled", { enabled: true }));
+        await expect(page.locator("#touch-drive")).toBeVisible();
       });
 
       await test.step("honors keyboard pause only after Host authority", async () => {
         await page.evaluate(() => window.__NEON_HOST__.drainEvents());
         await page.keyboard.press("Escape");
         await expectLifecycleRequest(page, "pause");
-        await expect(page.locator("#pause-screen")).not.toHaveClass(/overlay-visible/u);
+        await expect(page.locator("#pause-dialog")).not.toBeVisible();
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.pause"));
-        await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
+        await expect(page.locator("#pause-dialog")).toBeVisible();
         const paused = await observe(page);
         const pausedPolls = await page.evaluate(
           () => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().gamepadPolls,
@@ -270,7 +281,7 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
         await page.locator("#resume-button").click();
         await expectLifecycleRequest(page, "resume");
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
-        await expect(page.locator("#pause-screen")).not.toHaveClass(/overlay-visible/u);
+        await expect(page.locator("#pause-dialog")).not.toBeVisible();
         await page.waitForTimeout(50);
         expect(
           await page.evaluate(() =>
@@ -279,6 +290,9 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
             ),
           ),
         ).toBe(false);
+        const pollsBeforeNeutral = await page.evaluate(
+          () => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().gamepadPolls,
+        );
         await setMockGamepad(page, {
           connected: true,
           x: 0,
@@ -287,7 +301,11 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
           focus: false,
           pause: false,
         });
-        await page.waitForTimeout(35);
+        await expect
+          .poll(() =>
+            page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().gamepadPolls),
+          )
+          .toBeGreaterThan(pollsBeforeNeutral);
         await setMockGamepad(page, {
           connected: true,
           x: 0,
@@ -307,11 +325,11 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
           pause: false,
         });
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
+        await expect(page.locator("#pause-dialog")).not.toBeVisible();
       });
 
       await test.step("does not auto-resume when visibility returns", async () => {
         await setControlledHidden(page, true);
-        await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
         const hidden = await observe(page);
         const hiddenPolls = await page.evaluate(
           () => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().gamepadPolls,
@@ -322,9 +340,9 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
         expect(
           await page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().gamepadPolls),
         ).toBe(hiddenPolls);
-        await expect(page.locator("#pause-screen")).toHaveClass(/overlay-visible/u);
+        await expect(page.locator("#pause-dialog")).toBeVisible();
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
-        await expect(page.locator("#pause-screen")).not.toHaveClass(/overlay-visible/u);
+        await expect(page.locator("#pause-dialog")).not.toBeVisible();
       });
     }
 

@@ -1,32 +1,39 @@
 import { createGuestDiagnosticLog } from "@gameyard/guest-bridge";
 
-import { createAudioEngine, assertHostSettings } from "./audio.js";
+import { createAudioEngine } from "./audio.js";
+import { createHostSettingsProjection } from "./host-settings-projection.ts";
 import { createInput } from "./input.js";
-import { createNeonLocale } from "./locale.js";
 import { ManagedRuntime } from "./managed-runtime.js";
+import { deriveMotionPolicy } from "./motion-policy.ts";
 import { createRenderer } from "./renderer.js";
 import { createNeonSimulation, FIXED_STEP_SECONDS } from "./simulation.js";
 import { createProfileStorage } from "./storage.js";
 import { createNeonDebug } from "./testkit.js";
-import { createUiProjection } from "./ui-projection.js";
+import { createUiProjection } from "./ui-projection.ts";
 
 const MAX_FRAME_SECONDS = 0.1;
 const MAX_FIXED_STEPS_PER_FRAME = 6;
 
-export function createRuntimeOwner({ targetWindow, document, bridge }) {
-  assertHostSettings(bridge.context.settings);
+export function createRuntimeOwner({ targetWindow, document, bridge, i18n }) {
+  if (
+    i18n === null ||
+    typeof i18n !== "object" ||
+    typeof i18n.apply !== "function" ||
+    typeof i18n.t !== "function"
+  ) {
+    throw new TypeError("Neon runtime requires an initialized i18n owner.");
+  }
   const runtime = new ManagedRuntime(targetWindow);
-  const locale = createNeonLocale(bridge.context.locale);
   const storage = createProfileStorage(targetWindow.localStorage);
   const profile = storage.load();
-  const renderer = createRenderer(document);
+  const renderer = createRenderer(document, i18n);
   const audio = createAudioEngine(targetWindow, bridge.context.settings);
   const diagnostics = createGuestDiagnosticLog(bridge);
   let simulation = null;
   let ui = null;
   let input = null;
-  let settings = bridge.context.settings;
-  let settingsRevision = settings.revision;
+  let settings = null;
+  let motionPolicy = null;
   let lifecycle = "booting";
   let hostActive = false;
   let presentationFrozen = false;
@@ -36,6 +43,23 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
   let clampedFrames = 0;
   let droppedFixedSteps = 0;
   const testkitEventMirror = __GAMEYARD_TESTKIT__ ? [] : null;
+
+  function projectHostSettings(snapshot) {
+    if (settings === null || snapshot.canonical.revision > settings.revision) {
+      settings = snapshot.canonical;
+      audio.applySettings(settings);
+      motionPolicy = deriveMotionPolicy(settings.motion);
+    }
+    ui?.applyHostSettings(snapshot);
+  }
+
+  const settingsProjection = createHostSettingsProjection({
+    initialSettings: bridge.context.settings,
+    requestChange: (change) => bridge.requestSettingsChange(change),
+    scheduleTimeout: (callback, delayMs) => runtime.timeout(callback, delayMs),
+    onChange: projectHostSettings,
+  });
+  projectHostSettings(settingsProjection.snapshot());
 
   function recordTestkitEvent(event) {
     if (!__GAMEYARD_TESTKIT__) return;
@@ -115,6 +139,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     disposed = true;
     simulation?.dispose();
     ui?.dispose();
+    settingsProjection.dispose();
     runtime.dispose();
     renderer.dispose();
     void audio.dispose();
@@ -169,7 +194,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
       }
     }
     audio.tick();
-    renderer.render(current.state, accumulator / FIXED_STEP_SECONDS, settings);
+    renderer.render(current.state, accumulator / FIXED_STEP_SECONDS, motionPolicy);
   }
 
   try {
@@ -177,7 +202,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
       document,
       targetWindow,
       runtime,
-      locale,
+      i18n,
       onCommand: dispatch,
       onFullscreen: () => bridge.requestHostAction("fullscreen.enter"),
       onActivate: () => audio.activate(hostGateOpen()),
@@ -192,12 +217,14 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
         });
       },
       onResumeRequest: () => bridge.requestLifecycleChange("resume"),
-      onSettingsChange: (change) => bridge.requestSettingsChange(change),
+      onHostSettingRequest: (field, value) => settingsProjection.request(field, value),
       onPlayingProjected: () => renderer.canvas.focus({ preventScroll: true }),
     });
+    ui.applyLocale();
     simulation = createNeonSimulation({
       profile,
       storage,
+      getMotionPolicy: () => motionPolicy,
       project: (snapshot) => ui.apply(snapshot),
       emitCue: (cue) => audio.cue(cue),
       emitEvent: (event) => {
@@ -206,7 +233,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
         ui.applyEvent(event);
       },
     });
-    ui.applySettings(settings);
+    projectHostSettings(settingsProjection.snapshot());
     input = createInput({
       targetWindow,
       canvas: renderer.canvas,
@@ -220,6 +247,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
         const player = requireSimulation().state.player;
         return { x: player.x, y: player.y };
       },
+      onPresentationChange: (presentation) => ui.applyInputPresentation(presentation),
     });
     runtime.listen(document, "visibilitychange", handleVisibilityChange);
     runtime.startFrameLoop(processFrame);
@@ -228,6 +256,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     input?.dispose();
     simulation?.dispose();
     ui?.dispose();
+    settingsProjection.dispose();
     renderer.dispose();
     runtime.dispose();
     void audio.dispose();
@@ -238,7 +267,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     const debug = createNeonDebug({
       simulation,
       renderer,
-      getSettings: () => settings,
+      getMotionPolicy: () => motionPolicy,
       canAdvance: hostGateOpen,
       freezePresentation,
       resumePresentation,
@@ -260,14 +289,10 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     markReady() {
       requireSimulation();
       lifecycle = "ready";
-      renderer.render(simulation.state, 0, settings);
+      renderer.render(simulation.state, 0, motionPolicy);
     },
     applyHostSettings(next) {
-      assertHostSettings(next);
-      settings = next;
-      settingsRevision = next.revision;
-      audio.applySettings(next);
-      ui.applySettings(next);
+      settingsProjection.apply(next);
       diagnostics.record({
         timestampMs: Date.now(),
         level: "info",
@@ -276,8 +301,10 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
       });
     },
     applyHostLocale(next) {
-      locale.apply(next);
+      const current = requireSimulation();
+      i18n.apply(next);
       ui.applyLocale();
+      renderer.render(current.state, 0, motionPolicy);
       diagnostics.record({
         timestampMs: Date.now(),
         level: "info",
@@ -311,7 +338,7 @@ export function createRuntimeOwner({ targetWindow, document, bridge }) {
     diagnosticSnapshot() {
       return {
         lifecycle,
-        settingsRevision,
+        settingsRevision: settings.revision,
         inputEnabled: runtime.inputEnabled,
         events: diagnostics.snapshot(),
       };

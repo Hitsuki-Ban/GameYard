@@ -11,8 +11,9 @@
     "preview:testkit": "vp preview --config vite.testkit.config.ts",
     "build": "vp build --config vite.candidate.config.ts && vp exec node tools/verify-candidate.mjs",
     "build:testkit": "vp build --config vite.testkit.config.ts",
-    "check": "vp check package.json tsconfig.json vite.config.ts vite.candidate.config.ts vite.testkit.config.ts playwright.baseline.config.ts playwright.runtime.config.ts tools tests performance guest && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
+    "check": "vp check package.json tsconfig.json vite.config.ts vite.candidate.config.ts vite.testkit.config.ts playwright.baseline.config.ts playwright.runtime.config.ts tools tests performance guest && vp run test:unit && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
     "test": "vp run check && vp exec playwright test --config playwright.baseline.config.ts tests/baseline.spec.ts && vp exec playwright test --config playwright.runtime.config.ts",
+    "test:unit": "vp test run tests/unit",
     "test:update": "vp exec playwright test --config playwright.baseline.config.ts tests/baseline.spec.ts --update-snapshots",
     "perf": "vp exec playwright test --config playwright.baseline.config.ts performance/neon-overdrive.perf.spec.ts"
   },

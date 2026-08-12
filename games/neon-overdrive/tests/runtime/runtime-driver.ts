@@ -47,6 +47,46 @@ export async function installMockGamepad(page: Page): Promise<void> {
   });
 }
 
+export async function installCanvasTextProbe(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const entries: string[] = [];
+    const original = Object.getOwnPropertyDescriptor(
+      CanvasRenderingContext2D.prototype,
+      "fillText",
+    )?.value;
+    if (typeof original !== "function") {
+      throw new Error("Canvas text probe requires CanvasRenderingContext2D.fillText.");
+    }
+    CanvasRenderingContext2D.prototype.fillText = function (
+      text: string,
+      x: number,
+      y: number,
+      maxWidth?: number,
+    ): void {
+      entries.push(String(text));
+      if (entries.length > 2_048) entries.splice(0, entries.length - 2_048);
+      if (maxWidth === undefined) Reflect.apply(original, this, [text, x, y]);
+      else Reflect.apply(original, this, [text, x, y, maxWidth]);
+    };
+    window.__NEON_CANVAS_TEXT__ = {
+      clear(): void {
+        entries.length = 0;
+      },
+      snapshot(): string[] {
+        return [...entries];
+      },
+    };
+  });
+}
+
+export async function clearCanvasText(page: Page): Promise<void> {
+  await page.evaluate(() => window.__NEON_CANVAS_TEXT__.clear());
+}
+
+export async function canvasText(page: Page): Promise<string[]> {
+  return page.evaluate(() => window.__NEON_CANVAS_TEXT__.snapshot());
+}
+
 export async function setMockGamepad(page: Page, state: MockGamepadState): Promise<void> {
   await page.evaluate((next) => window.__NEON_GAMEPAD__.set(next), state);
 }
@@ -116,6 +156,10 @@ declare global {
     __NEON_HOST__: any;
     __NEON_GAMEPAD__: {
       set(state: MockGamepadState): void;
+    };
+    __NEON_CANVAS_TEXT__: {
+      clear(): void;
+      snapshot(): string[];
     };
     __NEON_DISPOSE_REPORT__: {
       before: Record<string, number>;

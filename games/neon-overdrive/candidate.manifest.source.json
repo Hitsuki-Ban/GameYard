@@ -6,7 +6,7 @@
   "entry": "index.html",
   "locales": {
     "source": "zh-Hans",
-    "supported": ["zh-Hans"]
+    "supported": ["en", "ja", "zh-Hans"]
   },
   "capabilities": ["audio", "fullscreen", "keyboard", "pointer", "touch", "gamepad"],
   "provenance": {

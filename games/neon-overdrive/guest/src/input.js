@@ -24,7 +24,11 @@ export function createInput({
   onActivate,
   onPauseRequest,
   getPlayerPosition,
+  onPresentationChange,
 }) {
+  if (typeof onPresentationChange !== "function") {
+    throw new TypeError("Neon input requires an explicit presentation change port.");
+  }
   const keys = new Set();
   const pointer = {
     active: false,
@@ -41,7 +45,37 @@ export function createInput({
   let disposed = false;
   let previousGamepad = { drop: false, pause: false };
   let gamepadEdgesArmed = false;
-  let lastDevice = "keyboard";
+  const primaryCoarseQuery = targetWindow.matchMedia("(pointer: coarse)");
+  let presentation = Object.freeze({
+    device: "keyboard",
+    touchControls: primaryCoarseQuery.matches,
+  });
+
+  function publishPresentation(device, touchControls) {
+    if (presentation.device === device && presentation.touchControls === touchControls) return;
+    presentation = Object.freeze({ device, touchControls });
+    onPresentationChange(presentation);
+  }
+
+  function setActiveDevice(device) {
+    if (!["keyboard", "pointer", "touch", "gamepad"].includes(device)) {
+      throw new RangeError(`Unknown Neon input presentation device: ${device}`);
+    }
+    publishPresentation(device, device === "touch" || primaryCoarseQuery.matches);
+  }
+
+  function handleCapabilityChange() {
+    publishPresentation(
+      presentation.device,
+      presentation.device === "touch" || primaryCoarseQuery.matches,
+    );
+  }
+
+  const disposePrimaryCapability = runtime.listen(
+    primaryCoarseQuery,
+    "change",
+    handleCapabilityChange,
+  );
 
   function isInteractive(target) {
     return (
@@ -69,7 +103,7 @@ export function createInput({
     pointer.y = position.y;
     pointer.type = event.pointerType === "touch" ? "touch" : "mouse";
     pointer.inside = true;
-    lastDevice = pointer.type === "touch" ? "touch" : "pointer";
+    setActiveDevice(pointer.type === "touch" ? "touch" : "pointer");
   }
 
   runtime.listen(
@@ -79,7 +113,7 @@ export function createInput({
       if (!inputEnabled || (isInteractive(event.target) && event.code !== "Escape")) return;
       if (MOVEMENT_CODES.has(event.code) || DROP_CODES.has(event.code)) event.preventDefault();
       onActivate();
-      lastDevice = "keyboard";
+      setActiveDevice("keyboard");
       if (!keys.has(event.code)) {
         if (DROP_CODES.has(event.code)) onCommand({ type: "drop", active: true });
         if (PAUSE_CODES.has(event.code)) onPauseRequest();
@@ -117,7 +151,7 @@ export function createInput({
       if (!inputEnabled) return;
       event.preventDefault();
       onActivate();
-      lastDevice = event.pointerType === "touch" ? "touch" : "pointer";
+      setActiveDevice(event.pointerType === "touch" ? "touch" : "pointer");
       releasePointerCapture();
       pointer.active = true;
       pointer.id = event.pointerId;
@@ -184,7 +218,7 @@ export function createInput({
     const drop = Boolean(pad.buttons[0]?.pressed || (pad.buttons[7]?.value ?? 0) > 0.55);
     const pause = Boolean(pad.buttons[9]?.pressed);
     const focus = Boolean(pad.buttons[4]?.pressed || (pad.buttons[6]?.value ?? 0) > 0.55);
-    if (x !== 0 || y !== 0 || drop || pause || focus) lastDevice = "gamepad";
+    if (x !== 0 || y !== 0 || drop || pause || focus) setActiveDevice("gamepad");
     if (!gamepadEdgesArmed) {
       if (!drop && !pause) gamepadEdgesArmed = true;
     } else {
@@ -211,8 +245,8 @@ export function createInput({
       y: clamp(keyboard.y + gamepad.y, -1, 1),
       focus: keyboard.focus || gamepad.focus || pointer.secondaryFocus,
       pointer:
-        (lastDevice === "touch" && pointer.active) ||
-        (lastDevice === "pointer" && pointer.type === "mouse" && pointer.inside)
+        (presentation.device === "touch" && pointer.active) ||
+        (presentation.device === "pointer" && pointer.type === "mouse" && pointer.inside)
           ? { x: pointer.x + pointer.offsetX, y: pointer.y + pointer.offsetY }
           : null,
     };
@@ -240,19 +274,19 @@ export function createInput({
     onCommand({ type: "releaseAll" });
   }
 
+  onPresentationChange(presentation);
+
   return {
     movement,
     setEnabled,
     releaseAll,
     snapshotResources: () => ({ gamepad: disposed ? 0 : 1 }),
-    get lastDevice() {
-      return lastDevice;
-    },
     dispose() {
       if (disposed) return;
       releaseAll();
       inputEnabled = false;
       disposed = true;
+      disposePrimaryCapability();
     },
   };
 }

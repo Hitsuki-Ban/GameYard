@@ -31,105 +31,83 @@ function position(entity, alpha) {
   };
 }
 
-function floaterText(floater) {
+function floaterText(i18n, floater) {
   switch (floater.textId) {
     case "rush":
-      return `RUSH ${floater.value}`;
-    case "shieldBreak":
-      return "SHIELD BREAK";
-    case "firstSave":
-      return "FIRST SAVE";
-    case "autoSave":
-      return "AUTO SAVE";
-    case "pulse":
-      return "PULSE";
     case "power":
-      return `POWER ${floater.value}`;
-    case "breakGuard":
-      return "BREAK GUARD";
-    case "rebootGuard":
-      return "REBOOT GUARD";
-    case "noHitBreak":
-      return "NO HIT BREAK";
-    case "timeBreak":
-      return "TIME BREAK";
-    case "phaseBreak":
-      return "PHASE BREAK";
     case "phaseBonus":
-      return `PHASE +${floater.value}`;
+      return i18n.t(`canvas.floater.${floater.textId}`, { value: floater.value });
+    case "shieldBreak":
+    case "firstSave":
+    case "autoSave":
+    case "pulse":
+    case "breakGuard":
+    case "rebootGuard":
+    case "noHitBreak":
+    case "timeBreak":
+    case "phaseBreak":
+      return i18n.t(`canvas.floater.${floater.textId}`);
     default:
       throw new RangeError(`Unknown Neon floater text id: ${floater.textId}`);
   }
 }
 
-function promptText(prompt) {
+function promptText(i18n, prompt) {
   switch (prompt.textId) {
     case "buildDrive":
-      return "BUILD DRIVE";
     case "move":
-      return "MOVE // AUTO FIRE";
     case "graze":
-      return "GRAZE // BUILD DRIVE";
     case "drop":
-      return "PRESS SPACE // DROP";
+      return i18n.t(`canvas.prompt.${prompt.textId}`);
     default:
       throw new RangeError(`Unknown Neon world prompt text id: ${prompt.textId}`);
   }
 }
 
-function bannerTitle(banner) {
+function bannerTitle(i18n, banner) {
   switch (banner.titleId) {
     case "warning":
-      return "WARNING";
     case "bossErased":
-      return "BOSS ERASED";
+    case "overdrive":
+    case "autoDrop":
+    case "rageReboot":
+    case "endless":
+      return i18n.t(`canvas.banner.${banner.titleId}`);
     case "phase":
-      return `PHASE ${banner.value}`;
+      return i18n.t("canvas.banner.phase", { value: banner.value });
     case "act":
       if (![1, 2, 3].includes(banner.value)) {
         throw new RangeError(`Unknown Neon act number: ${banner.value}`);
       }
-      return `ACT ${["I", "II", "III"][banner.value - 1]}`;
-    case "overdrive":
-      return "OVERDRIVE";
-    case "autoDrop":
-      return "AUTO DROP";
-    case "rageReboot":
-      return "RAGE REBOOT";
+      return i18n.t("canvas.banner.act", { value: banner.value });
     case "rush":
       if (banner.value !== 180) throw new RangeError(`Unknown Neon rush value: ${banner.value}`);
-      return "RUSH 180";
-    case "endless":
-      return "ENDLESS";
+      return i18n.t("canvas.banner.rush");
     default:
       throw new RangeError(`Unknown Neon banner title id: ${banner.titleId}`);
   }
 }
 
-function bannerDetail(banner) {
+function bannerDetail(i18n, banner) {
   switch (banner.detailId) {
     case "boss0":
-      return "AELLA // THE FEED";
+      return i18n.t("boss.aella.name");
     case "boss1":
-      return "MIRROR SAINT";
+      return i18n.t("boss.mirrorSaint.name");
     case "boss2":
-      return "THE ALGORITHM";
+      return i18n.t("boss.algorithm.name");
     case "breakScreen":
-      return "BREAK THE SCREEN";
+      return i18n.t("canvas.banner.breakScreen");
     case "sector":
-      return `SECTOR ${banner.value}`;
+      return i18n.t("canvas.banner.sector", { value: banner.value });
     case "reserve":
-      return `${banner.value} RESERVE`;
+      return i18n.t("canvas.banner.reserve", { value: banner.value });
     case "stage0":
-      return "SYNAPSE CITY";
     case "stage1":
-      return "GLASS TEMPLE";
     case "stage2":
-      return "ZERO SUN";
     case "noBrakes":
-      return "NO BRAKES / HIGH SCORE";
     case "rankNeverSleeps":
-      return "RANK NEVER SLEEPS";
+      return i18n.t(`canvas.banner.${banner.detailId}`);
     default:
       throw new RangeError(`Unknown Neon banner detail id: ${banner.detailId}`);
   }
@@ -143,7 +121,26 @@ function requireCanvas(document) {
   return canvas;
 }
 
-export function createRenderer(document) {
+function assertMotionPolicy(policy) {
+  if (
+    policy === null ||
+    typeof policy !== "object" ||
+    Array.isArray(policy) ||
+    Object.keys(policy).length !== 5 ||
+    !["full", "reduced"].includes(policy.canvas) ||
+    !["full", "reduced"].includes(policy.css) ||
+    !["full", "reduced"].includes(policy.flash) ||
+    !["enabled", "disabled"].includes(policy.shake) ||
+    !["full", "reduced"].includes(policy.particles)
+  ) {
+    throw new TypeError("Neon renderer requires the exact motion presentation policy.");
+  }
+}
+
+export function createRenderer(document, i18n) {
+  if (typeof i18n?.t !== "function") {
+    throw new TypeError("Neon renderer requires an i18n translation port.");
+  }
   const canvas = requireCanvas(document);
   const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
   if (context === null) throw new Error("Neon Overdrive requires Canvas 2D.");
@@ -1008,7 +1005,7 @@ export function createRenderer(document) {
       context.font = `800 ${Math.max(9, floater.size)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
       context.lineWidth = Math.max(2, floater.size * 0.26);
       context.strokeStyle = "rgba(2,2,10,0.88)";
-      const text = floaterText(floater);
+      const text = floaterText(i18n, floater);
       context.strokeText(text, floater.x, floater.y);
       context.fillStyle = floater.color;
       fillTextGlow(text, floater.x, floater.y, floater.color, 8);
@@ -1040,7 +1037,7 @@ export function createRenderer(document) {
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.font = "900 52px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-    context.fillText("OVERDRIVE", W / 2, H * 0.72);
+    context.fillText(i18n.t("canvas.banner.overdrive"), W / 2, H * 0.72);
     context.restore();
   }
 
@@ -1075,11 +1072,11 @@ export function createRenderer(document) {
     context.textBaseline = "middle";
     context.font = "900 38px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     context.fillStyle = COLORS.white;
-    const title = bannerTitle(banner);
+    const title = bannerTitle(i18n, banner);
     fillTextGlow(title, W / 2, y - 4, COLORS.cyan, 18);
     context.font = "700 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     context.fillStyle = COLORS.pinkSoft;
-    const detail = bannerDetail(banner);
+    const detail = bannerDetail(i18n, banner);
     fillTextGlow(detail, W / 2, y + 32, COLORS.pink, 9);
     context.restore();
   }
@@ -1100,7 +1097,7 @@ export function createRenderer(document) {
     context.font = "900 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     context.lineWidth = 5;
     context.strokeStyle = "rgba(1,1,8,0.9)";
-    const text = promptText(prompt);
+    const text = promptText(i18n, prompt);
     context.strokeText(text, player.x, y);
     context.fillStyle = prompt.color;
     fillTextGlow(text, player.x, y, prompt.color, 12 + pulse * 10);
@@ -1115,11 +1112,11 @@ export function createRenderer(document) {
     context.restore();
   }
 
-  function drawFlash(flash, reducedMotion) {
+  function drawFlash(flash, flashPolicy) {
     if (flash === null) return;
     context.save();
     context.globalCompositeOperation = "screen";
-    context.globalAlpha = clamp(flash.amount * (reducedMotion ? 0.22 : 1), 0, 0.86);
+    context.globalAlpha = clamp(flash.amount * (flashPolicy === "reduced" ? 0.22 : 1), 0, 0.86);
     context.fillStyle = flash.color;
     context.fillRect(0, 0, W, H);
     context.restore();
@@ -1127,8 +1124,9 @@ export function createRenderer(document) {
 
   return {
     canvas,
-    render(state, alpha, settings) {
+    render(state, alpha, motionPolicy) {
       if (disposed) throw new Error("Neon renderer is disposed.");
+      assertMotionPolicy(motionPolicy);
       if (!SCREEN_TYPES.has(state.screen)) {
         throw new RangeError(`Unknown Neon screen: ${state.screen}`);
       }
@@ -1138,13 +1136,13 @@ export function createRenderer(document) {
       if (!Number.isFinite(state.presentationTime) || state.presentationTime < 0) {
         throw new RangeError("Neon presentation time must be a finite non-negative number.");
       }
-      const time = settings.motion.reduced ? 0 : state.presentationTime;
+      const time = motionPolicy.canvas === "reduced" ? 0 : state.presentationTime;
       context.setTransform(1, 0, 0, 1, 0, 0);
       context.globalAlpha = 1;
       context.globalCompositeOperation = "source-over";
       drawBackground(state, time);
 
-      const shake = settings.motion.screenShake && !settings.motion.reduced ? state.shake : 0;
+      const shake = motionPolicy.shake === "enabled" ? state.shake : 0;
       context.save();
       if (shake > 0) {
         const presentationFrame = Math.round(state.presentationTime * 60) >>> 0;
@@ -1157,7 +1155,7 @@ export function createRenderer(document) {
       drawEnemies(state.enemies, alpha);
       drawBoss(state.boss, alpha);
       drawPlayerBullets(state.playerBullets, alpha);
-      drawParticles(state.particles);
+      if (motionPolicy.particles === "full") drawParticles(state.particles);
       if (state.screen !== "title") drawPlayer(state, alpha, time);
       drawFloaters(state.floaters);
       context.restore();
@@ -1165,7 +1163,7 @@ export function createRenderer(document) {
       if (state.overdrive > 0) drawOverdrive(state, time);
       drawBanner(state.banner);
       drawWorldPrompt(state.worldPrompt, state.player, time);
-      drawFlash(state.flash, settings.motion.reduced);
+      drawFlash(state.flash, motionPolicy.flash);
     },
     dispose() {
       if (disposed) return;
