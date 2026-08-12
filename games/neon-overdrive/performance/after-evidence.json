@@ -1,0 +1,1028 @@
+{
+  "schemaVersion": 2,
+  "subject": "neon-overdrive-final-hub-runtime-after-issue-52",
+  "buildId": "gameyard@35ee5a5a9e5eeddd",
+  "recordedAt": "2026-08-12T16:09:45.543Z",
+  "environment": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) i9-10850K CPU @ 3.60GHz",
+    "node": "v24.19.0",
+    "backgroundCpuSamples": [72.049, 87.301, 89.102, 86.993, 78.271],
+    "browser": {
+      "engine": "chromium",
+      "version": "151.0.7922.34",
+      "playwrightVersion": "1.62.1"
+    }
+  },
+  "harness": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "deviceScaleFactor": 1,
+    "headless": true,
+    "colorScheme": "light",
+    "locale": {
+      "browser": "zh-CN",
+      "resolved": "zh-Hans"
+    },
+    "seed": 1313165134,
+    "settings": {
+      "production": {
+        "audio": {
+          "master": 0.72,
+          "music": 0.72,
+          "sfx": 0.72
+        },
+        "motion": {
+          "reduced": false,
+          "screenShake": true
+        }
+      },
+      "lab": {
+        "audio": {
+          "master": 0.72,
+          "music": 0.72,
+          "sfx": 0.72
+        },
+        "motion": {
+          "reduced": false,
+          "screenShake": true
+        }
+      }
+    },
+    "samplesPerScenario": 3,
+    "backgroundCpuSampleCount": 5,
+    "serverSettleMs": 15000,
+    "warmUpMs": 2000,
+    "activeSampleMs": 5000,
+    "pausedSampleMs": 10000,
+    "frozenSampleMs": 750,
+    "hiddenSettleBudgetMs": 250,
+    "surfaces": {
+      "production": "assembled Hub + production Neon same-origin iframe, including Hub task/layout cost",
+      "lab": "same production runtime with bounded testkit-only read-only counters and mutations"
+    },
+    "inputs": {
+      "normal": "Hub deep link -> Guest IGNITE -> natural Story auto-fire",
+      "cpu4x": "normal input path with Chromium CPU throttling active before navigation",
+      "dense": "Lab Host settings apply -> presentation freeze -> Guest IGNITE -> protected player -> Mirror Saint -> 900 fixed ticks -> natural presentation",
+      "paused": "normal input path -> two-second warm-up -> Hub Pause",
+      "hidden": "Lab Host settings apply -> presentation freeze -> Guest IGNITE -> protected player -> natural warm-up -> visibilitychange hidden -> CDP frozen -> visible without Host resume"
+    },
+    "traceCategories": "devtools.timeline,toplevel,disabled-by-default-devtools.timeline.frame"
+  },
+  "budgets": {
+    "normal": {
+      "medianFpsMin": 58,
+      "p95FrameMsMax": 20,
+      "over33_4RatioMax": 0.01
+    },
+    "cpu4x": {
+      "p95FrameMsMax": 50.1,
+      "frameAndTaskMsMax": 100
+    },
+    "dense": {
+      "p95FrameMsMax": 33.4,
+      "entityCaps": {
+        "enemyBullets": 2600,
+        "playerBullets": 420,
+        "particles": 950,
+        "lasers": 24
+      }
+    },
+    "paused": {
+      "durationMs": 10000,
+      "hudMutationsMax": 0,
+      "taskPercentMax": 5
+    },
+    "hidden": {
+      "settleMsMax": 250,
+      "noCatchUp": true
+    }
+  },
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "samples": 3,
+      "frames": {
+        "fpsMedian": 59.875,
+        "p95MedianMs": 16.8,
+        "maxMs": 16.8,
+        "over33_4RatioMedian": 0
+      },
+      "longTasks": {
+        "maxMs": 0,
+        "totalMedianMs": 0
+      },
+      "cdp": {
+        "taskPercentMedian": 11.9,
+        "layoutMedianMs": 6.689
+      },
+      "activity": {
+        "hudMutationsMax": 76,
+        "audioSourceStartsMedian": 34
+      },
+      "entityPeaks": null
+    },
+    {
+      "scenario": "cpu-4x",
+      "samples": 3,
+      "frames": {
+        "fpsMedian": 34.379,
+        "p95MedianMs": 50,
+        "maxMs": 83.4,
+        "over33_4RatioMedian": 0.16092
+      },
+      "longTasks": {
+        "maxMs": 84,
+        "totalMedianMs": 61
+      },
+      "cdp": {
+        "taskPercentMedian": 29.265,
+        "layoutMedianMs": 28.51
+      },
+      "activity": {
+        "hudMutationsMax": 71,
+        "audioSourceStartsMedian": 34
+      },
+      "entityPeaks": null
+    },
+    {
+      "scenario": "dense-boss",
+      "samples": 3,
+      "frames": {
+        "fpsMedian": 54.909,
+        "p95MedianMs": 33.3,
+        "maxMs": 50.1,
+        "over33_4RatioMedian": 0.021818
+      },
+      "longTasks": {
+        "maxMs": 0,
+        "totalMedianMs": 0
+      },
+      "cdp": {
+        "taskPercentMedian": 17.18,
+        "layoutMedianMs": 85.111
+      },
+      "activity": {
+        "hudMutationsMax": 240,
+        "audioSourceStartsMedian": 37
+      },
+      "entityPeaks": {
+        "enemies": 0,
+        "enemyBullets": 154,
+        "playerBullets": 24,
+        "particles": 65,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      }
+    },
+    {
+      "scenario": "paused",
+      "samples": 3,
+      "frames": {
+        "fpsMedian": 0,
+        "p95MedianMs": 0,
+        "maxMs": 0,
+        "over33_4RatioMedian": 0
+      },
+      "longTasks": {
+        "maxMs": 0,
+        "totalMedianMs": 0
+      },
+      "cdp": {
+        "taskPercentMedian": 0.064,
+        "layoutMedianMs": 0
+      },
+      "activity": {
+        "hudMutationsMax": 0,
+        "audioSourceStartsMedian": 0
+      },
+      "entityPeaks": null
+    },
+    {
+      "scenario": "hidden-frozen",
+      "samples": 3,
+      "frames": {
+        "fpsMedian": 0,
+        "p95MedianMs": 0,
+        "maxMs": 0,
+        "over33_4RatioMedian": 0
+      },
+      "longTasks": {
+        "maxMs": 0,
+        "totalMedianMs": 0
+      },
+      "cdp": {
+        "taskPercentMedian": 4.656,
+        "layoutMedianMs": 29.068
+      },
+      "activity": {
+        "hudMutationsMax": 0,
+        "audioSourceStartsMedian": 0
+      },
+      "entityPeaks": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 29,
+        "particles": 31,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      }
+    }
+  ],
+  "samples": [
+    {
+      "scenario": "normal",
+      "sample": 1,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 5010.4,
+      "frames": {
+        "count": 300,
+        "fps": 59.875,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 596.262,
+        "scriptMs": 374.683,
+        "layoutMs": 6.689,
+        "taskPercent": 11.9
+      },
+      "activity": {
+        "hudMutations": 76,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "normal",
+      "sample": 2,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 5010.8,
+      "frames": {
+        "count": 300,
+        "fps": 59.871,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 645.22,
+        "scriptMs": 390.634,
+        "layoutMs": 7.604,
+        "taskPercent": 12.877
+      },
+      "activity": {
+        "hudMutations": 76,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "normal",
+      "sample": 3,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 5010.1,
+      "frames": {
+        "count": 300,
+        "fps": 59.879,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 455.703,
+        "scriptMs": 278.126,
+        "layoutMs": 5.52,
+        "taskPercent": 9.096
+      },
+      "activity": {
+        "hudMutations": 76,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "cpu-4x",
+      "sample": 1,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 4,
+      "durationMs": 5041.7,
+      "frames": {
+        "count": 190,
+        "fps": 37.686,
+        "p50Ms": 33.2,
+        "p95Ms": 50,
+        "p99Ms": 66.7,
+        "maxMs": 66.7,
+        "over33_4Ratio": 0.136842
+      },
+      "longTasks": {
+        "count": 1,
+        "totalMs": 56,
+        "maxMs": 56
+      },
+      "cdp": {
+        "taskMs": 1461.314,
+        "scriptMs": 988.964,
+        "layoutMs": 26.77,
+        "taskPercent": 28.985
+      },
+      "activity": {
+        "hudMutations": 71,
+        "audioSourceStarts": 33
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "cpu-4x",
+      "sample": 2,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 4,
+      "durationMs": 5048.9,
+      "frames": {
+        "count": 146,
+        "fps": 28.917,
+        "p50Ms": 33.3,
+        "p95Ms": 50.1,
+        "p99Ms": 83.3,
+        "maxMs": 83.4,
+        "over33_4Ratio": 0.294521
+      },
+      "longTasks": {
+        "count": 1,
+        "totalMs": 61,
+        "maxMs": 61
+      },
+      "cdp": {
+        "taskMs": 1521.919,
+        "scriptMs": 1037.102,
+        "layoutMs": 37.22,
+        "taskPercent": 30.144
+      },
+      "activity": {
+        "hudMutations": 71,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "cpu-4x",
+      "sample": 3,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 4,
+      "durationMs": 5061.3,
+      "frames": {
+        "count": 174,
+        "fps": 34.379,
+        "p50Ms": 33.3,
+        "p95Ms": 50,
+        "p99Ms": 66.6,
+        "maxMs": 83.3,
+        "over33_4Ratio": 0.16092
+      },
+      "longTasks": {
+        "count": 1,
+        "totalMs": 84,
+        "maxMs": 84
+      },
+      "cdp": {
+        "taskMs": 1481.194,
+        "scriptMs": 1011.574,
+        "layoutMs": 28.51,
+        "taskPercent": 29.265
+      },
+      "activity": {
+        "hudMutations": 71,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "dense-boss",
+      "sample": 1,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 5008.2,
+      "frames": {
+        "count": 289,
+        "fps": 57.705,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.4,
+        "maxMs": 50,
+        "over33_4Ratio": 0.013841
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 860.424,
+        "scriptMs": 408.255,
+        "layoutMs": 85.111,
+        "taskPercent": 17.18
+      },
+      "activity": {
+        "hudMutations": 240,
+        "audioSourceStarts": 36
+      },
+      "entities": {
+        "enemies": 0,
+        "enemyBullets": 154,
+        "playerBullets": 24,
+        "particles": 65,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "dense-boss",
+      "sample": 2,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 5008.3,
+      "frames": {
+        "count": 275,
+        "fps": 54.909,
+        "p50Ms": 16.7,
+        "p95Ms": 33.3,
+        "p99Ms": 33.5,
+        "maxMs": 50,
+        "over33_4Ratio": 0.021818
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 806.093,
+        "scriptMs": 384.873,
+        "layoutMs": 76.275,
+        "taskPercent": 16.095
+      },
+      "activity": {
+        "hudMutations": 240,
+        "audioSourceStarts": 37
+      },
+      "entities": {
+        "enemies": 0,
+        "enemyBullets": 154,
+        "playerBullets": 24,
+        "particles": 65,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "dense-boss",
+      "sample": 3,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 5011.6,
+      "frames": {
+        "count": 244,
+        "fps": 48.687,
+        "p50Ms": 16.7,
+        "p95Ms": 33.4,
+        "p99Ms": 50,
+        "maxMs": 50.1,
+        "over33_4Ratio": 0.077869
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 895.99,
+        "scriptMs": 433.082,
+        "layoutMs": 87.932,
+        "taskPercent": 17.878
+      },
+      "activity": {
+        "hudMutations": 239,
+        "audioSourceStarts": 37
+      },
+      "entities": {
+        "enemies": 0,
+        "enemyBullets": 154,
+        "playerBullets": 24,
+        "particles": 65,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "paused",
+      "sample": 1,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 10012.2,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 6.075,
+        "scriptMs": 0,
+        "layoutMs": 0,
+        "taskPercent": 0.061
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "paused",
+      "sample": 2,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 10022.2,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 7.028,
+        "scriptMs": 0,
+        "layoutMs": 0,
+        "taskPercent": 0.07
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "paused",
+      "sample": 3,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 10018.1,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 6.443,
+        "scriptMs": 0,
+        "layoutMs": 0,
+        "taskPercent": 0.064
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": null
+    },
+    {
+      "scenario": "hidden-frozen",
+      "sample": 1,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 1391.5,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 75.431,
+        "scriptMs": 0.985,
+        "layoutMs": 36.569,
+        "taskPercent": 5.421
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 26,
+        "particles": 31,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": {
+        "hiddenStopLatencyMs": 33.4,
+        "runTickBefore": 121,
+        "runTickAfter": 121,
+        "animationFramesAfter": 0,
+        "audioSourcesAfter": 0,
+        "musicSchedulerAfter": 0,
+        "visibleWithoutResumeRunTick": 121
+      },
+      "trace": null
+    },
+    {
+      "scenario": "hidden-frozen",
+      "sample": 2,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 1323.6,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 61.625,
+        "scriptMs": 0.615,
+        "layoutMs": 27.687,
+        "taskPercent": 4.656
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 29,
+        "particles": 29,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": {
+        "hiddenStopLatencyMs": 23.4,
+        "runTickBefore": 119,
+        "runTickAfter": 119,
+        "animationFramesAfter": 0,
+        "audioSourcesAfter": 0,
+        "musicSchedulerAfter": 0,
+        "visibleWithoutResumeRunTick": 119
+      },
+      "trace": null
+    },
+    {
+      "scenario": "hidden-frozen",
+      "sample": 3,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 1330.1,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 58.252,
+        "scriptMs": 0.783,
+        "layoutMs": 29.068,
+        "taskPercent": 4.38
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 29,
+        "particles": 29,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": {
+        "hiddenStopLatencyMs": 27.7,
+        "runTickBefore": 120,
+        "runTickAfter": 120,
+        "animationFramesAfter": 0,
+        "audioSourcesAfter": 0,
+        "musicSchedulerAfter": 0,
+        "visibleWithoutResumeRunTick": 120
+      },
+      "trace": null
+    }
+  ],
+  "traceProfiles": [
+    {
+      "scenario": "normal",
+      "sample": 0,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 5095.8,
+      "frames": {
+        "count": 305,
+        "fps": 59.853,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 630.205,
+        "scriptMs": 357.689,
+        "layoutMs": 8.51,
+        "taskPercent": 12.367
+      },
+      "activity": {
+        "hudMutations": 76,
+        "audioSourceStarts": 35
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": {
+        "path": "traces/after-normal-sample-0.json.gz"
+      }
+    },
+    {
+      "scenario": "cpu-4x",
+      "sample": 0,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 4,
+      "durationMs": 5061.2,
+      "frames": {
+        "count": 166,
+        "fps": 32.799,
+        "p50Ms": 33.3,
+        "p95Ms": 50,
+        "p99Ms": 83.3,
+        "maxMs": 150,
+        "over33_4Ratio": 0.228916
+      },
+      "longTasks": {
+        "count": 1,
+        "totalMs": 121,
+        "maxMs": 121
+      },
+      "cdp": {
+        "taskMs": 1643.538,
+        "scriptMs": 1069.508,
+        "layoutMs": 36.296,
+        "taskPercent": 32.473
+      },
+      "activity": {
+        "hudMutations": 76,
+        "audioSourceStarts": 34
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": {
+        "path": "traces/after-cpu-4x-sample-0.json.gz"
+      }
+    },
+    {
+      "scenario": "dense-boss",
+      "sample": 0,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 5024.2,
+      "frames": {
+        "count": 233,
+        "fps": 46.376,
+        "p50Ms": 16.7,
+        "p95Ms": 33.4,
+        "p99Ms": 50,
+        "maxMs": 50.1,
+        "over33_4Ratio": 0.072961
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 942.762,
+        "scriptMs": 419.605,
+        "layoutMs": 95.218,
+        "taskPercent": 18.764
+      },
+      "activity": {
+        "hudMutations": 240,
+        "audioSourceStarts": 36
+      },
+      "entities": {
+        "enemies": 0,
+        "enemyBullets": 154,
+        "playerBullets": 24,
+        "particles": 65,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": null,
+      "trace": {
+        "path": "traces/after-dense-boss-sample-0.json.gz"
+      }
+    },
+    {
+      "scenario": "paused",
+      "sample": 0,
+      "surface": "production-hub-iframe",
+      "cpuThrottleRate": 1,
+      "durationMs": 10012.9,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 11.517,
+        "scriptMs": 0,
+        "layoutMs": 0,
+        "taskPercent": 0.115
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": null,
+      "lifecycle": null,
+      "trace": {
+        "path": "traces/after-paused-sample-0.json.gz"
+      }
+    },
+    {
+      "scenario": "hidden-frozen",
+      "sample": 0,
+      "surface": "lab-testkit",
+      "cpuThrottleRate": 1,
+      "durationMs": 1343.7,
+      "frames": {
+        "count": 0,
+        "fps": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0,
+        "over33_4Ratio": 0
+      },
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "cdp": {
+        "taskMs": 77.845,
+        "scriptMs": 1.127,
+        "layoutMs": 34.485,
+        "taskPercent": 5.793
+      },
+      "activity": {
+        "hudMutations": 0,
+        "audioSourceStarts": 0
+      },
+      "entities": {
+        "enemies": 2,
+        "enemyBullets": 2,
+        "playerBullets": 29,
+        "particles": 29,
+        "pickups": 0,
+        "lasers": 0,
+        "floaters": 0
+      },
+      "lifecycle": {
+        "hiddenStopLatencyMs": 32.1,
+        "runTickBefore": 120,
+        "runTickAfter": 120,
+        "animationFramesAfter": 0,
+        "audioSourcesAfter": 0,
+        "musicSchedulerAfter": 0,
+        "visibleWithoutResumeRunTick": 120
+      },
+      "trace": {
+        "path": "traces/after-hidden-frozen-sample-0.json.gz"
+      }
+    }
+  ]
+}

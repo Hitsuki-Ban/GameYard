@@ -364,8 +364,6 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
       if (generation === 0) {
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
         const canvas = page.locator("#gameCanvas");
-        const box = await canvas.boundingBox();
-        if (box === null) throw new Error("Neon canvas has no pointer target box.");
         await page.evaluate(() => {
           const canvas = document.querySelector<HTMLCanvasElement>("#gameCanvas");
           if (canvas === null) throw new Error("Neon canvas is missing.");
@@ -375,18 +373,25 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
           };
           canvas.addEventListener("pointerdown", record);
         });
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height * 0.75);
+        await canvas.hover();
         await page.mouse.down();
-        capturedPointerId = Number(await canvas.getAttribute("data-test-pointer-id"));
-        expect(
-          await page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().pointerCaptures),
-        ).toBe(1);
-        expect(
-          await canvas.evaluate(
-            (element, pointerId) => element.hasPointerCapture(pointerId),
-            capturedPointerId,
-          ),
-        ).toBe(true);
+        await expect.poll(() => canvas.getAttribute("data-test-pointer-id")).not.toBeNull();
+        const pointerId = Number(await canvas.getAttribute("data-test-pointer-id"));
+        if (!Number.isInteger(pointerId)) throw new Error("Neon canvas pointer ID is invalid.");
+        capturedPointerId = pointerId;
+        await expect
+          .poll(() =>
+            page.evaluate(() => window.__GAMEYARD_RESOURCE_PROBE__.snapshot().pointerCaptures),
+          )
+          .toBe(1);
+        await expect
+          .poll(() =>
+            canvas.evaluate(
+              (element, pointerId) => element.hasPointerCapture(pointerId),
+              pointerId,
+            ),
+          )
+          .toBe(true);
       }
     });
 

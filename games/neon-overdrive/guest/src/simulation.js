@@ -35,6 +35,7 @@ import {
 export const WORLD_WIDTH = 540;
 export const WORLD_HEIGHT = 960;
 export const FIXED_STEP_SECONDS = 1 / 60;
+export const NEON_GAMEPLAY_SEED = 0x4e454f4e;
 const OVERDRIVE_ZERO_EPSILON = FIXED_STEP_SECONDS * 1e-9;
 
 const MODES = new Set(["story", "rush", "endless"]);
@@ -103,7 +104,7 @@ export function createNeonSimulation({
   project,
   emitCue,
   emitEvent,
-  seed = 0x4e454f4e,
+  seed,
 }) {
   if (!Number.isSafeInteger(seed))
     throw new TypeError("Neon simulation seed must be a safe integer.");

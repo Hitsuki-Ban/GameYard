@@ -41,7 +41,7 @@
     "licenseScope": "GameYard-project-only"
   },
   "productionBoundary": {
-    "status": "source-evidence-only",
+    "status": "production-admitted",
     "runtimeAdmissionIssue": 52,
     "excludedFromProductionInputs": [
       "games/neon-overdrive.zip",
@@ -52,6 +52,7 @@
       "games/neon-overdrive/run_local.sh",
       "games/neon-overdrive/run_local.bat",
       "games/neon-overdrive/playwright.baseline.config.ts",
+      "games/neon-overdrive/vite.source.config.ts",
       "games/neon-overdrive/tools",
       "games/neon-overdrive/tests",
       "games/neon-overdrive/performance"

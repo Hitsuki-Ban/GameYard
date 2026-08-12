@@ -6,16 +6,15 @@
   "scripts": {
     "browser:install": "vp exec playwright install chromium",
     "dev": "vp dev",
-    "dev:candidate": "vp dev --config vite.candidate.config.ts",
     "dev:testkit": "vp dev --config vite.testkit.config.ts",
     "preview:testkit": "vp preview --config vite.testkit.config.ts",
-    "build": "vp build --config vite.candidate.config.ts && vp exec node tools/verify-candidate.mjs",
+    "build": "vp build && vp exec node tools/verify-production-guest.mjs",
     "build:testkit": "vp build --config vite.testkit.config.ts",
-    "check": "vp check package.json tsconfig.json vite.config.ts vite.candidate.config.ts vite.testkit.config.ts playwright.baseline.config.ts playwright.runtime.config.ts tools tests performance guest && vp run test:unit && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
+    "check": "vp check package.json tsconfig.json vite.config.ts vite.source.config.ts vite.testkit.config.ts playwright.baseline.config.ts playwright.runtime.config.ts playwright.performance.config.ts build tools tests performance guest && vp run test:unit && vp exec node tools/verify-source-snapshot.mjs && vp run build && vp run build:testkit",
     "test": "vp run check && vp exec playwright test --config playwright.baseline.config.ts tests/baseline.spec.ts && vp exec playwright test --config playwright.runtime.config.ts",
-    "test:unit": "vp test run tests/unit",
+    "test:unit": "vp test run --root . tests/unit",
     "test:update": "vp exec playwright test --config playwright.baseline.config.ts tests/baseline.spec.ts --update-snapshots",
-    "perf": "vp exec playwright test --config playwright.baseline.config.ts performance/neon-overdrive.perf.spec.ts"
+    "perf": "vp exec playwright test --config playwright.performance.config.ts"
   },
   "dependencies": {
     "@gameyard/game-contract": "workspace:*",

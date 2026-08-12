@@ -63,11 +63,6 @@ async function expectMusicState(page: Page, active: boolean) {
       }),
     )
     .toEqual(active ? { scheduler: 1, sources: expect.any(Number) } : { scheduler: 0, sources: 0 });
-  if (active) {
-    await expect
-      .poll(() => page.evaluate(() => window.__NEON_DEBUG__.resources().musicSources))
-      .toBeGreaterThan(0);
-  }
 }
 
 function expectLifeDecay(

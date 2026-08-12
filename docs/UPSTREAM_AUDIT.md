@@ -49,7 +49,7 @@ Issue #7 将该 revision 作为非 squash subtree 第二父提交导入 `games/t
 - `?qa` 暴露强力写接口，确定性场景和模拟价值很高，但生产构建必须剔除 mutation handler：[game.js](https://github.com/Hitsuki-Ban/CrownBreaker/blob/1f7b911926c786043ba793e16c4f25cd5f523b21/game.js#L4390-L4710)。
 - Service Worker 预缓存大量素材，cache 名不含 registration scope；Hub 版不能注册它：[sw.js](https://github.com/Hitsuki-Ban/CrownBreaker/blob/1f7b911926c786043ba793e16c4f25cd5f523b21/sw.js#L1-L113)。
 
-Issue #10 以非 squash subtree 导入该 revision，纯导入提交保留上游提交为第二父；MIT `LICENSE.txt`、50 个最终 SVG、素材风格指南和逐项哈希均随固定历史保留。旧 `QA_REPORT.md` 属于 v3.7.0，不能代表固定的 v3.7.1；GameYard 因此两次运行 seed base 1000 的 100 局 greedy 模拟，均得到 64 胜、36 负且原始 JSON 字节完全一致。完整摘要与 canonical JSON SHA-256 `4911ab81e19d102b6f06457e7f66b0a7262273871cd0745bf176884e6f2d9a44` 固定在新的 fixture 中。
+Issue #10 以非 squash subtree 导入该 revision，纯导入提交保留上游提交为第二父；MIT `LICENSE.txt`、50 个最终 SVG、素材风格指南和逐项哈希均随固定历史保留。旧 `QA_REPORT.md` 属于 v3.7.0，不能代表固定的 v3.7.1；GameYard 因此两次运行 seed base 1000 的 100 局 greedy 模拟，均得到 64 胜、36 负。新的 fixture 直接固定胜负、分数、路线、trait、formation、upgrade 与 boss 分布；验证器重跑 100 个固定 seed 并比较这些可读语义，不再为同仓 JSON 叠加不可读的摘要自证。
 
 Issue #11 已将生产入口改为 INIT/MessageChannel guest：公共 locale、master/music/sfx、reduced motion 与 screen shake 只消费 Host 快照；save/run 和 flashes/hints 使用严格 `gameyard.game.crown-breaker.*` envelope，不读取旧键。Host pause 会停止 RAF 与 50 ms audio scheduler 并释放输入，dispose 进一步清理 timers/global listeners、关闭 AudioContext 与 MessagePort。生产构建不含 game Service Worker、旧 standalone boot 或写 QA surface；确定性场景仅保留在显式 testkit/baseline 边界。
 
@@ -71,4 +71,4 @@ Kamifuda Runner 不是仓库导入。项目所有者提供的 `games/kamifuda-ru
 
 Neon Overdrive 同样来自项目所有者提供的工作区 archive，不关联可核验的公开仓库。`games/neon-overdrive.zip` 的 SHA-256 是 `08ceef2d930c801bab64ff4cbeab39129d3f5f088ee9344e3ac0a80e5e976883`；`provenance/neon-overdrive/source-inventory.json` 按原始顺序固定一个目录项和 12 个文件项，并为每个导入文件记录大小与 SHA-256。`provenance/neon-overdrive/source-snapshot.json` 将 repository、revision 和 license 保持为显式 `null`，授权边界只来自项目所有者对 GameYard 的项目级发布指示。
 
-当前记录状态是 `source-evidence-only`，production admission 明确归属 Issue #52。来源验证只依赖版本库内的授权文本、inventory 和原样导入文件，不读取 owner 工作区专有 ZIP；因此干净 CI 可以复核证据，但 production provenance 门会拒绝 Neon。原单文件发行版、三个预览 PNG、本地服务器脚本、baseline 和性能证据均不属于未来生产输入，也没有注册 production manifest 或 runtime。
+Issue #52 已将记录状态更新为 `production-admitted`，并只准入 GameYard 重建的 modular Guest、manifest、presentation 与 catalog/pipeline 输入。来源验证仍只依赖版本库内的授权文本、inventory 和原样导入文件，不读取 owner 工作区专有 ZIP；干净 CI 因此可以复核证据与 production provenance。原单文件发行版、三个预览 PNG、本地服务器脚本、baseline 和性能证据继续明确排除在生产输入与发布产物之外。

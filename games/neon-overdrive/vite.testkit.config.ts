@@ -5,10 +5,11 @@ import { GameManifestSourceSchema } from "@gameyard/game-contract";
 import { createGameManifestPlugin } from "@gameyard/manifest-tools";
 import { defineConfig } from "vite-plus";
 
-import manifestSourceJson from "./candidate.manifest.source.json";
-import { createNeonCandidateBuildId, listNeonGuestDevFiles } from "./tools/verify-candidate.mjs";
+import { createArtifactBuildId } from "../../tooling/artifact-build-id.mjs";
+import manifestSourceJson from "./game.manifest.source.json";
+import { listNeonGuestDevFiles } from "./build/list-guest-dev-files.mjs";
 
-const buildId = await createNeonCandidateBuildId();
+const buildId = await createArtifactBuildId();
 const manifestSource = GameManifestSourceSchema.parse(manifestSourceJson);
 const devFiles = await listNeonGuestDevFiles();
 const hostTemplate = await readFile(

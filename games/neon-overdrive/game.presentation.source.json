@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "neon-overdrive",
+  "title": "NEON OVERDRIVE",
+  "taglines": {
+    "en": "Thread the barrage, break the signal, and burn beyond the redline.",
+    "ja": "弾幕を縫い、信号を砕き、レッドラインの彼方へ駆け抜けろ。",
+    "zh-Hans": "穿过弹幕，击碎信号，冲向红线之外。"
+  },
+  "accent": "#00f7ff",
+  "cover": {
+    "candidates": [
+      { "path": "assets/catalog-cover-small.svg", "width": 800, "height": 450 },
+      { "path": "assets/catalog-cover.svg", "width": 1600, "height": 900 }
+    ]
+  },
+  "stage": { "kind": "fixed-aspect", "width": 540, "height": 960 }
+}
