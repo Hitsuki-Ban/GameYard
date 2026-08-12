@@ -363,6 +363,7 @@ test("owns create, logical input, pause, release, dispose, and fresh recreation"
 
       if (generation === 0) {
         await page.evaluate(() => window.__NEON_HOST__.send("lifecycle.resume"));
+        await expect(page.locator("#pause-dialog")).not.toBeVisible();
         const canvas = page.locator("#gameCanvas");
         await page.evaluate(() => {
           const canvas = document.querySelector<HTMLCanvasElement>("#gameCanvas");
