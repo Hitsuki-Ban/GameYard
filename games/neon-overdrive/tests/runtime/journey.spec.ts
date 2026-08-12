@@ -40,7 +40,15 @@ async function feedFrameSamples(page: Page, startMs: number, frames: number) {
 }
 
 async function feedFrozenAudioFrame(page: Page, timestampMs: number) {
-  await page.evaluate((timestamp) => window.__NEON_DEBUG__.feedFrame(timestamp), timestampMs);
+  await expect
+    .poll(async () => {
+      await page.evaluate((timestamp) => window.__NEON_DEBUG__.feedFrame(timestamp), timestampMs);
+      return page.evaluate(() => {
+        const resources = window.__NEON_DEBUG__.resources();
+        return resources.musicScheduler === 1 && resources.musicSources > 0;
+      });
+    })
+    .toBe(true);
 }
 
 async function expectMusicState(page: Page, active: boolean) {
