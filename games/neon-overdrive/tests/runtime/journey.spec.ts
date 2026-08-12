@@ -262,7 +262,16 @@ test("reuses the #50 Story journey and five canonical presentation references", 
   frameTime = 0;
   await page.evaluate(() => window.__NEON_DEBUG__.feedFrame(0));
   const beforeRestartKeyboard = (await observe(page)).player.x;
+  const restartCanvas = page.locator("#gameCanvas");
+  const restartCanvasBox = await restartCanvas.boundingBox();
+  if (restartCanvasBox === null) throw new Error("Neon canvas must be measurable after restart.");
+  await page.mouse.move(
+    restartCanvasBox.x + restartCanvasBox.width * 0.75,
+    restartCanvasBox.y + restartCanvasBox.height * 0.75,
+  );
+  await expect(page.locator("#control-move")).toContainText("鼠标");
   await page.keyboard.down("ArrowLeft");
+  await expect(page.locator("#control-move")).toContainText("WASD");
   ({ timestampMs: frameTime } = await feedFrames(page, frameTime, 4));
   await page.keyboard.up("ArrowLeft");
   expect((await observe(page)).player.x).toBeLessThan(beforeRestartKeyboard);
