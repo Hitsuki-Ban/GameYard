@@ -1194,18 +1194,6 @@ html:lang(ja) .wide-button {
   }
 }
 
-@media (pointer: coarse), (max-width: 900px) {
-  .touch-controls:not([hidden]) {
-    display: flex;
-  }
-}
-
-@media (pointer: fine) and (min-width: 901px) {
-  .touch-controls {
-    display: none !important;
-  }
-}
-
 @media (max-height: 650px) and (orientation: landscape) {
   .app {
     min-height: 0;

@@ -280,7 +280,38 @@ test("Pulse runs through the Hub lifecycle with live public preferences", async 
   await closeHubDrawer(page);
   await expect(page.locator(".runtime-state")).toHaveText("Active");
 
+  await pulse.getByRole("button", { name: "Start game" }).click();
+  await expect(pulse.locator("#title-screen")).toBeHidden();
+  await expect(pulse.locator("#aria-live")).toHaveText("Match started");
+  await expect(pulse.locator("#announcer")).toHaveText("LINK!", { timeout: 5_000 });
+  const initialTouchPresentation = await pulse
+    .locator("#app")
+    .getAttribute("data-input-presentation");
+  if (initialTouchPresentation === "touch") {
+    await expect(pulse.locator("#touch-controls")).toBeVisible();
+  } else {
+    expect(initialTouchPresentation).toBe("desktop");
+    await expect(pulse.locator("#touch-controls")).toBeHidden();
+  }
+
   await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.locator(".runtime-state")).toHaveText("Paused");
+  const pausedSettings = await openSettingsDrawer(page);
+  const pausedLocale = pausedSettings.locator(".settings-panel select");
+  await pausedLocale.selectOption("zh-Hans");
+  await expect(pulse.locator("#pause-title")).toHaveText("已暂停");
+  await expect(pulse.locator("#aria-live")).toHaveText("已暂停");
+  await expect(pulse.locator("#announcer")).toHaveText("连线！");
+  await pausedLocale.selectOption("ja");
+  await expect(pulse.locator("#pause-title")).toHaveText("ポーズ");
+  await expect(pulse.locator("#aria-live")).toHaveText("一時停止しました");
+  await expect(pulse.locator("#announcer")).toHaveText("リンク！");
+  await pausedLocale.selectOption("en");
+  await expect(pulse.locator("#pause-title")).toHaveText("PAUSED");
+  await expect(pulse.locator("#aria-live")).toHaveText("Paused");
+  await expect(pulse.locator("#announcer")).toHaveText("LINK!");
+  expect(page.frames()).toContain(firstGuest);
+  await closeHubDrawer(page);
   await expect(page.locator(".runtime-state")).toHaveText("Paused");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator(".runtime-state")).toHaveText("Active");

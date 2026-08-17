@@ -46,6 +46,22 @@ window.runPulseLogicBaseline = () => {
     );
     assert(new PLO.I18n({ locale: "ja" }).t("mode.duel") === "対戦", "Host 日语映射到日文目录");
     assert(new PLO.I18n({ locale: "en" }).t("mode.duel") === "DUEL", "Host 英语映射到英文目录");
+    assert(
+      PLO.I18n.resolveBrowserLocale(["ja-JP", "en-US"]) === "ja",
+      "启动失败优先采用浏览器日语",
+    );
+    assert(
+      PLO.I18n.resolveBrowserLocale(["zh-Hans-CN", "en-US"]) === "zh-CN",
+      "启动失败映射浏览器简体中文",
+    );
+    assert(PLO.I18n.resolveBrowserLocale(["fr-FR"]) === "en", "不支持的浏览器语言使用英文展览文案");
+    let invalidBrowserLanguages = false;
+    try {
+      PLO.I18n.resolveBrowserLocale("ja-JP");
+    } catch (error) {
+      invalidBrowserLanguages = error instanceof TypeError;
+    }
+    assert(invalidBrowserLanguages, "非法浏览器语言输入立即报错");
     const i18n = new PLO.I18n({ locale: "ja" });
     let changes = 0;
     i18n.subscribe(() => changes++);

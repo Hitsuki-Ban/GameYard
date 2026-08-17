@@ -195,6 +195,7 @@ async function closeRuntime(page: Page) {
 }
 
 test("Pulse release matrix covers locale visuals, real input, and bounded diagnostics", async ({
+  browser,
   page,
 }) => {
   test.slow();
@@ -299,7 +300,75 @@ test("Pulse release matrix covers locale visuals, real input, and bounded diagno
   await closeHubDrawer(page);
   await expect(page.locator(".runtime-state")).toHaveText("Active");
   await closeRuntime(page);
+
+  for (const width of [705, 878]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./");
+    await setHubLocale(page, "en");
+    const { pulse: compactPulse } = await openPulse(page);
+    await compactPulse.getByRole("button", { name: "Start game" }).click();
+    await expect(compactPulse.locator("#touch-controls")).toBeHidden();
+    await expect(compactPulse.locator("#app")).toHaveAttribute(
+      "data-input-presentation",
+      "desktop",
+    );
+    await compactPulse.locator("#game-canvas").press("ArrowLeft");
+    await closeRuntime(page);
+  }
+
+  const coarseContext = await browser.newContext({
+    baseURL: new URL("./", page.url()).href,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  const coarsePage = await coarseContext.newPage();
+  const coarseSignals = collectRuntimeSignals(coarsePage);
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ]) {
+    await coarsePage.setViewportSize(viewport);
+    await coarsePage.goto("./");
+    await setHubLocale(coarsePage, "en");
+    const { pulse: coarsePulse } = await openPulse(coarsePage);
+    await coarsePulse.getByRole("button", { name: "Start game" }).click();
+    const touchControls = coarsePulse.locator("#touch-controls");
+    await expect(touchControls).toBeVisible();
+    for (const button of await touchControls.locator(".touch-key").all()) {
+      const box = await button.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+    const canvas = coarsePulse.locator("#game-canvas");
+    await canvas.press("ArrowLeft");
+    await expect(touchControls).toBeHidden();
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    await coarsePage.touchscreen.tap(
+      canvasBox!.x + canvasBox!.width / 2,
+      canvasBox!.y + canvasBox!.height / 2,
+    );
+    await expect(touchControls).toBeVisible();
+    await closeRuntime(coarsePage);
+  }
+  await coarseContext.close();
+
+  const failureContext = await browser.newContext({ locale: "ja-JP" });
+  const failurePage = await failureContext.newPage();
+  await failurePage.goto(
+    new URL("games/pulse-link-overdrive/index.html", new URL("./", page.url())).href,
+  );
+  await expect(failurePage.locator(".boot-failure")).toHaveText(
+    "PULSE LINK は GameYard に接続できませんでした。",
+    { timeout: 15_000 },
+  );
+  await expect(failurePage.locator("html")).toHaveAttribute("lang", "ja");
+  await failureContext.close();
+
   expect(signals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
+  expect(coarseSignals).toEqual({ errors: [], failedRequests: [], failedResponses: [] });
 });
 
 test("TUMBLEDRUM release matrix covers visuals, real input, and comfort settings", async ({

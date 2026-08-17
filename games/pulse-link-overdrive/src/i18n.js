@@ -7,6 +7,7 @@
   const CATALOGS = Object.freeze({
     "zh-CN": Object.freeze({
       "meta.description": "原创双盘对战落物网页游戏，支持中文、日本語与 English。",
+      "boot.failure": "PULSE LINK 无法连接到 GameYard。",
       "canvas.label": "PULSE LINK 游戏盘面",
       "language.label": "语言",
       "language.chooseAuto": "跟随系统语言",
@@ -134,10 +135,12 @@
       "canvas.player": "你",
       "canvas.energy": "能量",
       "canvas.countdownStart": "开始！",
+      "canvas.energyReady": "100",
     }),
     ja: Object.freeze({
       "meta.description":
         "中国語・日本語・英語に対応した、オリジナルの2面対戦型落ちものWebゲーム。",
+      "boot.failure": "PULSE LINK は GameYard に接続できませんでした。",
       "canvas.label": "PULSE LINK ゲーム盤",
       "language.label": "言語",
       "language.chooseAuto": "システム言語に合わせる",
@@ -268,10 +271,12 @@
       "canvas.player": "あなた",
       "canvas.energy": "エナジー",
       "canvas.countdownStart": "開始！",
+      "canvas.energyReady": "100",
     }),
     en: Object.freeze({
       "meta.description":
         "An original split-board competitive falling-block web game in Chinese, Japanese, and English.",
+      "boot.failure": "PULSE LINK could not connect to GameYard.",
       "canvas.label": "PULSE LINK game boards",
       "language.label": "Language",
       "language.chooseAuto": "Follow the system language",
@@ -404,6 +409,7 @@
       "canvas.player": "YOU",
       "canvas.energy": "ENERGY",
       "canvas.countdownStart": "LINK!",
+      "canvas.energyReady": "100",
     }),
   });
 
@@ -456,6 +462,22 @@
     }
     static get catalogKeys() {
       return CATALOG_KEYS;
+    }
+
+    static resolveBrowserLocale(languages) {
+      if (!Array.isArray(languages)) {
+        throw new TypeError("Browser languages must be an array.");
+      }
+      for (const language of languages) {
+        if (typeof language !== "string") {
+          throw new TypeError("Browser language entries must be strings.");
+        }
+        const normalized = language.toLowerCase();
+        if (normalized === "ja" || normalized.startsWith("ja-")) return "ja";
+        if (normalized === "zh" || normalized.startsWith("zh-")) return "zh-CN";
+        if (normalized === "en" || normalized.startsWith("en-")) return "en";
+      }
+      return "en";
     }
 
     setLocale(locale) {

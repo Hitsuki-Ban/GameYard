@@ -39,6 +39,11 @@
       this.active = true;
       this.pointer = null;
       this.gamepadPrev = {};
+      this.primaryCoarse = window.matchMedia("(pointer: coarse)");
+      this.primaryHoverless = window.matchMedia("(hover: none)");
+      this.recentModality = null;
+      this.presentationMode = this.capabilityPresentationMode();
+      this.onPresentationChange = null;
       this.onCanvasTap = null;
       this.onCanvasDrag = null;
       this.bound = {};
@@ -50,11 +55,34 @@
       this.unlisten.push(this.resources.listen(target, type, listener));
     }
 
+    capabilityPresentationMode() {
+      return this.primaryCoarse.matches || this.primaryHoverless.matches ? "touch" : "desktop";
+    }
+
+    recordModality(modality) {
+      if (!["desktop", "touch"].includes(modality)) {
+        throw new RangeError(`Unsupported input modality: ${modality}`);
+      }
+      this.recentModality = modality;
+      if (modality === this.presentationMode) return;
+      this.presentationMode = modality;
+      this.onPresentationChange?.(modality);
+    }
+
+    syncCapabilityPresentation() {
+      if (this.recentModality !== null) return;
+      const next = this.capabilityPresentationMode();
+      if (next === this.presentationMode) return;
+      this.presentationMode = next;
+      this.onPresentationChange?.(next);
+    }
+
     bind() {
       this.bound.keydown = (event) => {
         if (!this.enabled) return;
         const action = KEY_MAP[event.code];
         if (!action) return;
+        this.recordModality("desktop");
         const interactive =
           event.target instanceof Element &&
           !!event.target.closest("button,input,select,textarea,a[href]");
@@ -75,6 +103,7 @@
           if (!this.enabled) return;
           const button = event.target.closest("[data-action]");
           if (!button) return;
+          this.recordModality("touch");
           event.preventDefault();
           const action = button.dataset.action;
           button.setPointerCapture?.(event.pointerId);
@@ -98,6 +127,7 @@
 
       this.bound.canvasDown = (event) => {
         if (!this.enabled || !this.active) return;
+        this.recordModality(event.pointerType === "touch" ? "touch" : "desktop");
         const p = this.toCanvasPoint(event);
         this.pointer = {
           id: event.pointerId,
@@ -157,6 +187,8 @@
 
       this.bound.blur = () => this.clearAll();
       this.listen(window, "blur", this.bound.blur);
+      this.listen(this.primaryCoarse, "change", () => this.syncCapabilityPresentation());
+      this.listen(this.primaryHoverless, "change", () => this.syncCapabilityPresentation());
     }
 
     tapRotate() {
@@ -243,6 +275,7 @@
         pause: !!pad.buttons?.[9]?.pressed,
         confirm: !!pad.buttons?.[0]?.pressed,
       };
+      if (Object.values(state).some(Boolean)) this.recordModality("desktop");
       for (const [action, down] of Object.entries(state)) {
         const was = !!this.gamepadPrev[action];
         if (down && !was) this.press(action, `gamepad:${action}`);
@@ -270,6 +303,7 @@
       this.clearAll();
       this.onCanvasTap = null;
       this.onCanvasDrag = null;
+      this.onPresentationChange = null;
     }
 
     setEnabled(enabled) {
