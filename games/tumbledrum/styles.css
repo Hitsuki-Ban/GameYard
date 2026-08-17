@@ -81,6 +81,111 @@ body {
   border: 0;
 }
 
+.semantic-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.semantic-panel[hidden] {
+  display: none;
+}
+
+.semantic-panel fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.semantic-control {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  pointer-events: auto;
+}
+
+.semantic-control:focus-within,
+.semantic-control:focus-visible {
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  width: min(34rem, calc(100vw - 2rem));
+  height: auto;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  color: #211c1a;
+  font: 700 1rem/1.35 var(--font-serif);
+  text-align: center;
+  white-space: normal;
+  background: #fff3cf;
+  border: 4px solid #d3a23a;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 55%);
+  transform: translateX(-50%);
+}
+
+.semantic-checkbox input {
+  margin-inline-end: 0.55rem;
+  accent-color: #8f3029;
+}
+
+.semantic-upgrade-option {
+  display: block;
+}
+
+.semantic-touch-control {
+  width: auto;
+  height: auto;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  color: #211c1a;
+  font: 700 0.9rem/1.2 var(--font-serif);
+  white-space: normal;
+  background: rgb(255 243 207 / 92%);
+  border: 3px solid #d3a23a;
+  border-radius: 999px;
+  box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 45%);
+}
+
+.semantic-touch-control:focus-visible {
+  outline: 4px solid #fff3cf;
+  outline-offset: 3px;
+}
+
+#semantic-pause-open {
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  left: auto;
+  transform: none;
+}
+
+#semantic-resume,
+#semantic-pause-exit {
+  left: 50%;
+  width: min(20rem, calc(100vw - 3rem));
+  transform: translateX(-50%);
+}
+
+#semantic-resume {
+  top: calc(50% - 3.25rem);
+}
+
+#semantic-pause-exit {
+  top: calc(50% + 1rem);
+}
+
 noscript {
   max-width: 36rem;
   padding: 1rem;

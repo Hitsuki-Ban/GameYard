@@ -161,6 +161,7 @@ def main() -> None:
         smoke = run_program("smoke_test.py", target, environment)
         integration = run_program("integration_test.py", target, environment)
         regression = run_program("regression_test.py", target, environment)
+        semantic = run_program("semantic_a11y_test.py", target, environment)
         full_run = run_program("full_run_test.py", target, environment)
         assert len(integration["stages"]) == 13, integration["stages"]
         assert regression["regressions"]["orientedCollision"]["destroyed"] is True
@@ -188,6 +189,7 @@ def main() -> None:
                 "authoredStages": len(integration["stages"]),
                 "campaignSeconds": round(full_run["campaign"]["elapsed"], 2),
                 "endlessWave": full_run["endless"]["reached"],
+                "semanticLocale": semantic["journey"]["locale"],
                 "responsive": responsive,
             },
             ensure_ascii=False,

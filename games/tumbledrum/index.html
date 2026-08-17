@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="und" data-i18n-ready="false">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -8,11 +8,8 @@
     />
     <meta name="theme-color" content="#241b17" />
     <meta name="color-scheme" content="dark" />
-    <title>TUMBLEDRUM — Festival Breaker</title>
-    <meta
-      name="description"
-      content="A tactile brick breaker crafted from paper, wood, clay, rope, and brass."
-    />
+    <title>TUMBLEDRUM</title>
+    <meta name="description" content="TUMBLEDRUM" />
     <link
       rel="icon"
       href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyNDFiMTciLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyMyIgZmlsbD0iI2QzYTIzYSIgc3Ryb2tlPSIjMjExYzFhIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIxNCIgZmlsbD0iI2ZmZjNjZiIgc3Ryb2tlPSIjYmQ0NjM0IiBzdHJva2Utd2lkdGg9IjUiLz48cGF0aCBkPSJNMjQgMjRsMTYgMTZNNDAgMjRMMjQgNDAiIHN0cm9rZT0iIzIxMWMxYSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="
@@ -20,7 +17,7 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="stage" aria-label="TUMBLEDRUM game">
+    <main class="stage" aria-label="TUMBLEDRUM">
       <canvas
         id="game"
         width="900"
@@ -28,9 +25,147 @@
         tabindex="0"
         role="application"
         aria-describedby="status"
-        aria-label="TUMBLEDRUM. Move left and right to return the brass ball. White knot stamps mark required targets."
+        aria-label="TUMBLEDRUM"
       ></canvas>
       <p id="status" class="visually-hidden" aria-live="polite"></p>
+      <section id="semantic-ui" class="semantic-ui" aria-describedby="status">
+        <section
+          id="semantic-title"
+          class="semantic-panel"
+          aria-labelledby="semantic-title-heading"
+          hidden
+        >
+          <h2 id="semantic-title-heading" class="visually-hidden"></h2>
+          <p id="campaign-description" class="visually-hidden"></p>
+          <p id="endless-description" class="visually-hidden"></p>
+          <button
+            id="semantic-campaign"
+            class="semantic-control"
+            type="button"
+            data-action="campaign"
+            aria-describedby="campaign-description"
+          ></button>
+          <button
+            id="semantic-endless"
+            class="semantic-control"
+            type="button"
+            data-action="endless"
+            aria-describedby="endless-description"
+          ></button>
+          <button
+            id="semantic-settings-open"
+            class="semantic-control"
+            type="button"
+            data-action="settings-open"
+          ></button>
+        </section>
+
+        <section
+          id="semantic-gameplay"
+          class="semantic-panel"
+          aria-labelledby="semantic-gameplay-heading"
+          aria-describedby="semantic-gameplay-summary"
+          hidden
+        >
+          <h2 id="semantic-gameplay-heading" class="visually-hidden"></h2>
+          <p id="semantic-gameplay-summary" class="visually-hidden"></p>
+          <button
+            id="semantic-gameplay-action"
+            class="semantic-control"
+            type="button"
+            data-action="gameplay-action"
+          ></button>
+          <button
+            id="semantic-pause-open"
+            class="semantic-control semantic-touch-control"
+            type="button"
+            data-action="pause"
+          ></button>
+        </section>
+
+        <section
+          id="semantic-settings"
+          class="semantic-panel"
+          aria-labelledby="semantic-settings-heading"
+          hidden
+        >
+          <h2 id="semantic-settings-heading" class="visually-hidden"></h2>
+          <p id="contrast-description" class="visually-hidden"></p>
+          <p id="fullscreen-description" class="visually-hidden"></p>
+          <label class="semantic-control semantic-checkbox">
+            <input id="semantic-contrast" type="checkbox" data-setting="contrast" />
+            <span id="semantic-contrast-label"></span>
+          </label>
+          <button
+            id="semantic-fullscreen"
+            class="semantic-control"
+            type="button"
+            data-action="fullscreen"
+            aria-describedby="fullscreen-description"
+          ></button>
+          <button
+            id="semantic-settings-back"
+            class="semantic-control"
+            type="button"
+            data-action="settings-back"
+          ></button>
+        </section>
+
+        <section
+          id="semantic-pause"
+          class="semantic-panel"
+          aria-labelledby="semantic-pause-heading"
+          hidden
+        >
+          <h2 id="semantic-pause-heading" class="visually-hidden"></h2>
+          <button
+            id="semantic-resume"
+            class="semantic-control semantic-touch-control"
+            type="button"
+            data-action="resume"
+          ></button>
+          <button
+            id="semantic-pause-exit"
+            class="semantic-control semantic-touch-control"
+            type="button"
+            data-action="exit"
+          ></button>
+        </section>
+
+        <section id="semantic-upgrade" class="semantic-panel" hidden>
+          <fieldset id="semantic-upgrade-fieldset">
+            <legend id="semantic-upgrade-heading" class="visually-hidden"></legend>
+            <div id="semantic-upgrade-options"></div>
+          </fieldset>
+          <button
+            id="semantic-upgrade-confirm"
+            class="semantic-control"
+            type="button"
+            data-action="upgrade-confirm"
+          ></button>
+        </section>
+
+        <section
+          id="semantic-result"
+          class="semantic-panel"
+          aria-labelledby="semantic-result-heading"
+          hidden
+        >
+          <h2 id="semantic-result-heading" class="visually-hidden"></h2>
+          <button
+            id="semantic-result-primary"
+            class="semantic-control"
+            type="button"
+            data-action="result-primary"
+          ></button>
+          <button
+            id="semantic-result-secondary"
+            class="semantic-control"
+            type="button"
+            data-action="result-secondary"
+          ></button>
+        </section>
+      </section>
       <noscript>
         <span lang="en">This game requires JavaScript.</span>
         <span lang="ja">このゲームを遊ぶにはJavaScriptが必要です。</span>
