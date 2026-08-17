@@ -46,6 +46,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 }
 
 #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+#game-canvas:focus-visible { outline: 2px solid var(--cyan); outline-offset: -4px; }
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+html[data-i18n-ready="false"] body { visibility: hidden; }
 #act-backdrop,
 #act-particles {
   position: absolute;

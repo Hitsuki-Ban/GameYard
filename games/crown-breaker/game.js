@@ -43,6 +43,10 @@ export function createCrownBreakerGame({ context, bridge }) {
   const trainingResultModal = $('#training-result-modal');
   const infoModal = $('#info-modal');
   const infoContent = $('#info-content');
+  const boardAnnouncer = $('#board-announcer');
+  const modals = [pauseModal, promotionModal, rewardModal, contractModal, runResultModal, failModal, trainingResultModal, infoModal];
+  let activeModal = null;
+  let modalRestoreFocus = null;
 
   const VERSION = '3.7.1';
   const SAVE_KEY = 'gameyard.game.crown-breaker.save.v1';
@@ -750,6 +754,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     selectedId: null,
     legalMoves: [],
     hover: null,
+    keyboardCursor: null,
     turnsLeft: 0,
     enemyHP: 1,
     enemyHPMax: 1,
@@ -1439,7 +1444,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     titleScreen.classList.toggle('active', name === 'title');
     if (name !== 'playing') hud.classList.remove('active');
     if (name === 'title') {
-      closeModal();
+      closeModal(false);
       clearTutorialSequence();
       game.active = false;
       game.paused = false;
@@ -1457,15 +1462,63 @@ export function createCrownBreakerGame({ context, bridge }) {
   }
 
   function openModal(modal) {
+    if (!modals.includes(modal)) throw new RangeError('Unknown CrownBreaker modal.');
+    if (activeModal === null) {
+      modalRestoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    activeModal = modal;
     modalLayer.classList.add('active');
-    [pauseModal, promotionModal, rewardModal, contractModal, runResultModal, failModal, trainingResultModal, infoModal]
-      .forEach(element => element.classList.toggle('active', element === modal));
+    modalLayer.setAttribute('aria-hidden', 'false');
+    app.querySelectorAll(':scope > :not(#modal-layer)').forEach(element => { element.inert = true; });
+    modals.forEach(element => element.classList.toggle('active', element === modal));
+    const target = modal.querySelector('button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])') || modal;
+    target.focus({ preventScroll: true });
   }
 
-  function closeModal() {
+  function closeModal(restoreFocus = true) {
+    const target = modalRestoreFocus;
+    activeModal = null;
+    modalRestoreFocus = null;
     modalLayer.classList.remove('active');
-    [pauseModal, promotionModal, rewardModal, contractModal, runResultModal, failModal, trainingResultModal, infoModal]
-      .forEach(element => element.classList.remove('active'));
+    modalLayer.setAttribute('aria-hidden', 'true');
+    app.querySelectorAll(':scope > :not(#modal-layer)').forEach(element => { element.inert = false; });
+    modals.forEach(element => element.classList.remove('active'));
+    if (restoreFocus && target?.isConnected) target.focus({ preventScroll: true });
+  }
+
+  function modalFocusableElements() {
+    if (!activeModal) return [];
+    return [...activeModal.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), [href], [tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+  }
+
+  function trapModalFocus(event) {
+    if (!activeModal || event.key !== 'Tab') return false;
+    const focusable = modalFocusableElements();
+    event.preventDefault();
+    if (!focusable.length) {
+      activeModal.focus({ preventScroll: true });
+      return true;
+    }
+    const current = focusable.indexOf(document.activeElement);
+    const offset = event.shiftKey ? -1 : 1;
+    const next = current < 0
+      ? event.shiftKey ? focusable.length - 1 : 0
+      : (current + offset + focusable.length) % focusable.length;
+    focusable[next].focus({ preventScroll: true });
+    return true;
+  }
+
+  function focusTitlePrimary() {
+    const target = $('#btn-continue').hidden ? $('#btn-new') : $('#btn-continue');
+    target.focus({ preventScroll: true });
+  }
+
+  function focusBoard() {
+    if (!game.active || currentScreen !== 'playing' || activeModal !== null) return;
+    ensureKeyboardCursor();
+    canvas.focus({ preventScroll: true });
+    announceBoardCursor();
   }
 
   function settingSwitch(id, title, description, checked) {
@@ -1477,7 +1530,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     if (kind === 'rules') {
       html = `
         <p class="eyebrow">${t('legend.kicker')}</p>
-        <h2>${t('legend.title')}</h2>
+        <h2 id="info-title">${t('legend.title')}</h2>
         <div class="legend-grid">
           <div class="legend-card move"><i></i><b>${t('legend.move')}</b><small>${t('legend.dot')}</small></div>
           <div class="legend-card hit"><i></i><b>${t('legend.capture')}</b><small>${t('legend.square')}</small></div>
@@ -1493,7 +1546,7 @@ export function createCrownBreakerGame({ context, bridge }) {
       }).join('');
       html = `
         <p class="eyebrow">${t('records.kicker')}</p>
-        <h2>${t('records.title')}</h2>
+        <h2 id="info-title">${t('records.title')}</h2>
         <div class="record-grid">
           <div class="record-cell"><span>${t('records.bestScore')}</span><strong>${formatScore(save.bestScore)}</strong></div>
           <div class="record-cell"><span>${t('records.clears')}</span><strong>${save.clears}</strong></div>
@@ -1506,7 +1559,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     } else if (kind === 'settings') {
       html = `
         <p class="eyebrow">${t('settings.kicker')}</p>
-        <h2>${t('settings.title')}</h2>
+        <h2 id="info-title">${t('settings.title')}</h2>
         ${settingSwitch('set-flashes', t('settings.flashes'), t('settings.flashesLine'), settings.flashes)}
         ${settingSwitch('set-hints', t('settings.hints'), t('settings.hintsLine'), settings.hints)}`;
     }
@@ -1642,6 +1695,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     game.selectedId = null;
     game.legalMoves = [];
     game.hover = null;
+    game.keyboardCursor = null;
     game.turnsLeft = data.turns;
     game.enemyHP = data.enemyHP;
     game.enemyHPMax = data.enemyHPMax;
@@ -1681,10 +1735,11 @@ export function createCrownBreakerGame({ context, bridge }) {
   function enterBattleScreen() {
     setScreen('playing');
     syncActPresentation();
-    closeModal();
+    closeModal(false);
     hud.classList.add('active');
     updateHUD(true);
     audio.start();
+    focusBoard();
   }
 
   function startNewRun(seed = makeSeed(), daily = false) {
@@ -1898,10 +1953,11 @@ export function createCrownBreakerGame({ context, bridge }) {
     audio.sfx('ui');
     runtime.clearTimeout(game.transitionTimer);
     if (run && game.mode === 'run' && game.active) persistRun('battle');
-    closeModal();
+    closeModal(false);
     game.active = false;
     game.phase = 'idle';
     setScreen('title');
+    focusTitlePrimary();
   }
 
   function pauseGame() {
@@ -1938,13 +1994,14 @@ export function createCrownBreakerGame({ context, bridge }) {
     game.pieces.forEach(piece => { if (piece.anim) piece.anim.start += pausedDuration; });
     game.paused = false;
     game.lastFrame = now();
-    if (hostPauseModalShown) closeModal();
+    if (hostPauseModalShown) closeModal(false);
     hostPauseModalShown = false;
     runtime.resume();
     await audio.resume();
     lifecycle = 'active';
     bridge.emitLifecycleState('active');
     record('info', 'lifecycle.active', 'CrownBreaker runtime active.');
+    if (game.active && currentScreen === 'playing' && activeModal === null) focusBoard();
   }
 
   function pieceAt(x, y, excludeId = null) {
@@ -2119,6 +2176,96 @@ export function createCrownBreakerGame({ context, bridge }) {
       }));
   }
 
+  function boardSquareName(x, y) {
+    if (!inBounds(x, y)) throw new RangeError(`Board square is out of bounds: ${x},${y}.`);
+    return `${String.fromCharCode(65 + x)}${8 - y}`;
+  }
+
+  function announceBoard(message) {
+    if (typeof message !== 'string' || !message) throw new TypeError('Board announcement must be non-empty.');
+    boardAnnouncer.replaceChildren(document.createTextNode(message));
+  }
+
+  function ensureKeyboardCursor() {
+    if (game.keyboardCursor && inBounds(game.keyboardCursor.x, game.keyboardCursor.y)) return game.keyboardCursor;
+    const candidates = game.pieces
+      .filter(piece => piece.alive && piece.color === 'w')
+      .sort((a, b) => Number(b.type === 'p') - Number(a.type === 'p') || a.y - b.y || a.x - b.x);
+    const piece = candidates.find(candidate => getLegalMoves(candidate).length > 0) || candidates[0];
+    if (!piece) throw new Error('An active CrownBreaker board requires a living player piece.');
+    game.keyboardCursor = { x: piece.x, y: piece.y };
+    return game.keyboardCursor;
+  }
+
+  function boardCursorDescription() {
+    const cursor = ensureKeyboardCursor();
+    const square = boardSquareName(cursor.x, cursor.y);
+    const piece = pieceAt(cursor.x, cursor.y);
+    let message = piece
+      ? t('board.piece', {
+          square,
+          owner: t(piece.color === 'w' ? 'board.owner.you' : 'board.owner.enemy'),
+          piece: t(PIECE_NAMES[piece.type])
+        })
+      : t('board.empty', { square });
+    const selected = game.pieces.find(candidate => candidate.id === game.selectedId);
+    const legal = game.legalMoves.find(move => move.x === cursor.x && move.y === cursor.y);
+    if (selected && legal) {
+      message += t('board.legal');
+      const captured = legal.captureId ? game.pieces.find(candidate => candidate.id === legal.captureId) : null;
+      if (captured) message += t('board.capture', { piece: t(PIECE_NAMES[captured.type]) });
+    } else if (!selected && piece?.color === 'w' && game.phase === 'player' && getLegalMoves(piece).length > 0) {
+      message += t('board.selectable');
+    }
+    return message;
+  }
+
+  function announceBoardCursor() {
+    if (!game.active || currentScreen !== 'playing') return;
+    announceBoard(boardCursorDescription());
+  }
+
+  function moveKeyboardCursor(dx, dy) {
+    const cursor = ensureKeyboardCursor();
+    game.keyboardCursor = {
+      x: clamp(cursor.x + dx, 0, 7),
+      y: clamp(cursor.y + dy, 0, 7)
+    };
+    game.lastInputAt = now();
+    announceBoardCursor();
+  }
+
+  function announceSelection(piece, moves) {
+    announceBoard(t('board.selected', {
+      piece: t(PIECE_NAMES[piece.type]),
+      square: boardSquareName(piece.x, piece.y),
+      destinations: moves.map(move => boardSquareName(move.x, move.y)).join(', ')
+    }));
+  }
+
+  function announceMoveSummary(pieceType, fromX, fromY, move, captured) {
+    const capture = captured ? t('board.captured', { piece: t(PIECE_NAMES[captured.type]) }) : '';
+    announceBoard(t('board.moveSummary', {
+      piece: t(PIECE_NAMES[pieceType]),
+      from: boardSquareName(fromX, fromY),
+      to: boardSquareName(move.x, move.y),
+      capture,
+      score: formatScore(game.score),
+      moves: Math.max(0, game.turnsLeft),
+      shield: getShield(),
+      crown: Math.max(0, game.enemyHP)
+    }));
+  }
+
+  function announceTurnSummary() {
+    announceBoard(t('board.turnSummary', {
+      score: formatScore(game.score),
+      moves: Math.max(0, game.turnsLeft),
+      shield: getShield(),
+      crown: Math.max(0, game.enemyHP)
+    }));
+  }
+
   function allMoves(color) {
     const result = [];
     for (const piece of game.pieces) {
@@ -2137,28 +2284,33 @@ export function createCrownBreakerGame({ context, bridge }) {
     }
     game.selectedId = piece.id;
     game.legalMoves = moves;
+    game.keyboardCursor = { x: piece.x, y: piece.y };
     game.lastInputAt = now();
     game.idleHintShown = false;
     audio.sfx('select');
+    announceSelection(piece, moves);
     if (!save.tutorial.select) {
       showTutorial('tutorial.move', 1800, undefined, 'select');
     }
   }
 
-  function clearSelection() {
+  function clearSelection(announce = false) {
     game.selectedId = null;
     game.legalMoves = [];
+    if (announce && game.keyboardCursor) {
+      announceBoard(t('board.selectionCancelled', {
+        square: boardSquareName(game.keyboardCursor.x, game.keyboardCursor.y)
+      }));
+    }
   }
 
-  function handleBoardPointer(clientX, clientY) {
-    if (!game.active || game.paused || game.phase !== 'player' || modalLayer.classList.contains('active')) return;
-    const { x, y, tile } = view.board;
-    const bx = Math.floor((clientX - x) / tile);
-    const by = Math.floor((clientY - y) / tile);
+  function activateBoardSquare(bx, by) {
+    if (!game.active || game.paused || game.phase !== 'player' || activeModal !== null) return;
     if (!inBounds(bx, by)) {
       clearSelection();
       return;
     }
+    game.keyboardCursor = { x: bx, y: by };
     game.lastInputAt = now();
     const selected = game.pieces.find(piece => piece.id === game.selectedId);
     const legal = game.legalMoves.find(move => move.x === bx && move.y === by);
@@ -2169,6 +2321,11 @@ export function createCrownBreakerGame({ context, bridge }) {
     const clicked = pieceAt(bx, by);
     if (clicked && clicked.color === 'w') selectPiece(clicked);
     else clearSelection();
+  }
+
+  function handleBoardPointer(clientX, clientY) {
+    const { x, y, tile } = view.board;
+    activateBoardSquare(Math.floor((clientX - x) / tile), Math.floor((clientY - y) / tile));
   }
 
   function chooseEnemyMove() {
@@ -2273,6 +2430,7 @@ export function createCrownBreakerGame({ context, bridge }) {
     }
     game.lastInputAt = now();
     updateHUD();
+    announceTurnSummary();
     if (run && game.mode === 'run') persistRun('battle');
   }
 
@@ -2294,11 +2452,13 @@ export function createCrownBreakerGame({ context, bridge }) {
 
   function performPlayerMove(piece, move) {
     if (game.phase !== 'player') return;
+    const pieceType = piece.type;
     clearSelection();
     game.phase = 'animating';
     game.moveCount += 1;
     const fromX = piece.x;
     const fromY = piece.y;
+    game.keyboardCursor = { x: move.x, y: move.y };
     const captured = move.captureId ? game.pieces.find(target => target.id === move.captureId) : null;
     const credit = consumeActionCredit();
     if (!credit) game.turnsLeft -= 1;
@@ -2320,8 +2480,8 @@ export function createCrownBreakerGame({ context, bridge }) {
     startMoveAnimation(piece, move, captured, 'player', () => {
       const context = { fromX, fromY, move, credit };
       const outcome = resolveMove(piece, captured, 'player', context);
-      if (outcome === 'terminal' || outcome === 'deferred') return;
-      completePlayerMove();
+      if (outcome !== 'terminal' && outcome !== 'deferred') completePlayerMove();
+      announceMoveSummary(pieceType, fromX, fromY, move, captured);
     });
   }
 
@@ -3978,6 +4138,20 @@ export function createCrownBreakerGame({ context, bridge }) {
         ctx.stroke();
       }
     }
+
+    if (document.activeElement === canvas && game.keyboardCursor) {
+      const cursorX = x + game.keyboardCursor.x * tile;
+      const cursorY = y + game.keyboardCursor.y * tile;
+      ctx.save();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(cursorX + 4, cursorY + 4, tile - 8, tile - 8);
+      ctx.setLineDash([Math.max(4, tile * .12), Math.max(3, tile * .07)]);
+      ctx.strokeStyle = '#ff4fc8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cursorX + 9, cursorY + 9, tile - 18, tile - 18);
+      ctx.restore();
+    }
   }
 
   function drawHint(time) {
@@ -4303,6 +4477,7 @@ export function createCrownBreakerGame({ context, bridge }) {
 
   function applyLocale() {
     document.documentElement.lang = locale;
+    document.title = t('meta.title');
     applyStaticTranslations();
     updateHUD(true);
 
@@ -4318,6 +4493,8 @@ export function createCrownBreakerGame({ context, bridge }) {
     }
     if (currentTutorialMessage) renderCurrentTutorialMessage();
     if (currentBannerMessage) $('#turn-banner').textContent = t(currentBannerMessage.key, currentBannerMessage.params);
+    if (document.activeElement === canvas && game.active) announceBoardCursor();
+    document.documentElement.dataset.i18nReady = 'true';
   }
 
   function setLanguagePreference(preference) {
@@ -4357,8 +4534,10 @@ export function createCrownBreakerGame({ context, bridge }) {
 
   function bindEvents() {
     runtime.listen(window, 'resize', resize, { passive: true });
+    runtime.listen(canvas, 'focus', announceBoardCursor);
     runtime.listen(canvas, 'pointerdown', event => {
       audio.start();
+      focusBoard();
       handleBoardPointer(event.clientX, event.clientY);
     }, undefined, true);
 
@@ -4388,29 +4567,62 @@ export function createCrownBreakerGame({ context, bridge }) {
 
     runtime.listen(window, 'keydown', event => {
       const key = event.key.toLowerCase();
-      if (key === 'escape' && game.paused) {
+      if (trapModalFocus(event)) return;
+      if (activeModal) {
+        if (key !== 'escape') return;
         event.preventDefault();
-        bridge.requestLifecycleChange('resume');
+        if (activeModal === pauseModal && game.paused) {
+          bridge.requestLifecycleChange('resume');
+        } else if (activeModal === infoModal) {
+          closeInfoModal();
+        }
         return;
       }
       if (!hostInputEnabled || runtime.paused) return;
-      if (key === ' ' || event.code === 'Space') {
+      if (event.target === canvas && game.active && game.phase === 'player') {
+        const cursorMoves = {
+          arrowup: [0, -1],
+          arrowdown: [0, 1],
+          arrowleft: [-1, 0],
+          arrowright: [1, 0]
+        };
+        if (cursorMoves[key]) {
+          event.preventDefault();
+          moveKeyboardCursor(...cursorMoves[key]);
+          return;
+        }
+        if (key === 'enter' || key === ' ' || event.code === 'Space') {
+          event.preventDefault();
+          const cursor = ensureKeyboardCursor();
+          activateBoardSquare(cursor.x, cursor.y);
+          return;
+        }
+        if (key === 'escape' && game.selectedId) {
+          event.preventDefault();
+          clearSelection(true);
+          return;
+        }
+      }
+      if (key === 'escape' && currentScreen === 'playing' && game.phase === 'player' && game.selectedId) {
+        event.preventDefault();
+        clearSelection(true);
+        return;
+      }
+      const controlTarget = event.target instanceof Element && Boolean(event.target.closest('button, input, select, textarea, a[href]'));
+      if ((key === ' ' || event.code === 'Space') && !controlTarget) {
         if (currentScreen === 'playing') {
           event.preventDefault();
           activateOverdrive();
         }
-      } else if (key === 'h') {
+      } else if (key === 'h' && !controlTarget) {
         if (game.active && game.phase === 'player' && !game.paused) {
           game.hintMove = getRecommendedMove();
           game.lastInputAt = now() - 4000;
           if (game.hintMove) audio.sfx('select');
         }
       } else if (key === 'escape') {
-        if (infoModal.classList.contains('active')) {
-          closeInfoModal();
-        } else if (promotionModal.classList.contains('active') || rewardModal.classList.contains('active') || contractModal.classList.contains('active') || runResultModal.classList.contains('active') || failModal.classList.contains('active') || trainingResultModal.classList.contains('active')) {
-          return;
-        } else if (currentScreen === 'playing') {
+        if (currentScreen === 'playing') {
+          event.preventDefault();
           pauseGame();
         }
       }
@@ -4552,6 +4764,7 @@ export function createCrownBreakerGame({ context, bridge }) {
         paused: game.paused,
         mode: game.mode,
         phase: game.phase,
+        activeModal: activeModal?.id || null,
         locale,
         languagePreference: localePreference,
         turnsLeft: game.turnsLeft,
@@ -4569,6 +4782,9 @@ export function createCrownBreakerGame({ context, bridge }) {
         enemyTurns: Number(game.enemyTurns || 0),
         enemyCycles: Number(game.enemyCycles || 0),
         battleCharges: deepClone(game.battleCharges),
+        selectedId: game.selectedId,
+        legalMoves: deepClone(game.legalMoves),
+        keyboardCursor: game.keyboardCursor ? { ...game.keyboardCursor } : null,
         failureReason: game.failureReason,
         trait: activeTraitId(),
         act: activeAct()?.themeKey || null,

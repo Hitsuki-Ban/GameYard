@@ -5,6 +5,7 @@ import { createCrownBreakerGame } from "../game.js";
 
 const GAME_ID = "crown-breaker";
 let game;
+let failureLocale = globalThis.CrownBreakerI18n.resolveLocale("system");
 
 function requireGame() {
   if (!game) throw new Error("CrownBreaker is not initialized.");
@@ -33,6 +34,10 @@ async function boot() {
       diagnostics: { snapshot: () => requireGame().diagnosticSnapshot() },
     },
     initialize: (initializingBridge) => {
+      failureLocale =
+        initializingBridge.context.locale.resolved === "zh-Hans"
+          ? "zh-CN"
+          : initializingBridge.context.locale.resolved;
       game = createCrownBreakerGame({
         context: initializingBridge.context,
         bridge: initializingBridge,
@@ -46,10 +51,12 @@ async function boot() {
 
 void boot().catch((error) => {
   console.error("CrownBreaker guest initialization failed.", error);
+  document.documentElement.lang = failureLocale;
+  document.documentElement.dataset.i18nReady = "true";
   document.body.replaceChildren(
     Object.assign(document.createElement("p"), {
       className: "boot-failure",
-      textContent: "CROWN//BREAKER could not connect to GameYard.",
+      textContent: globalThis.CrownBreakerI18n.translate(failureLocale, "boot.failure"),
     }),
   );
 });
