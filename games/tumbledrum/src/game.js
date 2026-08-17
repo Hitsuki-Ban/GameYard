@@ -6,7 +6,10 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
   const TD = (window.TD = window.TD || {});
   const CONTENT = TD.CONTENT;
   const I18N = TD.I18N;
-  if (!CONTENT || !I18N) throw new Error('TUMBLEDRUM requires content.js and i18n.js before game.js.');
+  const SemanticUI = TD.SemanticUI;
+  if (!CONTENT || !I18N || !SemanticUI) {
+    throw new Error('TUMBLEDRUM requires content.js, i18n.js, and semantic-ui.js before game.js.');
+  }
   const W = CONTENT.W;
   const H = CONTENT.H;
   const TAU = Math.PI * 2;
@@ -302,6 +305,11 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.palette = CONTENT.PALETTES[0];
       this.resetTitleDemo();
       this.installEvents();
+      this.semanticUI = new SemanticUI(
+        document.getElementById('semantic-ui'),
+        this,
+        this.resources
+      );
       this.resize();
       this.setStatus('status.title');
       this.draw();
@@ -369,6 +377,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
 
       this.resources.listen(window, 'keydown', (event) => {
         if (!this.inputEnabled) return;
+        if (this.semanticUI.owns(event.target)) return;
         const key = event.key.toLowerCase();
         this.keys[key] = true;
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' ', 'enter', 'a', 'd', 'p', 'escape', 'f'].includes(key)) {
@@ -487,6 +496,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       if (this.inputEnabled === enabled) return;
       this.inputEnabled = enabled;
       if (!enabled) this.releaseAllInput();
+      this.semanticUI.sync(true);
     }
 
     releaseAllInput() {
@@ -516,10 +526,12 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.lifecycle = 'paused';
       this.bridge.emitLifecycleState('paused');
       this.setStatus('status.paused');
+      this.semanticUI.focusInitial();
     }
 
     async hostResume() {
       if (this.disposed) return;
+      const restoreCanvasFocus = this.lifecycle === 'paused';
       this.hostPaused = false;
       this.paused = false;
       this.syncInputState();
@@ -529,6 +541,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.bridge.emitLifecycleState('active');
       this.scheduleFrame();
       this.setStatus(this.state === 'title' ? 'status.title' : 'status.resumed');
+      if (restoreCanvasFocus) this.canvas.focus({ preventScroll: true });
     }
 
     record(level, code, message) {
@@ -554,6 +567,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.cancelOrientationTimer = null;
       this.releaseAllInput();
       this.removeLocaleListener();
+      this.semanticUI.dispose();
       await this.audio.dispose();
       this.lifecycle = 'disposed';
       this.bridge.emitLifecycleState('disposed');
@@ -568,6 +582,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.cancelOrientationTimer = null;
       this.releaseAllInput();
       this.removeLocaleListener();
+      this.semanticUI.dispose();
       void this.audio.dispose();
     }
 
@@ -803,10 +818,12 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
     }
 
     returnToTitle() {
+      const requestResume = this.hostPaused && this.lifecycle === 'paused';
       this.paused = false;
       this.state = 'title';
       this.resetTitleDemo();
       this.setStatus('status.title');
+      if (requestResume) this.bridge.requestLifecycleChange('resume');
     }
 
     toggleFullscreen() {
@@ -936,6 +953,8 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
         this.currentStatus = { key: 'status.settings', params: {} };
       }
       this.renderStatus();
+      this.semanticUI.localize();
+      this.semanticUI.sync(true);
     }
 
     resetTitleDemo() {
@@ -2403,6 +2422,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       if (this.paused) this.drawPause(ctx);
       if (this.stampNotice) this.drawStampNotice(ctx);
       this.drawVignette(ctx);
+      this.semanticUI.sync();
     }
 
     drawBackdrop(ctx, palette) {
@@ -4158,6 +4178,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
     setStatus(key, params) {
       this.currentStatus = { key, params: params || {} };
       this.renderStatus();
+      this.semanticUI.sync(true);
     }
 
     renderStatus() {

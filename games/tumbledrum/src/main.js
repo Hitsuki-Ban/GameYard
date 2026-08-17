@@ -3,6 +3,7 @@ import { connectGuest } from '@gameyard/guest-bridge';
 import './i18n.js';
 import './content.js';
 import './audio.js';
+import './semantic-ui.js';
 import './game.js';
 
 const GAME_ID = 'tumbledrum';
@@ -50,10 +51,11 @@ async function boot() {
 
 void boot().catch((error) => {
   console.error('TUMBLEDRUM guest initialization failed.', error);
+  document.documentElement.dataset.i18nReady = 'true';
   document.body.replaceChildren(
     Object.assign(document.createElement('p'), {
       className: 'boot-failure',
-      textContent: 'TUMBLEDRUM could not connect to GameYard.',
+      textContent: window.TD.I18N.t('boot.failure'),
     }),
   );
 });
