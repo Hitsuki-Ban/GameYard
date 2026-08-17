@@ -1,4 +1,5 @@
 :root {
+  --game-display-width: min(100vw, 75svh);
   --font-serif-en: Georgia, "Times New Roman", Times, serif;
   --font-serif-ja: "Yu Mincho", YuMincho, "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
   --font-serif-zh-hans: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, Georgia, serif;
@@ -166,7 +167,10 @@ body {
 
 #semantic-pause-open {
   top: max(0.75rem, env(safe-area-inset-top));
-  right: max(0.75rem, env(safe-area-inset-right));
+  right: max(
+    calc((100vw - var(--game-display-width)) / 2 + 0.75rem),
+    env(safe-area-inset-right)
+  );
   left: auto;
   transform: none;
 }
@@ -194,6 +198,10 @@ noscript {
 }
 
 @media (max-aspect-ratio: 3 / 4) {
+  :root {
+    --game-display-width: 100vw;
+  }
+
   #game {
     width: 100vw;
     max-height: none;
