@@ -34,7 +34,13 @@ async function createFixture(schemaVersion) {
   );
   await writeFile(
     metadataFile,
-    `${JSON.stringify({ schemaVersion, sourceSha, buildId: "gameyard@fixture" })}\n`,
+    `${JSON.stringify({
+      schemaVersion,
+      sourceSha,
+      buildId: "gameyard@fixture",
+      protocol: 1,
+      games: [{ id: "demo", version: "1.0.0" }],
+    })}\n`,
   );
   await writeFile(outputFile, "");
   return { deploymentFile, metadataFile, outputFile, evidenceFile };
@@ -56,8 +62,8 @@ function parserArguments(fixture) {
   ];
 }
 
-void test("binds Cloudflare deployment evidence to release metadata schema 4", async () => {
-  const fixture = await createFixture(4);
+void test("binds Cloudflare deployment evidence to the compact release metadata", async () => {
+  const fixture = await createFixture(1);
   const result = await execFileAsync(process.execPath, parserArguments(fixture));
   assert.match(result.stdout, /Cloudflare deployment verified/u);
   assert.deepEqual(JSON.parse(await readFile(fixture.evidenceFile, "utf8")), {
@@ -76,7 +82,7 @@ void test("binds Cloudflare deployment evidence to release metadata schema 4", a
 });
 
 void test("rejects obsolete release metadata instead of accepting a compatibility schema", async () => {
-  const fixture = await createFixture(3);
+  const fixture = await createFixture(4);
   await assert.rejects(
     execFileAsync(process.execPath, parserArguments(fixture)),
     /Release metadata cannot provide deployment identity/u,

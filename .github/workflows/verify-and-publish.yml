@@ -17,7 +17,6 @@ env:
   NODE_VERSION: 24.18.1
   RELEASE_ARTIFACT: gameyard-site-${{ github.sha }}
   RELEASE_METADATA: .gameyard/release-metadata.json
-  ARTIFACT_REPORT: .gameyard/artifact-report.json
 
 jobs:
   registry:
@@ -124,7 +123,7 @@ jobs:
       - run: vp run @gameyard/neon-overdrive#test
 
   artifact:
-    name: Build the immutable artifact
+    name: Build the site artifact
     needs: [quality, game-baseline, kamifuda-source-baseline, neon-source-baseline]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -140,45 +139,18 @@ jobs:
           run-install: false
       - run: vp install --frozen-lockfile
       - run: vp run build
-      - name: Download the prior successful main artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          previous_run="$(gh run list --workflow verify-and-publish.yml --branch main --status success --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"')"
-          read -r previous_run_id previous_source_sha <<< "$previous_run"
-          test "$previous_run_id" != "null"
-          test "$previous_source_sha" != "null"
-          mkdir -p .gameyard/previous
-          gh run download "$previous_run_id" --name "gameyard-site-$previous_source_sha" --dir .gameyard/previous
-      - name: Report static asset budget and source-artifact delta
-        run: >-
-          vp exec node tooling/artifact-report.mjs write
-          --directory dist
-          --previous-directory .gameyard/previous/dist
-          --policy deployment/static-asset-policy.json
-          --output "${{ env.ARTIFACT_REPORT }}"
-          --github-summary "$GITHUB_STEP_SUMMARY"
-      - name: Record release identity
+      - name: Record readable release identity
         run: >-
           vp exec node tooling/release-metadata.mjs write
           --source-sha "${{ github.sha }}"
           --file "${{ env.RELEASE_METADATA }}"
-      - name: Verify release identity
-        run: >-
-          vp exec node tooling/release-metadata.mjs verify
-          --source-sha "${{ github.sha }}"
-          --file "${{ env.RELEASE_METADATA }}"
-      - name: Upload the verified artifact once
+      - name: Upload the site artifact once
         id: upload
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: |
             dist
-            deployment
-            provenance
-            wrangler.jsonc
-            ${{ env.ARTIFACT_REPORT }}
             ${{ env.RELEASE_METADATA }}
           include-hidden-files: true
           if-no-files-found: error
@@ -188,7 +160,7 @@ jobs:
           echo "### GameYard release artifact" >> "$GITHUB_STEP_SUMMARY"
           echo "- Source: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Artifact ID: \`${{ steps.upload.outputs.artifact-id }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- SHA-256: \`${{ steps.upload.outputs.artifact-digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Actions digest: \`${{ steps.upload.outputs.artifact-digest }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   host-smoke:
     name: Root and repository-prefix launch smoke
@@ -207,10 +179,6 @@ jobs:
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
-      - name: Verify the downloaded artifact
-        run: |
-          vp run artifact:verify
-          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
       - run: vp exec playwright install chromium
       - name: Root launch and PWA lifecycle
         run: >-
@@ -240,10 +208,6 @@ jobs:
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
-      - name: Verify the downloaded artifact
-        run: |
-          vp run artifact:verify
-          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
       - run: vp exec wrangler deploy --env preview --dry-run
 
   public-release:
@@ -263,10 +227,6 @@ jobs:
         with:
           name: ${{ env.RELEASE_ARTIFACT }}
           path: .
-      - name: Verify the downloaded artifact
-        run: |
-          vp run artifact:verify
-          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
       - run: vp exec playwright install chromium
       - name: Run the complete public release journey without rebuilding
         run: >-
@@ -305,15 +265,13 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
       - name: Verify the downloaded artifact
-        run: |
-          vp run artifact:verify
-          vp exec node tooling/release-metadata.mjs verify --source-sha "${{ github.sha }}" --file "${{ env.RELEASE_METADATA }}"
+        run: vp run artifact:verify
       - name: Install the live-smoke browser
         run: vp exec playwright install chromium
       - name: Deploy without rebuilding
         env:
           WRANGLER_OUTPUT_FILE_PATH: .gameyard/wrangler-production.ndjson
-        run: vp exec wrangler deploy --env production --strict --message "GameYard ${{ github.sha }} artifact sha256:${{ needs.artifact.outputs.artifact-digest }}"
+        run: vp exec wrangler deploy --env production --strict --message "GameYard ${{ github.sha }}"
       - name: Verify machine-readable deployment evidence
         id: deployment-evidence
         run: >-
@@ -327,7 +285,7 @@ jobs:
         run: vp exec node deployment/live-smoke.mjs --evidence .gameyard/cloudflare-production.json
       - name: Publish production evidence
         run: |
-          game_count="$(jq '.manifests | length' "${{ env.RELEASE_METADATA }}")"
+          game_count="$(jq '.games | length' "${{ env.RELEASE_METADATA }}")"
           launch_count="$((game_count * 2))"
           echo "### Cloudflare production" >> "$GITHUB_STEP_SUMMARY"
           echo "- Build: \`${{ steps.deployment-evidence.outputs.build-id }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -34,7 +34,7 @@ vp run "<registered-package>#test"
 
 ## 完整性校验边界
 
-密码学摘要只用于跨越真实信任或复现边界：项目所有者提供的原始 archive 与 inventory、Git source SHA、不可变发布 artifact，以及部署消费者对该 artifact 的复验。构建 ID 继续绑定显式 production inputs，缺失或不一致时直接失败。
+密码学摘要只用于跨越真实信任边界：项目所有者提供的原始 archive，以及 GitHub Actions 对上传/下载 artifact 的完整性保证。Git source SHA 由 Git/GitHub 自身记录；`gameyard@<build>` 是 Service Worker 和 Host/Guest 协议使用的缓存版本，不充当第二套审计账本。
 
 已经由 Git 版本化的内部测试记录、性能 trace、截图和同仓辅助文件不再逐份叠加 SHA、内容寻址文件名或写回读比对。它们使用稳定文件名，按 schema、预算或用户可见语义验证内容，并由正常 review 与 Git history 提供变更审计。新增摘要前必须先指出它跨越的信任边界；不能仅以“可能更安全”为理由复制 Git 已有职责。
 
@@ -58,11 +58,11 @@ vp run "<registered-package>#test"
 
 ## CI 与发布
 
-`.github/workflows/verify-and-publish.yml` 是唯一自动构建与生产部署路径。PR 和 `main` 先从 strict registry 生成 workflow matrix，共享 check/tooling/package tests 只跑一次，每个登记 workspace 的深层行为基线在 Ubuntu 独立运行；只有明确需要跨平台视觉或 owner-source 证明的游戏再补 Windows 基线，不重复同一游戏的 Ubuntu job。随后单独的 artifact job 执行一次 `vp run build`。该 job 下载上一份成功的 `main` source artifact，生成总大小、每游戏大小、文件数、最大文件和增量报告，并按 `deployment/static-asset-policy.json` 执行 Cloudflare 单文件/文件数硬限制与项目告警线。最终把 `dist`、`deployment/`、`provenance/`、`wrangler.jsonc`、`.gameyard/artifact-report.json` 与 `.gameyard/release-metadata.json` 作为一个 artifact 上传一次。metadata 精确记录 Git source SHA、`gameyard@<build>`、protocol、registry 顺序中的 manifest 与逐项 provenance record hash、预算策略/报告 hash 及部署 config/Worker hash。消费者使用 artifact 内同一份输入复验，不能依赖 checkout 的平台换行表示。
+`.github/workflows/verify-and-publish.yml` 是唯一自动构建与生产部署路径。PR 和 `main` 从 strict registry 生成 game matrix，共享静态/contract 门只跑一次，各游戏保留一条自己的深层行为基线；只有确有平台差异的 owner-source/Windows 视觉门才单列。随后 artifact job 执行一次 `vp run build`，写入简洁的 source/build/protocol/game version 摘要，并只上传 `dist` 与该摘要。Actions artifact digest 负责跨 job 下载完整性，不再维护内部文件哈希账本、下载上一版本生成 delta，或在每个消费者中重复重算 metadata。
 
-Host smoke 和 Cloudflare dry-run 都下载该 artifact，再执行 artifact-only published verifier 与 metadata verifier；root Guest/PWA 和 `/GameYard/` PWA 使用现有宽 Playwright 流程，不另建 helper 微测试。固定 Windows artifact consumer 直接运行现有视觉、三语言、game × locale 最小完整 switch 矩阵和单条 public accessibility journey，禁止调用会先 build 的 wrapper。矩阵轮数由登记游戏数乘公共 locale 数得到；每个组合恰好覆盖一次，并保留周期性 reload 与逐轮资源归零，不追加没有新语义覆盖的耐久重复。构建与本地 preview 另执行 source-bound verifier，要求 stage、源码与 build ID 完全一致；下载和部署路径不重建、不依赖临时 stage。`vp run deploy:dry-run` 只接受已复验的 deployment entry 与 `dist`。Cloudflare production job 仅在 `main`、所有前置 job 通过后进入 `cloudflare-production` environment，并通过 `vp exec wrangler deploy --env production --strict` 上传下载的同一份 artifact。
+Host smoke、Cloudflare dry-run 和固定 Windows public journey 下载同一 artifact 后分别验证自己负责的真实风险：root/prefix 与 PWA、Wrangler 可部署性、视觉/三语言/真实输入/accessibility。生产 job 在部署前再执行一次结构 verifier，然后通过 `vp exec wrangler deploy --env production --strict` 上传同一份 `dist`。Cloudflare 的实际 dry-run 是部署限额权威；当前只有几十个静态文件，不另维护一套 20,000 文件阈值 schema。构建与本地 preview 继续使用 source-bound verifier，拒绝与当前源码 build ID 不同的陈旧 `dist`。
 
-Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `/GameYard` mount 运行，将其 path 映射到同一 binding 的 root 文件。生产环境只声明 `gameyard.hitsuki.space` Custom Domain 并关闭 `workers.dev`；路由脚本、Wrangler 配置与 release metadata 都进入 build/release identity，缺少其中任一文件会在部署前停止。`_headers` 对 Vite hashed assets 使用一年 immutable，对 HTML、catalog、manifest、build info、release metadata 与 Service Worker 强制 revalidate。当前保守部署上限按官方 Workers Free minimum 固定为 20,000 文件，70% 即 14,000 时告警；单文件 20 MiB 告警、超过 25 MiB 失败。生产 deploy 的机器可读输出必须提供恰好一个 `https://gameyard.hitsuki.space` target，随后从已发布 catalog 遍历每个游戏，并在 root 和 `/GameYard/` 校验 `build-info.json`、启动以及 console/page/request/HTTP 信号，summary 的启动数也从目录长度计算。
+Cloudflare Static Assets binding 默认直接服务 root；Worker 只对精确 `/GameYard` mount 运行，将其 path 映射到同一 binding 的 root 文件。生产环境只声明 `gameyard.hitsuki.space` Custom Domain 并关闭 `workers.dev`。`_headers` 对 Vite hashed assets 使用一年 immutable，对 HTML、catalog、manifest、build info 与 Service Worker 强制 revalidate。生产 deploy 的机器可读输出必须提供恰好一个 `https://gameyard.hitsuki.space` target，随后从已发布 catalog 遍历每个游戏，并在 root 和 `/GameYard/` 校验 `build-info.json`、启动以及 console/page/request/HTTP 信号，summary 的启动数也从目录长度计算。
 
 GitHub environment 必须配置：
 
@@ -71,7 +71,7 @@ GitHub environment 必须配置：
 
 缺失凭据时 production job 显式失败，不跳过、不改走本机构建或另一条 publish path。`preview`/`production` Wrangler environment 分别命名为 `gameyard-preview` 与 `gameyard`；Static Assets 保持普通 HTML 路由和真实 404，不启用 SPA fallback。
 
-生产构建的 `gameyard@<16 lowercase hex>` ID 由显式声明的 Hub 源码、contract/host/guest bridge、assembler、`provenance/`、workspace/config 与 lockfile 内容确定；每个游戏还必须通过 `site.assembly.json` 的 `productionInputs` 声明自己的生产源码。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
+生产构建的 `gameyard@<16 lowercase hex>` ID 只由会改变浏览器 artifact 的 Hub 源码、contract/host/guest bridge、assembler、workspace/config、lockfile 和各游戏 `productionInputs` 确定。CI workflow、部署脚本、provenance 文档或 verifier 文案变化不会无意义地刷新 Service Worker 缓存版本。输入缺失时构建直接失败，不读取 Git、环境变量、stage 或陈旧 `dist` 作为替代。`vp run tooling:test` 使用 Node 内建测试固定 build ID 的确定性、游戏源码覆盖、内容变化和缺失输入行为，以及 repository-prefix URL 检查规则。
 
 `vp run build` 始终按 registry 顺序构建每个 Guest stage，再执行 Hub stage → site assembler → production verifier。每个游戏在 `game.manifest.source.json` 声明执行身份，在 `game.presentation.source.json` 声明三语标题展示、响应式 cover、开放 accent 和 stage strategy；`@gameyard/manifest-tools` 的共享 Vite 插件从 strict manifest source 生成 dev/production `game.manifest.json`。Node-only production registry loader 在任何 Hub dev/build 前联结 registry、package、manifest、presentation 和 cover identity；浏览器只接收其 Vite 虚拟模块生成的安全字面量与 hashed cover URL。Manifest provenance 使用显式判别类型：repository 来源必须与 `provenance/upstreams.json` 的固定 repository/revision/license 精确一致，项目专用 `LicenseRef-*` 还必须通过权利记录、授权文本哈希和公开分发门；owner-provided source snapshot 则必须绑定严格 snapshot record、archive 摘要、完整 inventory 和授权文本，repository/revision/license 保持显式 `null`，不得虚构。Owner 原始 archive 明确标记为 `owner-workspace-only`，不会成为版本库或 CI 输入；干净检出环境必须通过 manifest、record、inventory 与逐个导入文件摘要的闭环校验。Assembler 在读取 stage 前验证对应来源路径及 production admission，并拒绝任何 `productionInputs` 覆盖记录中排除的 archive、standalone 或 packaging helper。随后 assembler 按 registry 逐项读取 stage manifest，拒绝缺失/未声明文件、ID/build 不一致、大小写或文件/目录碰撞、Hub 越权写入 `games/`、game Service Worker 和根绝对 URL，并事务替换最终 `dist`；验证失败时保留已有 artifact。测试 Host、截图、standalone 文件、archives 和生成工具不因目录发现进入 `dist`。
 
@@ -82,8 +82,6 @@ GitHub environment 必须配置：
 生产 Hub 注册唯一的同 scope `service-worker.js`。shell precache 绑定当前 `gameyard@<build>`；游戏资源不批量预取，只有用户在 Offline drawer 对当前选中游戏执行 Save 后，才将该 manifest 的精确文件集和 catalog 放入当前 scope/build 的 cache。Save/Remove 只接受编译进当前 artifact catalog 的 ID；未知或旧 ID 返回显式错误。状态查询会把旧 cache 列为不可用条目，由用户通过 Clear offline games 显式清理；该操作不读取或删除 `gameyard.*` 存档。未保存游戏在离线状态返回显式 503 页面，不回退到陈旧或其他版本资源。
 
 发布更新不会由 waiting worker 自动接管。页面先以网络 `build-info.json` 校验 HTML/JS 与原子 artifact；版本混合时停在 `ARTIFACT / CONTRACT / STOP`，用户应用当前 release 后才 `skipWaiting` 并重载。根路径和 `/GameYard/` 前缀分别由一条宽 Playwright 流程验证；不要为单个 message/cache helper 追加重复浏览器测试。
-
-正式 GitHub Release 由独立的 `Publish verified release` workflow 显式接收已经成功完成的 `main` push `run_id` 与非空 `release_tag`；它不会运行 build。该 job 先验证指定 run 的 workflow、branch、event、conclusion 与唯一未过期 artifact，直接下载 Actions 原始 ZIP，断言 ZIP SHA-256 等于 artifact API digest，再复验 metadata 和线上双路径，最后把 tag 指向该 run 的完整 source SHA 并上传原始 ZIP；既有 tag、Release、asset 或 digest/SHA 不一致都直接失败，不覆盖旧发布物。
 
 ```powershell
 vp run build

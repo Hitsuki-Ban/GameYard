@@ -1,30 +1,30 @@
 # Handoff
 
-## Shipped system
+## Current system
 
-GameYard currently presents PulseLinkOverdrive, TUMBLEDRUM, and CrownBreaker through one React Hub and one active same-origin iframe. The strict ordered `site.assembly.json` v2 registry is the only production admission list and supplies package identity, manifest/presentation sources, development ports, stages, and production-input allowlists. The versioned `MessageChannel` contract is the only Hub/Guest runtime path. Public locale, audio/motion settings, focus/pause/fullscreen policy, diagnostics, PWA lifecycle, catalog, deployment, and release identity belong to the Hub; game rules, rendering, input semantics, audio graphs, saves, content, and game-specific accessibility remain local to each game.
+GameYard is a five-game personal web exhibit: Pulse Link Overdrive, TUMBLEDRUM, CrownBreaker, Kamifuda Runner, and Neon Overdrive. `site.assembly.json` is the only ordered production registry. The Hub runs one active same-origin iframe and communicates with every game only through the versioned `MessageChannel` contract.
 
-Production is served by one Cloudflare Worker from the same immutable artifact:
+Production is served from one Cloudflare Worker at both:
 
-- root: `https://gameyard.hitsuki.space/`
-- repository mount: `https://gameyard.hitsuki.space/GameYard/`
+- `https://gameyard.hitsuki.space/`
+- `https://gameyard.hitsuki.space/GameYard/`
 
-Root assets use Cloudflare Static Assets directly. Only the exact `/GameYard` mount enters `deployment/cloudflare-worker.mjs`, which strips that prefix and fetches the same `ASSETS` binding. `gameyard.hitsuki.space` is the sole production origin; the production Worker does not publish a `workers.dev` endpoint. No second build, fallback route, remote game embed, compatibility alias, or per-game Service Worker exists.
+The Hub owns catalog navigation, public locale/settings, focus/pause/fullscreen policy, diagnostics, PWA behavior, and deployment. Each game owns rules, rendering, input meaning, audio, saves, content, and game-specific accessibility. There is one Hub Service Worker, no standalone production path, no remote embeds, and no compatibility runtime.
 
-## Release authority
+## Release path
 
-- constraints and runtime boundary: `AGENTS.md`
-- architecture and completed migration: `docs/PROJECT_PLAN.md` and `docs/adr/`
-- development, diagnostics, PWA, validation, and deployment: `docs/DEVELOPMENT.md`
-- upstream rights and fixed revisions: `docs/UPSTREAM_AUDIT.md` and `provenance/`
-- automated verification/deployment: `.github/workflows/verify-and-publish.yml`
-- no-rebuild tag/Release publication: `.github/workflows/publish-release.yml`
-- source/build/protocol/manifest/provenance/deployment identity: `tooling/release-metadata.mjs`
+`.github/workflows/verify-and-publish.yml` is the only automatic release path. It builds `dist` once, uploads it once, and all root/prefix/public/Cloudflare jobs download that same Actions artifact without rebuilding. GitHub Actions owns transport integrity. `.gameyard/release-metadata.json` is intentionally a small readable record of source SHA, build ID, protocol, and game versions; it is not a per-file hash ledger.
 
-`Verify and publish` builds exactly one artifact for each `main` source SHA. Every smoke, visual/localization/accessibility/stress gate, Cloudflare dry-run, and production deploy downloads and re-verifies it. `Publish verified release` accepts the successful `main` run ID and exact package tag, downloads the original Actions ZIP, checks its SHA-256 against the artifact API, re-verifies metadata and both live mounts, and then creates the tag and GitHub Release without rebuilding or clobbering.
+Preserve these high-value gates:
 
-## Continuation rules
+- registry and artifact structure validation;
+- each game's owned behavior baseline;
+- representative desktop/portrait/landscape browser journeys;
+- root and `/GameYard/` PWA behavior;
+- Cloudflare dry-run and post-deploy live smoke.
 
-Start from a clean `main` equal to `origin/main`. Use `vp` for all project operations. Preserve the single-frame/strict-contract boundary, explicit offline saves, one Hub Service Worker, `gameyard.*` storage namespace, relative asset URLs, and fail-fast configuration. Do not revive standalone products, legacy storage imports, production Lab mutation, cross-version negotiation, or alternate deployment paths.
+Do not recreate prior-artifact delta reports, internal SHA inventories, repeated metadata verification in every job, Cartesian screenshot matrices, or a second GitHub Release packaging path.
 
-For a release investigation, identify the GitHub Release tag, source SHA, Verify/deploy run ID, Actions artifact ID/digest, `gameyard@<build>` ID, Cloudflare Worker version, and live root/prefix result before changing code. Release-specific evidence belongs in the GitHub Release and the closing Issue #16/roadmap comments rather than in this evergreen handoff.
+## Continue
+
+Start from clean `main == origin/main` and use only `vp` for project operations. The active roadmap is tracked in GitHub issues #38, #46, and #53. Project architecture and validation details live in `AGENTS.md`, `docs/PROJECT_PLAN.md`, `docs/DEVELOPMENT.md`, `docs/adr/`, and `provenance/`.
