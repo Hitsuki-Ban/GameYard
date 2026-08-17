@@ -24,9 +24,9 @@ test("preserves the pinned deterministic logic baseline", async ({ page }) => {
   await page.addScriptTag({ path: runner });
 
   const result = await page.evaluate(() => window.runPulseLogicBaseline());
-  expect(result.assertions).toBe(36);
+  expect(result.assertions).toBe(40);
   expect(result.locks).toBe(293);
-  expect(result.passed).toHaveLength(36);
+  expect(result.passed).toHaveLength(40);
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
 });

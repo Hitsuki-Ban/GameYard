@@ -43,6 +43,7 @@
       this.globalShake = 0;
       this.flash = 0;
       this.backgroundBursts = [];
+      this.currentAnnouncement = null;
       this.idleBlobs = Array.from({ length: 18 }, (_, i) => ({
         x: (i * 0.173 + 0.07) % 1,
         y: (i * 0.327 + 0.11) % 1,
@@ -171,7 +172,7 @@
         this.audio?.attack(e.lines);
         this.globalShake = Math.max(this.globalShake, 0.12 + e.lines * 0.035);
         this.announce(
-          this.i18n.t(e.from.isHuman ? "canvas.overdrive" : "canvas.incoming"),
+          e.from.isHuman ? "canvas.overdrive" : "canvas.incoming",
           e.from.isHuman ? "#ffc94a" : "#ff486f",
         );
         const p = this.energyPosition(e.from);
@@ -202,7 +203,7 @@
         this.audio?.defense(e.units);
         const l = this.layoutFor(e.player);
         if (l) this.shields.push({ player: e.player, life: 0.62, max: 0.62, power: e.units });
-        this.announce(this.i18n.t(e.player.isHuman ? "canvas.guard" : "canvas.blocked"), "#8ffbff");
+        this.announce(e.player.isHuman ? "canvas.guard" : "canvas.blocked", "#8ffbff");
       });
       on("purge", (e) => {
         const l = this.layoutFor(e.player);
@@ -217,11 +218,11 @@
       });
       on("invalid", () => this.audio?.error());
       on("countdown", (e) => this.audio?.countdown(e.value));
-      on("matchStart", () => this.announce(this.i18n.t("canvas.matchStart"), "#ffffff"));
+      on("matchStart", () => this.announce("canvas.matchStart", "#ffffff"));
       on("tutorialStage", (e) => {
-        if (e.stage === 4) this.announce("100", "#fff4ae");
+        if (e.stage === 4) this.announce("canvas.energyReady", "#fff4ae");
       });
-      on("tutorialComplete", () => this.announce(this.i18n.t("canvas.tutorialSync"), "#a8ff45"));
+      on("tutorialComplete", () => this.announce("canvas.tutorialSync", "#a8ff45"));
       on("matchEnd", (e) => {
         if (e.winner.isHuman) this.audio?.win();
         else this.audio?.lose();
@@ -1409,11 +1410,24 @@
         size: clamp(22 * scale, 16, 54),
       });
     }
-    announce(text, color = "#fff") {
+    applyLocale() {
+      this.floats.length = 0;
+      if (!this.currentAnnouncement) return;
+      this.renderAnnouncement(this.currentAnnouncement, false);
+    }
+
+    announce(key, color = "#fff", params = {}) {
+      const announcement = { key, color, params: { ...params } };
+      this.currentAnnouncement = announcement;
+      this.renderAnnouncement(announcement, true);
+    }
+
+    renderAnnouncement(announcement, restartAnimation) {
       const el = this.dom.announcer;
       if (!el) return;
-      el.textContent = text;
-      el.style.color = color;
+      el.textContent = this.i18n.t(announcement.key, announcement.params);
+      el.style.color = announcement.color;
+      if (!restartAnimation) return;
       el.classList.remove("show");
       void el.offsetWidth;
       el.classList.add("show");

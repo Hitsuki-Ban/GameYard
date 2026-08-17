@@ -47,6 +47,7 @@ class App {
       this.bus,
       this.resources,
     );
+    this.input.onPresentationChange = () => this.syncTouchPresentation();
     this.renderer = new PLO.Renderer(
       this.dom.canvas,
       this.bus,
@@ -71,6 +72,7 @@ class App {
     this.tutorialArmed = false;
     this.cancelTutorialTimer = null;
     this.cancelFrame = null;
+    this.ariaAnnouncement = null;
     this.unsubscribers = [];
     this.unsubscribers.push(this.save.subscribeStatus(() => this.updateSaveNotice()));
     this.unsubscribers.push(this.i18n.subscribe(() => this.applyLocale()));
@@ -235,24 +237,23 @@ class App {
     });
     on("tutorialComplete", () => {
       this.save.patch({ tutorialComplete: true });
-      this.announceAria(this.i18n.t("aria.tutorialComplete"));
+      this.announceAria("aria.tutorialComplete");
     });
     on("attackLaunch", (event) =>
-      this.announceAria(
-        this.i18n.t(event.from.isHuman ? "aria.attack" : "aria.opponentAttack", {
-          lines: event.lines,
-        }),
-      ),
+      this.announceAria(event.from.isHuman ? "aria.attack" : "aria.opponentAttack", {
+        lines: event.lines,
+      }),
     );
     on("defense", (event) => {
       if (event.player.isHuman)
-        this.announceAria(
-          this.i18n.t("aria.defense", { canceled: event.canceled, purged: event.purged }),
-        );
+        this.announceAria("aria.defense", {
+          canceled: event.canceled,
+          purged: event.purged,
+        });
     });
     on("clearResolved", (event) => {
       if (event.player.isHuman && (event.chain >= 2 || event.clear.pulse))
-        this.announceAria(this.i18n.t("aria.chainEnergy", { chain: event.chain }));
+        this.announceAria("aria.chainEnergy", { chain: event.chain });
     });
   }
 
@@ -321,7 +322,7 @@ class App {
     await this.audio.setPaused(true);
     this.lifecycle = "paused";
     this.bridge.emitLifecycleState("paused");
-    this.announceAria(this.i18n.t("aria.paused"));
+    this.announceAria("aria.paused");
   }
 
   async hostResume() {
@@ -354,11 +355,13 @@ class App {
 
   applyLocale() {
     this.i18n.apply();
+    this.renderer.applyLocale();
     this.updateTutorialButton();
     this.updateTitleUI();
     if (this.screen === "result") this.updateResultUI();
     this.updateGameAccessibility(performance.now(), true);
     this.updateSaveNotice();
+    this.refreshAriaAnnouncement();
   }
 
   resetTutorial() {
@@ -428,7 +431,7 @@ class App {
     this.input.clearAll();
     this.updateGameAccessibility(performance.now(), true);
     this.focusNextFrame(this.dom.canvas);
-    this.announceAria(this.i18n.t("aria.matchStart"));
+    this.announceAria("aria.matchStart");
     this.lifecycle = "active";
     this.bridge.emitLifecycleState("active");
   }
@@ -452,7 +455,7 @@ class App {
     this.dom.hud.hidden = !["game", "pause", "result"].includes(screen);
     this.dom.pauseScreen.hidden = screen !== "pause";
     this.dom.resultScreen.hidden = screen !== "result";
-    this.dom.touchControls.hidden = screen !== "game";
+    this.syncTouchPresentation();
     this.dom.canvas.tabIndex = screen === "game" ? 0 : -1;
     this.syncInputState();
     if (screen === "title") this.dom.timer.hidden = true;
@@ -460,6 +463,12 @@ class App {
     this.syncDialogState(dialog);
     if (screen === "pause") this.focusDialog(dialog, this.dom.resume);
     else if (screen === "result") this.focusDialog(dialog, this.dom.retry);
+  }
+
+  syncTouchPresentation() {
+    const showTouchControls = this.screen === "game" && this.input.presentationMode === "touch";
+    this.dom.touchControls.hidden = !showTouchControls;
+    this.dom.app.dataset.inputPresentation = this.input.presentationMode;
   }
 
   openModal(name) {
@@ -609,7 +618,7 @@ class App {
     this.updateResultUI();
     this.setScreen("result");
     this.audio.setMusicActive(false);
-    this.announceAria(this.i18n.t(won || lab ? "aria.matchEnd" : "aria.matchLoss"));
+    this.announceAria(won || lab ? "aria.matchEnd" : "aria.matchLoss");
   }
 
   updateHUD(now) {
@@ -702,11 +711,22 @@ class App {
     this.scheduleFrame();
   }
 
-  announceAria(text) {
+  announceAria(key, params = {}) {
+    const announcement = { key, params: { ...params } };
+    this.ariaAnnouncement = announcement;
     this.dom.ariaLive.textContent = "";
     this.resources.animationFrame(() => {
-      this.dom.ariaLive.textContent = text;
+      if (this.disposed || this.ariaAnnouncement !== announcement) return;
+      this.refreshAriaAnnouncement();
     });
+  }
+
+  refreshAriaAnnouncement() {
+    if (!this.ariaAnnouncement) return;
+    this.dom.ariaLive.textContent = this.i18n.t(
+      this.ariaAnnouncement.key,
+      this.ariaAnnouncement.params,
+    );
   }
 
   record(level, code, message) {
@@ -780,11 +800,14 @@ async function boot() {
 }
 
 void boot().catch((error) => {
+  const bootI18n = new PLO.I18n({ locale: PLO.I18n.resolveBrowserLocale(navigator.languages) });
+  bootI18n.applyHead();
   document.body.replaceChildren(
     Object.assign(document.createElement("p"), {
       className: "boot-failure",
-      textContent: "PULSE LINK could not connect to GameYard.",
+      textContent: bootI18n.t("boot.failure"),
     }),
   );
+  bootI18n.destroy();
   console.error(error);
 });
