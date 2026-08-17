@@ -531,6 +531,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
 
     async hostResume() {
       if (this.disposed) return;
+      const restoreCanvasFocus = this.lifecycle === 'paused';
       this.hostPaused = false;
       this.paused = false;
       this.syncInputState();
@@ -540,7 +541,7 @@ import { createGuestDiagnosticLog } from '@gameyard/guest-bridge';
       this.bridge.emitLifecycleState('active');
       this.scheduleFrame();
       this.setStatus(this.state === 'title' ? 'status.title' : 'status.resumed');
-      this.canvas.focus({ preventScroll: true });
+      if (restoreCanvasFocus) this.canvas.focus({ preventScroll: true });
     }
 
     record(level, code, message) {
