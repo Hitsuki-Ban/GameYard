@@ -15,8 +15,8 @@
     "dev": "vp dev",
     "build": "vp build && vp exec node tools/verify-production.mjs",
     "build:testkit": "vp build --config vite.testkit.config.ts",
-    "check": "vp run build:testkit && vp exec node --check i18n.js && vp exec node --check game.js && vp exec node --check previews/assets.js && vp exec node --check src/main.js && vp exec node --check src/managed-runtime.js && vp exec node --check tools/svg-contract.mjs && vp exec node --check tools/build-art-assets.mjs && vp exec node --check tools/check-assets.mjs && vp exec node --check tools/check-i18n.mjs && vp exec node --check tools/check-static.mjs && vp exec node --check tools/check-traits.mjs && vp exec node --check tools/check-enemies.mjs && vp exec node --check tools/check-stages.mjs && vp exec node --check tools/render-asset-sheet.mjs && vp exec node --check tools/render-stages.mjs && vp exec node --check tools/sim-run.mjs && vp exec node --check tools/verify-production.mjs && vp exec node --check tools/verify-simulation-fixture.mjs && vp exec node tools/check-assets.mjs && vp exec node tools/check-i18n.mjs && vp exec node tools/check-static.mjs && vp exec node tools/check-stages.mjs && vp exec node tools/check-enemies.mjs && vp exec node tools/check-traits.mjs",
-    "baseline": "vp run check && vp run build && vp exec node tools/verify-simulation-fixture.mjs",
+    "check": "vp run build:testkit && vp exec node --check i18n.js && vp exec node --check game.js && vp exec node --check previews/assets.js && vp exec node --check src/main.js && vp exec node --check src/managed-runtime.js && vp exec node --check tools/svg-contract.mjs && vp exec node --check tools/build-art-assets.mjs && vp exec node --check tools/check-assets.mjs && vp exec node --check tools/check-i18n.mjs && vp exec node --check tools/check-static.mjs && vp exec node --check tools/check-traits.mjs && vp exec node --check tools/check-enemies.mjs && vp exec node --check tools/check-stages.mjs && vp exec node --check tools/render-asset-sheet.mjs && vp exec node --check tools/render-stages.mjs && vp exec node --check tools/sim-run.mjs && vp exec node --check tools/verify-keyboard-a11y.mjs && vp exec node --check tools/verify-production.mjs && vp exec node --check tools/verify-simulation-fixture.mjs && vp exec node tools/check-assets.mjs && vp exec node tools/check-i18n.mjs && vp exec node tools/check-static.mjs && vp exec node tools/check-stages.mjs && vp exec node tools/check-enemies.mjs && vp exec node tools/check-traits.mjs",
+    "baseline": "vp run check && vp run build && vp exec node tools/verify-simulation-fixture.mjs && vp exec node tools/verify-keyboard-a11y.mjs",
     "test": "vp run baseline",
     "build:assets": "vp exec node tools/build-art-assets.mjs",
     "check:enemies": "vp exec node tools/check-enemies.mjs",
@@ -25,7 +25,8 @@
     "check:stages": "vp exec node tools/check-stages.mjs",
     "render:assets": "vp exec node tools/render-asset-sheet.mjs",
     "render:stages": "vp exec node tools/render-stages.mjs",
-    "sim": "vp run build:testkit && vp exec node tools/sim-run.mjs"
+    "sim": "vp run build:testkit && vp exec node tools/sim-run.mjs",
+    "test:a11y": "vp run build:testkit && vp exec node tools/verify-keyboard-a11y.mjs"
   },
   "dependencies": {
     "@gameyard/game-contract": "workspace:*",

@@ -1,18 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="und" data-i18n-ready="false">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#080612" />
   <meta name="description" content="CROWN//BREAKER: a short board roguelite built around promotion." data-i18n="meta.description" />
-  <title data-i18n="meta.title">CROWN//BREAKER — Promotion Run</title>
+  <title data-i18n="meta.title">CROWN//BREAKER</title>
   <link rel="icon" href="./icon-192.png" type="image/png" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <noscript data-i18n="noscript">JavaScript is required.</noscript>
   <main id="app" aria-label="CROWN//BREAKER" data-i18n-aria="aria.app">
-    <canvas id="game-canvas" aria-label="Board" data-i18n-aria="aria.board"></canvas>
+    <canvas id="game-canvas" role="application" tabindex="0" aria-label="Board" data-i18n-aria="aria.board" aria-describedby="board-announcer" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter Space Escape"></canvas>
+    <div id="board-announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="act-backdrop" aria-hidden="true"></div>
     <div id="act-particles" aria-hidden="true"></div>
     <div id="bg-grid" aria-hidden="true"></div>
@@ -95,9 +96,9 @@
       </div>
     </section>
 
-    <section id="modal-layer" class="modal-layer" aria-live="polite">
-      <div id="pause-modal" class="modal compact-modal">
-        <h2 data-i18n="pause.title">Paused</h2>
+    <section id="modal-layer" class="modal-layer" aria-hidden="true">
+      <div id="pause-modal" class="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="pause-title" tabindex="-1">
+        <h2 id="pause-title" data-i18n="pause.title">Paused</h2>
         <div class="modal-actions">
           <button id="btn-resume" class="btn btn-primary" type="button" data-i18n="action.resume">Resume</button>
           <button id="btn-restart" class="btn btn-secondary" type="button" data-i18n="action.restartBattle">Restart Battle</button>
@@ -106,24 +107,24 @@
         </div>
       </div>
 
-      <div id="promotion-modal" class="modal choice-modal promotion-modal">
-        <div class="choice-head"><span class="choice-glyph">♙</span><i></i><strong data-i18n="promotion.title">Promote</strong></div>
+      <div id="promotion-modal" class="modal choice-modal promotion-modal" role="dialog" aria-modal="true" aria-labelledby="promotion-title" tabindex="-1">
+        <div class="choice-head"><span class="choice-glyph">♙</span><i></i><strong id="promotion-title" data-i18n="promotion.title">Promote</strong></div>
         <p class="choice-sub" data-i18n="promotion.subtitle">Promotions carry through the run</p>
         <div id="promotion-grid" class="promotion-grid"></div>
       </div>
 
-      <div id="reward-modal" class="modal choice-modal reward-modal">
-        <div class="choice-head"><span class="choice-glyph">◇</span><strong data-i18n="reward.title">Choose One</strong></div>
+      <div id="reward-modal" class="modal choice-modal reward-modal" role="dialog" aria-modal="true" aria-labelledby="reward-title" tabindex="-1">
+        <div class="choice-head"><span class="choice-glyph">◇</span><strong id="reward-title" data-i18n="reward.title">Choose One</strong></div>
         <p class="choice-sub" data-i18n="reward.subtitle">Relics last for the whole run</p>
         <div id="reward-grid" class="reward-grid"></div>
       </div>
 
-      <div id="contract-modal" class="modal choice-modal contract-modal">
+      <div id="contract-modal" class="modal choice-modal contract-modal" role="dialog" aria-modal="true" aria-labelledby="contract-title" tabindex="-1">
         <div class="choice-head"><span class="choice-glyph">♚</span><strong id="contract-title" data-i18n="contract.next">Next Battle</strong></div>
         <div id="contract-grid" class="contract-grid"></div>
       </div>
 
-      <div id="run-result-modal" class="modal result-modal">
+      <div id="run-result-modal" class="modal result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title" tabindex="-1">
         <p id="result-kicker" class="eyebrow" data-i18n="result.runClear">RUN CLEAR</p>
         <div id="result-rank" class="result-rank">S</div>
         <h2 id="result-title" data-i18n="result.cleared">Cleared</h2>
@@ -142,10 +143,10 @@
         </div>
       </div>
 
-      <div id="fail-modal" class="modal result-modal">
+      <div id="fail-modal" class="modal result-modal" role="dialog" aria-modal="true" aria-labelledby="fail-title" tabindex="-1">
         <p class="eyebrow" data-i18n="result.runOver">RUN OVER</p>
         <div class="result-rank fail">×</div>
-        <h2 data-i18n="result.failed">Run Over</h2>
+        <h2 id="fail-title" data-i18n="result.failed">Run Over</h2>
         <p id="fail-reason" class="result-note" data-i18n="failure.crown_broken">Crown broken</p>
         <div class="modal-actions horizontal">
           <button id="btn-fail-retry" class="btn btn-primary" type="button" data-i18n="action.restartBattle">Restart Battle</button>
@@ -154,9 +155,9 @@
         </div>
       </div>
 
-      <div id="training-result-modal" class="modal compact-modal">
+      <div id="training-result-modal" class="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="training-result-title" tabindex="-1">
         <div class="training-stamp">♙ → ♕</div>
-        <h2 data-i18n="training.complete">Complete</h2>
+        <h2 id="training-result-title" data-i18n="training.complete">Complete</h2>
         <div class="modal-actions horizontal">
           <button id="btn-training-again" class="btn btn-secondary" type="button" data-i18n="action.practiceAgain">Practice Again</button>
           <button id="btn-training-run" class="btn btn-primary" type="button" data-i18n="action.startRun">Start Run</button>
@@ -164,7 +165,7 @@
         </div>
       </div>
 
-      <div id="info-modal" class="modal info-modal">
+      <div id="info-modal" class="modal info-modal" role="dialog" aria-modal="true" aria-labelledby="info-title" tabindex="-1">
         <button id="btn-info-close" class="icon-btn modal-close" type="button" aria-label="Close" data-i18n-aria="aria.close">×</button>
         <div id="info-content"></div>
       </div>
