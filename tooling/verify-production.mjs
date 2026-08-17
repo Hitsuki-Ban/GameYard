@@ -37,9 +37,6 @@ export const EXPECTED_STATIC_ASSET_HEADERS = `/assets/*
 
 /service-worker.js
   Cache-Control: public, max-age=0, must-revalidate
-
-/release-metadata.json
-  Cache-Control: public, max-age=0, must-revalidate
 `;
 
 function compareStrings(left, right) {

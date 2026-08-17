@@ -31,6 +31,7 @@
 
 ## Release artifact
 
-- GitHub automation builds and uploads one artifact per source SHA. Host smoke, Cloudflare dry-run, and authenticated deployment must download and re-verify that artifact; deployment jobs never rebuild it.
-- `release-metadata.json` binds the artifact to source SHA, build ID, protocol, game manifests, and provenance. A metadata mismatch stops the job.
+- GitHub automation builds and uploads one site artifact per commit. Host smoke, Cloudflare dry-run, public journeys, and authenticated deployment download that artifact and never rebuild it.
+- GitHub Actions owns download integrity through its artifact digest. `release-metadata.json` is a readable source/build/protocol/catalog summary, not a second file-hash ledger.
+- Verify artifact structure after build and once before production deploy; downstream browser and Wrangler jobs validate the user-facing behavior they own instead of repeating the same metadata check.
 - Cloudflare production deploys only from `main` through the `cloudflare-production` GitHub environment. Required secrets are `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.

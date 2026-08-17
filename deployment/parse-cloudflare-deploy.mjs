@@ -96,10 +96,27 @@ async function main() {
   const target = requireProductionTarget(deployment.targets[0]);
 
   const metadata = JSON.parse(await readFile(arguments_.metadata, "utf8"));
+  exactKeys(
+    metadata,
+    ["schemaVersion", "sourceSha", "buildId", "protocol", "games"],
+    "Release metadata",
+  );
   if (
-    metadata?.schemaVersion !== 4 ||
+    metadata.schemaVersion !== 1 ||
     typeof metadata.buildId !== "string" ||
-    !sourceShaPattern.test(metadata.sourceSha)
+    !sourceShaPattern.test(metadata.sourceSha) ||
+    !Number.isSafeInteger(metadata.protocol) ||
+    !Array.isArray(metadata.games) ||
+    metadata.games.length === 0 ||
+    !metadata.games.every(
+      (game) =>
+        game !== null &&
+        typeof game === "object" &&
+        !Array.isArray(game) &&
+        Object.keys(game).length === 2 &&
+        typeof game.id === "string" &&
+        typeof game.version === "string",
+    )
   ) {
     throw new Error("Release metadata cannot provide deployment identity");
   }

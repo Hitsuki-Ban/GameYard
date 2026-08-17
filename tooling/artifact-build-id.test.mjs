@@ -139,7 +139,7 @@ await test("artifact build ID changes with source, lock, and configuration conte
   assert.notEqual(configChanged, lockChanged);
 });
 
-await test("artifact build ID covers runtime, assembly, and deployment inputs", async () => {
+await test("artifact build ID covers runtime and assembly inputs", async () => {
   const root = await createFixture();
   let previous = await createArtifactBuildId(root);
   const changedInputs = [
@@ -148,7 +148,6 @@ await test("artifact build ID covers runtime, assembly, and deployment inputs", 
     "packages/host-bridge/src/entry.ts",
     "packages/guest-bridge/src/entry.ts",
     "tooling/site-assembler.mjs",
-    "deployment/entry.ts",
   ];
 
   for (const input of changedInputs) {
@@ -181,6 +180,10 @@ await test("artifact build ID ignores testkit, tests, and stale dist", async () 
     "packages/testkit/src/index.ts",
     "tests/e2e/hub.spec.ts",
     "dist/assets/stale.js",
+    "deployment/cloudflare-worker.mjs",
+    "provenance/upstreams.json",
+    "tooling/release-metadata.mjs",
+    "tooling/verify-production.mjs",
   ]) {
     const target = join(root, input);
     await mkdir(dirname(target), { recursive: true });

@@ -121,6 +121,7 @@ async function createFixture() {
       2,
     )}\n`,
   );
+  await mkdir(join(root, "provenance"), { recursive: true });
   await writeFile(
     join(root, "provenance/upstreams.json"),
     `${JSON.stringify(
